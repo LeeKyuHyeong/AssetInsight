@@ -9,7 +9,13 @@
 /.idea/assetWizardSettings.xml
 /.idea/deploymentTargetSelector.xml
 /.idea/vcs.xml
+/.idea/gradle.xml
+/.idea/misc.xml
+/.idea/deviceManager.xml
 .claude/
+
+# Screenshots
+*.png
 .DS_Store
 /build
 /captures
