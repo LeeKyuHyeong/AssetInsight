@@ -50,27 +50,46 @@ public abstract class AppDatabase extends RoomDatabase {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
-                    // SQLCipher 암호화 팩토리 생성
-                    SupportFactory factory = new SupportFactory(SQLCipherUtils.getKey(passphrase));
+                    Context appContext = context.getApplicationContext();
+                    boolean isDebug = (appContext.getApplicationInfo().flags
+                            & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
 
-                    INSTANCE = Room.databaseBuilder(
-                            context.getApplicationContext(),
+                    RoomDatabase.Builder<AppDatabase> builder = Room.databaseBuilder(
+                            appContext,
                             AppDatabase.class,
                             DATABASE_NAME
-                    )
-                    .openHelperFactory(factory)
-                    .addMigrations(MIGRATION_1_2)
-                    .addCallback(new Callback() {
-                        @Override
-                        public void onCreate(@NonNull SupportSQLiteDatabase db) {
-                            super.onCreate(db);
-                            // 기본 카테고리 초기화
-                            Executors.newSingleThreadExecutor().execute(() -> {
-                                insertDefaultCategories(INSTANCE);
-                            });
+                    );
+
+                    if (isDebug) {
+                        // Debug 빌드: 암호화 없이 일반 SQLite 사용
+                        // 기존 암호화된 DB가 있으면 삭제
+                        SQLCipherUtils.DbState dbState = SQLCipherUtils.getDatabaseState(appContext, DATABASE_NAME);
+                        if (dbState == SQLCipherUtils.DbState.ENCRYPTED) {
+                            SQLCipherUtils.deleteDatabase(appContext, DATABASE_NAME);
                         }
-                    })
-                    .build();
+                    } else {
+                        // Release 빌드: SQLCipher 암호화 사용
+                        SQLCipherUtils.DbState dbState = SQLCipherUtils.getDatabaseState(appContext, DATABASE_NAME);
+                        if (dbState == SQLCipherUtils.DbState.UNENCRYPTED) {
+                            SQLCipherUtils.deleteDatabase(appContext, DATABASE_NAME);
+                        }
+                        SupportFactory factory = new SupportFactory(SQLCipherUtils.getKey(passphrase));
+                        builder.openHelperFactory(factory);
+                    }
+
+                    INSTANCE = builder
+                            .addMigrations(MIGRATION_1_2)
+                            .addCallback(new Callback() {
+                                @Override
+                                public void onCreate(@NonNull SupportSQLiteDatabase db) {
+                                    super.onCreate(db);
+                                    // 기본 카테고리 초기화
+                                    Executors.newSingleThreadExecutor().execute(() -> {
+                                        insertDefaultCategories(INSTANCE);
+                                    });
+                                }
+                            })
+                            .build();
                 }
             }
         }

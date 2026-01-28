@@ -57,7 +57,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 앱이 포그라운드로 돌아올 때마다 인증 요청
+        // 타임아웃 체크: 5분 이상 백그라운드에 있었으면 재인증
+        if (isAuthenticated && lastPausedTime > 0) {
+            long elapsed = System.currentTimeMillis() - lastPausedTime;
+            if (elapsed > AUTH_TIMEOUT_MS) {
+                isAuthenticated = false;
+            }
+        }
+
         if (!isAuthenticated) {
             requestBiometricAuth();
         }
@@ -66,9 +73,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        // 앱이 백그라운드로 가면 인증 상태 초기화
-        isAuthenticated = false;
+        // 백그라운드로 갈 때 시간 기록
+        lastPausedTime = System.currentTimeMillis();
     }
+
+    // 인증 타임아웃 (5분)
+    private static final long AUTH_TIMEOUT_MS = 5 * 60 * 1000;
+    private long lastPausedTime = 0;
 
     private boolean isDebugBuild() {
         return (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
@@ -77,25 +88,25 @@ public class MainActivity extends AppCompatActivity {
     private void requestBiometricAuth() {
         BiometricStatus status = securityHelper.checkBiometricAvailability();
 
-        // Debug 빌드에서 생체 인증 불가 시 건너뛰기
+        // Debug 빌드에서 인증 불가 시 건너뛰기
         if (isDebugBuild() && status != BiometricStatus.AVAILABLE) {
             isAuthenticated = true;
             showMainContent();
             return;
         }
 
-        status = securityHelper.checkBiometricAvailability();
-
         switch (status) {
             case AVAILABLE:
+                // 생체 인증 또는 PIN/패턴/비밀번호로 인증
                 performBiometricAuth();
                 break;
             case NO_HARDWARE:
-                showError(getString(R.string.biometric_error_no_hardware));
-                // 생체 인증 불가 시 앱 접근 차단 또는 대체 인증 방법 제공
-                break;
             case NOT_ENROLLED:
+                // 기기 잠금이 설정되어 있으면 PIN/패턴/비밀번호로 인증 시도
+                // 설정되어 있지 않으면 설정 화면으로 안내
                 showError(getString(R.string.biometric_error_not_enrolled));
+                binding.btnRetry.setText(R.string.go_to_settings);
+                binding.btnRetry.setOnClickListener(v -> openSecuritySettings());
                 break;
             case HARDWARE_UNAVAILABLE:
             case SECURITY_UPDATE_REQUIRED:
@@ -103,6 +114,11 @@ public class MainActivity extends AppCompatActivity {
                 showError(getString(R.string.biometric_error_unavailable));
                 break;
         }
+    }
+
+    private void openSecuritySettings() {
+        Intent intent = new Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS);
+        startActivity(intent);
     }
 
     private void performBiometricAuth() {

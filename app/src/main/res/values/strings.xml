@@ -3,13 +3,14 @@
 
     <!-- 생체 인증 -->
     <string name="biometric_title">본인 인증</string>
-    <string name="biometric_subtitle">생체 인증으로 앱에 접근합니다</string>
+    <string name="biometric_subtitle">본인 인증 후 앱에 접근합니다</string>
     <string name="biometric_negative_button">취소</string>
     <string name="biometric_error_no_hardware">이 기기는 생체 인증을 지원하지 않습니다</string>
-    <string name="biometric_error_not_enrolled">등록된 생체 정보가 없습니다. 설정에서 지문 또는 얼굴을 등록해주세요</string>
-    <string name="biometric_error_unavailable">생체 인증을 사용할 수 없습니다</string>
+    <string name="biometric_error_not_enrolled">화면 잠금이 설정되어 있지 않습니다.\n설정에서 PIN, 패턴 또는 비밀번호를 등록해주세요</string>
+    <string name="biometric_error_unavailable">인증을 사용할 수 없습니다</string>
     <string name="biometric_auth_failed">인증에 실패했습니다</string>
     <string name="btn_retry">다시 시도</string>
+    <string name="go_to_settings">설정으로 이동</string>
 
     <!-- 자산 입력 화면 -->
     <string name="input_title">자산 입력</string>

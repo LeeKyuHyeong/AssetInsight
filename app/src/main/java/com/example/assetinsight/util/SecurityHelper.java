@@ -26,22 +26,24 @@ public class SecurityHelper {
     }
 
     /**
-     * 생체 인증 가능 여부 확인
+     * 생체 인증 또는 기기 잠금 인증 가능 여부 확인
      * @return BiometricStatus 상태값
      */
     public BiometricStatus checkBiometricAvailability() {
         BiometricManager biometricManager = BiometricManager.from(context);
 
+        // 생체 인증 + 기기 잠금(PIN/패턴/비밀번호) 모두 허용
         int result = biometricManager.canAuthenticate(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG |
-                BiometricManager.Authenticators.BIOMETRIC_WEAK
+                BiometricManager.Authenticators.BIOMETRIC_WEAK |
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL
         );
 
         switch (result) {
             case BiometricManager.BIOMETRIC_SUCCESS:
                 return BiometricStatus.AVAILABLE;
             case BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE:
-                return BiometricStatus.NO_HARDWARE;
+                // 생체 인증 하드웨어 없어도 기기 잠금으로 인증 가능
+                return BiometricStatus.AVAILABLE;
             case BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE:
                 return BiometricStatus.HARDWARE_UNAVAILABLE;
             case BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED:
@@ -54,11 +56,11 @@ public class SecurityHelper {
     }
 
     /**
-     * 생체 인증 실행
+     * 생체 인증 또는 기기 잠금 인증 실행
      * @param activity FragmentActivity
      * @param title 프롬프트 제목
      * @param subtitle 프롬프트 부제목
-     * @param negativeButtonText 취소 버튼 텍스트
+     * @param negativeButtonText 취소 버튼 텍스트 (DEVICE_CREDENTIAL 사용 시 무시됨)
      * @param callback 인증 결과 콜백
      */
     public void authenticate(
@@ -91,13 +93,14 @@ public class SecurityHelper {
                     }
                 });
 
+        // 생체 인증 + PIN/패턴/비밀번호 모두 허용
+        // DEVICE_CREDENTIAL 사용 시 setNegativeButtonText() 사용 불가
         BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
                 .setTitle(title)
                 .setSubtitle(subtitle)
-                .setNegativeButtonText(negativeButtonText)
                 .setAllowedAuthenticators(
-                        BiometricManager.Authenticators.BIOMETRIC_STRONG |
-                        BiometricManager.Authenticators.BIOMETRIC_WEAK
+                        BiometricManager.Authenticators.BIOMETRIC_WEAK |
+                        BiometricManager.Authenticators.DEVICE_CREDENTIAL
                 )
                 .build();
 
