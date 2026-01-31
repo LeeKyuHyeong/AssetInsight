@@ -14,15 +14,24 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.assetinsight.R;
 import com.example.assetinsight.data.local.AppDatabase;
+import com.example.assetinsight.data.local.AssetSnapshot;
 import com.example.assetinsight.data.local.Category;
 import com.example.assetinsight.data.repository.AssetRepository;
 import com.example.assetinsight.databinding.FragmentDashboardBinding;
 import com.example.assetinsight.ui.assetlist.AssetListActivity;
+import com.example.assetinsight.ui.auth.LoginActivity;
+import com.example.assetinsight.ui.auth.ProfileSwitchActivity;
 import com.example.assetinsight.ui.backup.BackupRestoreActivity;
 import com.example.assetinsight.ui.category.CategoryDetailActivity;
 import com.example.assetinsight.ui.settings.SettingsActivity;
 import com.example.assetinsight.util.DatabaseKeyManager;
 import com.example.assetinsight.ui.category.CategoryManageActivity;
+import com.example.assetinsight.data.remote.ApiClient;
+import com.example.assetinsight.data.remote.TokenManager;
+import com.example.assetinsight.data.repository.SyncRepository;
+import com.example.assetinsight.service.SyncWorker;
+
+import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.charts.PieChart;
@@ -95,7 +104,7 @@ public class DashboardFragment extends Fragment {
         setupCategoryManageButton();
         setupMenuButton();
         setupCharts();
-        loadCategoryNames();
+        // 카테고리 이름 로드는 onResume에서 처리
     }
 
     private void setupCharts() {
@@ -145,6 +154,19 @@ public class DashboardFragment extends Fragment {
                     Intent intent = new Intent(requireContext(), BackupRestoreActivity.class);
                     startActivity(intent);
                     return true;
+                } else if (itemId == R.id.action_sync) {
+                    performSync();
+                    return true;
+                } else if (itemId == R.id.action_account) {
+                    TokenManager tokenManager = ApiClient.getInstance(requireContext()).getTokenManager();
+                    if (tokenManager.isLoggedIn()) {
+                        Intent intent = new Intent(requireContext(), ProfileSwitchActivity.class);
+                        startActivity(intent);
+                    } else {
+                        Intent intent = new Intent(requireContext(), LoginActivity.class);
+                        startActivity(intent);
+                    }
+                    return true;
                 } else if (itemId == R.id.action_settings) {
                     Intent intent = new Intent(requireContext(), SettingsActivity.class);
                     startActivity(intent);
@@ -163,9 +185,17 @@ public class DashboardFragment extends Fragment {
         });
     }
 
-    private void loadCategoryNames() {
+    private void loadCategoryNames(Runnable onComplete) {
+        if (getContext() == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
         executor.execute(() -> {
-            AppDatabase db = AppDatabase.getInstance(requireContext(), DatabaseKeyManager.getKey());
+            if (getContext() == null) {
+                if (onComplete != null) onComplete.run();
+                return;
+            }
+            AppDatabase db = AppDatabase.getInstance(getContext(), DatabaseKeyManager.getKey());
             db.ensureDefaultCategories();
             List<Category> categories = db.categoryDao().getAllCategories();
 
@@ -173,14 +203,15 @@ public class DashboardFragment extends Fragment {
             for (Category category : categories) {
                 categoryNames.put(category.getId(), category.getName());
             }
+            if (onComplete != null) onComplete.run();
         });
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        loadCategoryNames();
-        loadDashboardData();
+        // 카테고리 이름 로드 후 대시보드 데이터 로드
+        loadCategoryNames(this::loadDashboardData);
     }
 
     private void setupRecyclerView() {
@@ -201,38 +232,33 @@ public class DashboardFragment extends Fragment {
         String today = dateFormat.format(new Date());
 
         executor.execute(() -> {
-            // 1. 전체 자산 총액
-            AtomicLong totalAmount = new AtomicLong(0);
-            CountDownLatch totalLatch = new CountDownLatch(1);
+            if (getContext() == null) return;
 
-            repository.getTotalAmountAtDate(today, amount -> {
-                totalAmount.set(amount);
-                totalLatch.countDown();
-            });
+            // DB에서 직접 모든 스냅샷 가져오기
+            AppDatabase db = AppDatabase.getInstance(getContext(), DatabaseKeyManager.getKey());
+            List<AssetSnapshot> allSnapshots = db.assetSnapshotDao().getAllSnapshots();
 
-            try {
-                totalLatch.await();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            // 1. 전체 자산 총액 계산 (각 카테고리별 최신 데이터 합산)
+            long totalAmount = calculateTotalAmount(allSnapshots, today);
 
             // 2. 인사이트 데이터 (1일, 1개월, 6개월, 1년 전)
-            InsightData dayInsight = calculateInsight(today, -1, Calendar.DAY_OF_MONTH, totalAmount.get());
-            InsightData monthInsight = calculateInsight(today, -1, Calendar.MONTH, totalAmount.get());
-            InsightData sixMonthInsight = calculateInsight(today, -6, Calendar.MONTH, totalAmount.get());
-            InsightData yearInsight = calculateInsight(today, -1, Calendar.YEAR, totalAmount.get());
+            InsightData dayInsight = calculateInsightFromSnapshots(allSnapshots, today, -1, Calendar.DAY_OF_MONTH, totalAmount);
+            InsightData monthInsight = calculateInsightFromSnapshots(allSnapshots, today, -1, Calendar.MONTH, totalAmount);
+            InsightData sixMonthInsight = calculateInsightFromSnapshots(allSnapshots, today, -6, Calendar.MONTH, totalAmount);
+            InsightData yearInsight = calculateInsightFromSnapshots(allSnapshots, today, -1, Calendar.YEAR, totalAmount);
 
             // 3. 카테고리별 자산
-            List<CategoryAssetItem> categoryItems = loadCategoryAssets(today, totalAmount.get());
+            List<CategoryAssetItem> categoryItems = loadCategoryAssetsFromSnapshots(allSnapshots, today, totalAmount);
 
             // 차트 데이터
-            List<Entry> trendEntries = loadTrendData();
+            List<Entry> trendEntries = loadTrendDataFromSnapshots(allSnapshots);
             List<PieEntry> pieEntries = createPieEntries(categoryItems);
 
             // UI 업데이트
-            if (getActivity() != null) {
+            if (getActivity() != null && isAdded()) {
                 getActivity().runOnUiThread(() -> {
-                    updateTotalAmount(totalAmount.get(), today);
+                    if (binding == null) return;
+                    updateTotalAmount(totalAmount, today);
                     updateInsightCard(binding.tvDayChange, binding.tvDayPercent, dayInsight);
                     updateInsightCard(binding.tvMonthChange, binding.tvMonthPercent, monthInsight);
                     updateInsightCard(binding.tvSixMonthChange, binding.tvSixMonthPercent, sixMonthInsight);
@@ -243,6 +269,91 @@ public class DashboardFragment extends Fragment {
                 });
             }
         });
+    }
+
+    private long calculateTotalAmount(List<AssetSnapshot> snapshots, String targetDate) {
+        Map<String, AssetSnapshot> latestByCategory = new HashMap<>();
+
+        for (AssetSnapshot snapshot : snapshots) {
+            if (snapshot.getDate().compareTo(targetDate) <= 0) {
+                String categoryId = snapshot.getCategoryId();
+                AssetSnapshot existing = latestByCategory.get(categoryId);
+
+                if (existing == null || snapshot.getDate().compareTo(existing.getDate()) > 0) {
+                    latestByCategory.put(categoryId, snapshot);
+                }
+            }
+        }
+
+        long total = 0;
+        for (AssetSnapshot snapshot : latestByCategory.values()) {
+            total += snapshot.getAmount();
+        }
+        return total;
+    }
+
+    private InsightData calculateInsightFromSnapshots(List<AssetSnapshot> snapshots, String today, int amount, int field, long currentTotal) {
+        Calendar cal = Calendar.getInstance();
+        try {
+            cal.setTime(dateFormat.parse(today));
+        } catch (Exception e) {
+            return InsightData.noData();
+        }
+        cal.add(field, amount);
+        String pastDate = dateFormat.format(cal.getTime());
+
+        long pastAmount = calculateTotalAmount(snapshots, pastDate);
+        return new InsightData(currentTotal, pastAmount);
+    }
+
+    private List<CategoryAssetItem> loadCategoryAssetsFromSnapshots(List<AssetSnapshot> snapshots, String today, long totalAmount) {
+        Map<String, AssetSnapshot> latestByCategory = new HashMap<>();
+
+        for (AssetSnapshot snapshot : snapshots) {
+            if (snapshot.getDate().compareTo(today) <= 0) {
+                String categoryId = snapshot.getCategoryId();
+                AssetSnapshot existing = latestByCategory.get(categoryId);
+
+                if (existing == null || snapshot.getDate().compareTo(existing.getDate()) > 0) {
+                    latestByCategory.put(categoryId, snapshot);
+                }
+            }
+        }
+
+        List<CategoryAssetItem> items = new ArrayList<>();
+        for (AssetSnapshot snapshot : latestByCategory.values()) {
+            String name = categoryNames.getOrDefault(snapshot.getCategoryId(), snapshot.getCategoryId());
+            double percent = totalAmount > 0 ? ((double) snapshot.getAmount() / totalAmount) * 100 : 0;
+
+            items.add(new CategoryAssetItem(
+                    snapshot.getCategoryId(),
+                    name,
+                    snapshot.getAmount(),
+                    snapshot.getDate(),
+                    percent
+            ));
+        }
+
+        // 금액 기준 내림차순 정렬
+        items.sort((a, b) -> Long.compare(b.getAmount(), a.getAmount()));
+        return items;
+    }
+
+    private List<Entry> loadTrendDataFromSnapshots(List<AssetSnapshot> snapshots) {
+        List<Entry> entries = new ArrayList<>();
+
+        Calendar cal = Calendar.getInstance();
+        for (int i = 11; i >= 0; i--) {
+            Calendar target = (Calendar) cal.clone();
+            target.add(Calendar.MONTH, -i);
+            target.set(Calendar.DAY_OF_MONTH, target.getActualMaximum(Calendar.DAY_OF_MONTH));
+            String targetDate = dateFormat.format(target.getTime());
+
+            long amount = calculateTotalAmount(snapshots, targetDate);
+            entries.add(new Entry(11 - i, amount / 10000f)); // 만원 단위
+        }
+
+        return entries;
     }
 
     private List<Entry> loadTrendData() {
@@ -322,7 +433,9 @@ public class DashboardFragment extends Fragment {
     }
 
     private void updatePieChart(List<PieEntry> entries) {
-        if (entries.isEmpty() || binding == null) {
+        if (binding == null) return;
+
+        if (entries.isEmpty()) {
             binding.pieChart.setData(null);
             binding.pieChart.invalidate();
             return;
@@ -422,6 +535,7 @@ public class DashboardFragment extends Fragment {
     }
 
     private void updateTotalAmount(long amount, String date) {
+        if (binding == null) return;
         binding.tvTotalAmount.setText(currencyFormat.format(amount));
         try {
             Date d = dateFormat.parse(date);
@@ -435,12 +549,14 @@ public class DashboardFragment extends Fragment {
     private void updateInsightCard(android.widget.TextView tvChange,
                                    android.widget.TextView tvPercent,
                                    InsightData insight) {
+        if (getContext() == null) return;
+
         if (!insight.hasData()) {
             tvChange.setText(getString(R.string.dashboard_no_data));
             tvPercent.setText("-");
-            tvChange.setTextColor(ContextCompat.getColor(requireContext(),
+            tvChange.setTextColor(ContextCompat.getColor(getContext(),
                     com.google.android.material.R.color.material_on_surface_emphasis_medium));
-            tvPercent.setTextColor(ContextCompat.getColor(requireContext(),
+            tvPercent.setTextColor(ContextCompat.getColor(getContext(),
                     com.google.android.material.R.color.material_on_surface_emphasis_medium));
             return;
         }
@@ -451,11 +567,11 @@ public class DashboardFragment extends Fragment {
 
         int color;
         if (insight.getChangeAmount() > 0) {
-            color = ContextCompat.getColor(requireContext(), R.color.positive);
+            color = ContextCompat.getColor(getContext(), R.color.positive);
         } else if (insight.getChangeAmount() < 0) {
-            color = ContextCompat.getColor(requireContext(), R.color.negative);
+            color = ContextCompat.getColor(getContext(), R.color.negative);
         } else {
-            color = ContextCompat.getColor(requireContext(),
+            color = ContextCompat.getColor(getContext(),
                     com.google.android.material.R.color.material_on_surface_emphasis_medium);
         }
 
@@ -464,6 +580,7 @@ public class DashboardFragment extends Fragment {
     }
 
     private void updateCategoryList(List<CategoryAssetItem> items) {
+        if (binding == null) return;
         if (items.isEmpty()) {
             binding.rvCategories.setVisibility(View.GONE);
             binding.tvEmpty.setVisibility(View.VISIBLE);
@@ -472,6 +589,40 @@ public class DashboardFragment extends Fragment {
             binding.tvEmpty.setVisibility(View.GONE);
             categoryAdapter.submitList(items);
         }
+    }
+
+    private void performSync() {
+        TokenManager tokenManager = ApiClient.getInstance(requireContext()).getTokenManager();
+        if (!tokenManager.isLoggedIn()) {
+            Toast.makeText(requireContext(), R.string.offline_mode, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(requireContext(), R.string.sync_in_progress, Toast.LENGTH_SHORT).show();
+
+        AppDatabase database = AppDatabase.getInstance(requireContext(), DatabaseKeyManager.getKey());
+        SyncRepository syncRepository = new SyncRepository(requireContext(), database);
+
+        syncRepository.sync(new SyncRepository.SyncCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), R.string.sync_success, Toast.LENGTH_SHORT).show();
+                        loadDashboardData();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String message) {
+                if (getActivity() != null && isAdded()) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), R.string.sync_failed, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
     }
 
     @Override

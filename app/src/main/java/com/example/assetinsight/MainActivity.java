@@ -11,8 +11,15 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.assetinsight.data.local.AppDatabase;
+import com.example.assetinsight.data.remote.ApiClient;
+import com.example.assetinsight.data.remote.TokenManager;
+import com.example.assetinsight.data.repository.SyncRepository;
 import com.example.assetinsight.databinding.ActivityMainBinding;
+import com.example.assetinsight.service.SyncWorker;
+import com.example.assetinsight.ui.auth.LoginActivity;
 import com.example.assetinsight.ui.input.InputActivity;
+import com.example.assetinsight.util.DatabaseKeyManager;
 import com.example.assetinsight.util.PreferenceManager;
 import com.example.assetinsight.util.SecurityHelper;
 import com.example.assetinsight.util.SecurityHelper.BiometricStatus;
@@ -22,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private SecurityHelper securityHelper;
     private PreferenceManager prefManager;
+    private TokenManager tokenManager;
     private boolean isAuthenticated = false;
 
     @Override
@@ -29,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         prefManager = new PreferenceManager(this);
+        tokenManager = ApiClient.getInstance(this).getTokenManager();
 
         // 테마 적용
         prefManager.applyTheme();
@@ -68,6 +77,11 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(this, InputActivity.class);
             startActivity(intent);
         });
+
+        // 로그인된 사용자의 경우 주기적 동기화 시작
+        if (tokenManager.isLoggedIn()) {
+            SyncWorker.enqueuePeriodicSync(this);
+        }
     }
 
     @Override
@@ -93,6 +107,11 @@ public class MainActivity extends AppCompatActivity {
 
         if (!isAuthenticated) {
             requestBiometricAuth();
+        }
+
+        // 로그인된 사용자의 경우 동기화 시도
+        if (isAuthenticated && tokenManager.isLoggedIn()) {
+            triggerSync();
         }
     }
 
@@ -194,6 +213,49 @@ public class MainActivity extends AppCompatActivity {
         binding.tvAuthMessage.setText(message);
         binding.tvAuthMessage.setVisibility(View.VISIBLE);
         binding.btnRetry.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * 동기화 트리거
+     */
+    private void triggerSync() {
+        AppDatabase database = AppDatabase.getInstance(this,
+                DatabaseKeyManager.getKey());
+        SyncRepository syncRepository = new SyncRepository(this, database);
+
+        syncRepository.sync(new SyncRepository.SyncCallback() {
+            @Override
+            public void onSuccess() {
+                // 동기화 성공 - UI 업데이트는 필요시
+            }
+
+            @Override
+            public void onError(String message) {
+                // 백그라운드 동기화 실패 - 무시 (오프라인 모드)
+            }
+        });
+    }
+
+    /**
+     * 로그인 화면으로 이동
+     */
+    public void navigateToLogin() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        startActivity(intent);
+    }
+
+    /**
+     * 현재 로그인 상태 확인
+     */
+    public boolean isUserLoggedIn() {
+        return tokenManager.isLoggedIn();
+    }
+
+    /**
+     * 현재 사용자 이름 반환
+     */
+    public String getCurrentUserName() {
+        return tokenManager.getName();
     }
 
     @Override

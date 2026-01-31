@@ -13,7 +13,8 @@ import androidx.room.Index;
     tableName = "asset_snapshot",
     primaryKeys = {"date", "categoryId"},
     indices = {
-        @Index(value = {"categoryId", "date"})
+        @Index(value = {"categoryId", "date"}),
+        @Index(value = {"syncStatus"})
     }
 )
 public class AssetSnapshot {
@@ -28,11 +29,21 @@ public class AssetSnapshot {
 
     private String memo;
 
+    // 동기화 필드
+    private long updatedAt; // 마지막 수정 시간 (epoch millis)
+    private int syncStatus; // 0: 동기화됨, 1: 수정됨, 2: 삭제 예정
+
+    public static final int SYNC_STATUS_SYNCED = 0;
+    public static final int SYNC_STATUS_MODIFIED = 1;
+    public static final int SYNC_STATUS_DELETED = 2;
+
     public AssetSnapshot(@NonNull String date, @NonNull String categoryId, long amount, String memo) {
         this.date = date;
         this.categoryId = categoryId;
         this.amount = amount;
         this.memo = memo;
+        this.updatedAt = System.currentTimeMillis();
+        this.syncStatus = SYNC_STATUS_MODIFIED;
     }
 
     @NonNull
@@ -67,5 +78,44 @@ public class AssetSnapshot {
 
     public void setMemo(String memo) {
         this.memo = memo;
+    }
+
+    public long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(long updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public int getSyncStatus() {
+        return syncStatus;
+    }
+
+    public void setSyncStatus(int syncStatus) {
+        this.syncStatus = syncStatus;
+    }
+
+    /**
+     * 수정 시 호출하여 타임스탬프와 동기화 상태 업데이트
+     */
+    public void markModified() {
+        this.updatedAt = System.currentTimeMillis();
+        this.syncStatus = SYNC_STATUS_MODIFIED;
+    }
+
+    /**
+     * 삭제 표시 (soft delete)
+     */
+    public void markDeleted() {
+        this.updatedAt = System.currentTimeMillis();
+        this.syncStatus = SYNC_STATUS_DELETED;
+    }
+
+    /**
+     * 동기화 완료 표시
+     */
+    public void markSynced() {
+        this.syncStatus = SYNC_STATUS_SYNCED;
     }
 }

@@ -9,6 +9,14 @@
         android:icon="@drawable/ic_backup"
         android:title="@string/backup_title" />
     <item
+        android:id="@+id/action_sync"
+        android:icon="@drawable/ic_sync"
+        android:title="@string/sync" />
+    <item
+        android:id="@+id/action_account"
+        android:icon="@drawable/ic_account_circle"
+        android:title="@string/switch_profile" />
+    <item
         android:id="@+id/action_settings"
         android:icon="@drawable/ic_settings"
         android:title="@string/settings_title" />

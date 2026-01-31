@@ -9,6 +9,9 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
+import com.example.assetinsight.data.local.dao.UserProfileDao;
+import com.example.assetinsight.data.local.entity.UserProfile;
+
 import net.sqlcipher.database.SupportFactory;
 
 import java.util.Arrays;
@@ -18,7 +21,11 @@ import java.util.concurrent.Executors;
 /**
  * Room Database with SQLCipher 암호화
  */
-@Database(entities = {AssetSnapshot.class, Category.class}, version = 2, exportSchema = false)
+@Database(
+    entities = {AssetSnapshot.class, Category.class, UserProfile.class},
+    version = 3,
+    exportSchema = false
+)
 public abstract class AppDatabase extends RoomDatabase {
 
     private static volatile AppDatabase INSTANCE;
@@ -26,6 +33,7 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract AssetSnapshotDao assetSnapshotDao();
     public abstract CategoryDao categoryDao();
+    public abstract UserProfileDao userProfileDao();
 
     // 버전 1 -> 2 마이그레이션 (Category 테이블 추가)
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
@@ -38,6 +46,39 @@ public abstract class AppDatabase extends RoomDatabase {
                     "`sortOrder` INTEGER NOT NULL, " +
                     "`isDefault` INTEGER NOT NULL, " +
                     "PRIMARY KEY(`id`))");
+        }
+    };
+
+    // 버전 2 -> 3 마이그레이션 (동기화 필드 추가 + UserProfile 테이블)
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // AssetSnapshot에 동기화 필드 추가
+            database.execSQL("ALTER TABLE asset_snapshot ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE asset_snapshot ADD COLUMN syncStatus INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_asset_snapshot_syncStatus ON asset_snapshot(syncStatus)");
+
+            // Category에 동기화 필드 추가
+            database.execSQL("ALTER TABLE category ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE category ADD COLUMN syncStatus INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_category_syncStatus ON category(syncStatus)");
+
+            // UserProfile 테이블 생성
+            database.execSQL("CREATE TABLE IF NOT EXISTS `user_profile` (" +
+                    "`id` TEXT NOT NULL, " +
+                    "`email` TEXT NOT NULL, " +
+                    "`name` TEXT NOT NULL, " +
+                    "`provider` TEXT NOT NULL, " +
+                    "`isActive` INTEGER NOT NULL, " +
+                    "`lastSyncTime` INTEGER NOT NULL, " +
+                    "`createdAt` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_user_profile_isActive ON user_profile(isActive)");
+
+            // 기존 데이터의 updatedAt 초기화 (현재 시간으로)
+            long now = System.currentTimeMillis();
+            database.execSQL("UPDATE asset_snapshot SET updatedAt = " + now + " WHERE updatedAt = 0");
+            database.execSQL("UPDATE category SET updatedAt = " + now + " WHERE updatedAt = 0");
         }
     };
 
@@ -78,7 +119,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     }
 
                     INSTANCE = builder
-                            .addMigrations(MIGRATION_1_2)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                             .addCallback(new Callback() {
                                 @Override
                                 public void onCreate(@NonNull SupportSQLiteDatabase db) {
@@ -109,6 +150,10 @@ public abstract class AppDatabase extends RoomDatabase {
                 new Category("crypto", "암호화폐", "ic_category_crypto", 5, true),
                 new Category("other", "기타", "ic_category_other", 6, true)
         );
+        // 기본 카테고리는 동기화 상태를 SYNCED로 설정
+        for (Category category : defaultCategories) {
+            category.setSyncStatus(Category.SYNC_STATUS_SYNCED);
+        }
         db.categoryDao().insertAll(defaultCategories);
     }
 
@@ -120,6 +165,16 @@ public abstract class AppDatabase extends RoomDatabase {
             if (categoryDao().getCategoryCount() == 0) {
                 insertDefaultCategories(this);
             }
+        });
+    }
+
+    /**
+     * 프로필 전환 시 로컬 데이터 초기화
+     */
+    public void clearLocalData() {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            assetSnapshotDao().deleteAll();
+            categoryDao().deleteAll();
         });
     }
 

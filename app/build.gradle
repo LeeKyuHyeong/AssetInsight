@@ -33,6 +33,16 @@ android {
 
         // local.properties에서 DB 암호화 키 로드
         buildConfigField "String", "DB_KEY", "\"${localProperties.getProperty('DB_ENCRYPTION_KEY', 'default_key')}\""
+
+        // OAuth 설정
+        buildConfigField "String", "API_BASE_URL", "\"${localProperties.getProperty('API_BASE_URL', 'http://10.0.2.2:8080/api/v1/')}\""
+        buildConfigField "String", "GOOGLE_CLIENT_ID", "\"${localProperties.getProperty('GOOGLE_CLIENT_ID', '')}\""
+        buildConfigField "String", "KAKAO_APP_KEY", "\"${localProperties.getProperty('KAKAO_APP_KEY', '')}\""
+        buildConfigField "String", "NAVER_CLIENT_ID", "\"${localProperties.getProperty('NAVER_CLIENT_ID', '')}\""
+        buildConfigField "String", "NAVER_CLIENT_SECRET", "\"${localProperties.getProperty('NAVER_CLIENT_SECRET', '')}\""
+
+        // Kakao SDK manifest placeholder
+        manifestPlaceholders["KAKAO_APP_KEY"] = localProperties.getProperty('KAKAO_APP_KEY', '')
     }
 
     buildTypes {
@@ -85,6 +95,34 @@ dependencies {
 
     // LeakCanary (Debug 빌드에서만 메모리 누수 감지)
     debugImplementation libs.leakcanary
+
+    // Retrofit (HTTP 클라이언트)
+    implementation libs.retrofit
+    implementation libs.retrofit.gson
+
+    // OkHttp (HTTP 로깅)
+    implementation libs.okhttp
+    implementation libs.okhttp.logging
+
+    // Google Sign-In (Credential Manager)
+    implementation libs.credentials
+    implementation libs.credentials.play
+    implementation libs.googleid
+
+    // Kakao SDK
+    implementation libs.kakao.user
+
+    // Naver SDK
+    implementation libs.naver.oauth
+
+    // WorkManager (백그라운드 동기화)
+    implementation libs.workmanager
+
+    // EncryptedSharedPreferences (토큰 저장)
+    implementation libs.security.crypto
+
+    // Gson
+    implementation libs.gson
 
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit

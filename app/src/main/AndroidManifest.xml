@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".AssetInsightApp"
@@ -20,7 +22,6 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -54,6 +55,36 @@
             android:name=".ui.category.CategoryDetailActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity" />
+
+        <!-- Auth Activities -->
+        <activity
+            android:name=".ui.auth.LoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AssetInsight" />
+
+        <activity
+            android:name=".ui.auth.SignupActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.auth.LoginActivity" />
+
+        <activity
+            android:name=".ui.auth.ProfileSwitchActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <!-- Kakao OAuth Redirect Activity -->
+        <activity
+            android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:host="oauth"
+                    android:scheme="kakao${KAKAO_APP_KEY}" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>
