@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- 인사이트 색상 (다크 모드) -->
-    <color name="positive">#4CAF50</color>
-    <color name="negative">#EF5350</color>
-</resources>
