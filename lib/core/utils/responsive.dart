@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
 /// 반응형 디자인을 위한 전역 유틸리티 클래스
-/// 기준 해상도: 800 x 360 (모바일 가로 모드 기준)
+/// 세로/가로 모드에 따라 동적으로 기준 해상도 적용
 class Responsive {
-  // 모바일 가로 모드 기준 (일반적인 폰 해상도)
-  static const double baseWidth = 800;
-  static const double baseHeight = 360;
+  // 모바일 세로 모드 기준
+  static const double basePortraitWidth = 360;
+  static const double basePortraitHeight = 800;
+
+  // 모바일 가로 모드 기준
+  static const double baseLandscapeWidth = 800;
+  static const double baseLandscapeHeight = 360;
 
   static late MediaQueryData _mediaQueryData;
   static late double screenWidth;
@@ -19,6 +23,11 @@ class Responsive {
     _mediaQueryData = MediaQuery.of(context);
     screenWidth = _mediaQueryData.size.width;
     screenHeight = _mediaQueryData.size.height;
+
+    // 방향에 따라 기준 해상도 선택
+    final bool portrait = screenHeight > screenWidth;
+    final double baseWidth = portrait ? basePortraitWidth : baseLandscapeWidth;
+    final double baseHeight = portrait ? basePortraitHeight : baseLandscapeHeight;
 
     // 기준 해상도 대비 현재 화면 비율 계산
     scaleWidth = screenWidth / baseWidth;
@@ -77,10 +86,11 @@ class Responsive {
     );
   }
 
-  /// 화면 타입 판별 (가로 모드 기준)
-  static bool get isMobile => screenWidth < 800;
-  static bool get isTablet => screenWidth >= 800 && screenWidth < 1200;
-  static bool get isDesktop => screenWidth >= 1200;
+  /// 화면 타입 판별 (짧은 축 기준)
+  static double get shortestSide => screenWidth < screenHeight ? screenWidth : screenHeight;
+  static bool get isMobile => shortestSide < 600;
+  static bool get isTablet => shortestSide >= 600 && shortestSide < 900;
+  static bool get isDesktop => shortestSide >= 900;
 
   /// 디바이스 방향
   static bool get isPortrait => screenHeight > screenWidth;
