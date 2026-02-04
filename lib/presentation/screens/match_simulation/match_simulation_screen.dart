@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +7,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../../data/providers/match_provider.dart';
 import '../../../domain/models/models.dart';
+import '../../../domain/services/match_simulation_service.dart';
 import '../../widgets/reset_button.dart';
 
 class MatchSimulationScreen extends ConsumerStatefulWidget {
@@ -19,19 +19,22 @@ class MatchSimulationScreen extends ConsumerStatefulWidget {
 }
 
 class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
+  // 시뮬레이션 서비스
+  final MatchSimulationService _simulationService = MatchSimulationService();
+  StreamSubscription<SimulationState>? _simulationSubscription;
+
   // 현재 게임 상태
   int player1Resource = 100;
-  int player1Army = 100;
+  int player1Army = 50;
   int player2Resource = 100;
-  int player2Army = 100;
+  int player2Army = 50;
 
-  // 전투 로그
-  final List<String> battleLog = [];
+  // 전투 로그 (BattleLogEntry 사용 - 색상 구분)
+  final List<BattleLogEntry> battleLogEntries = [];
   final ScrollController _logScrollController = ScrollController();
 
   // 배속
   int speed = 1;
-  Timer? _gameTimer;
   bool isRunning = false;
   bool gameEnded = false;
 
@@ -39,15 +42,9 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
   bool showAceSelection = false;
   int? selectedAceIndex;
 
-  // 전투 텍스트 템플릿
-  final List<String> battleTexts = [
-    '치열한 교전 중입니다!',
-    '양측 모두 물러서지 않습니다!',
-    '팽팽한 접전이 이어집니다!',
-    '밀고 밀리는 상황!',
-    '대규모 교전이 시작됐습니다!',
-    '환상적인 컨트롤!',
-  ];
+  // 세트 종료 시 결과 표시용
+  bool showSetResult = false;
+  bool? lastSetHomeWin;
 
   @override
   void initState() {
@@ -68,11 +65,6 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     final gameState = ref.read(gameStateProvider);
     if (gameState == null) return;
 
-    final homePlayer = _getPlayerById(matchState.currentHomePlayerId);
-    final awayPlayer = _getPlayerById(matchState.currentAwayPlayerId);
-
-    _addLog('경기가 시작됩니다!');
-    _addLog('${homePlayer?.name ?? "?"} vs ${awayPlayer?.name ?? "?"}');
     _startGame();
   }
 
@@ -83,138 +75,128 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     return gameState.saveData.getPlayerById(playerId);
   }
 
+  GameMap? _getCurrentMap() {
+    final matchState = ref.read(currentMatchProvider);
+    final gameState = ref.read(gameStateProvider);
+    if (matchState == null || gameState == null) return null;
+
+    final currentSet = matchState.currentSet;
+    final seasonMapIds = gameState.saveData.currentSeason.seasonMapIds;
+
+    if (currentSet < seasonMapIds.length) {
+      final mapId = seasonMapIds[currentSet];
+      return GameMaps.getById(mapId);
+    }
+
+    // 시즌맵이 없거나 인덱스 초과 시 기본 맵
+    return GameMaps.fightingSpirit;
+  }
+
   @override
   void dispose() {
-    _gameTimer?.cancel();
+    _simulationSubscription?.cancel();
     _logScrollController.dispose();
     super.dispose();
   }
 
   void _startGame() {
-    setState(() {
-      isRunning = true;
-      gameEnded = false;
-    });
-
-    _gameTimer = Timer.periodic(
-      Duration(milliseconds: 1000 ~/ speed),
-      (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        _simulateTurn();
-      },
-    );
-  }
-
-  void _simulateTurn() {
     final matchState = ref.read(currentMatchProvider);
     if (matchState == null) return;
 
     final homePlayer = _getPlayerById(matchState.currentHomePlayerId);
     final awayPlayer = _getPlayerById(matchState.currentAwayPlayerId);
+    final map = _getCurrentMap();
 
-    if (homePlayer == null || awayPlayer == null) return;
+    if (homePlayer == null || awayPlayer == null || map == null) return;
 
-    final random = Random();
-
-    // 선수 능력치 기반 이벤트 확률 조정
-    final homeTotal = homePlayer.stats.total;
-    final awayTotal = awayPlayer.stats.total;
-    final homeBias = homeTotal / (homeTotal + awayTotal);
-
-    // 랜덤 이벤트
-    final eventType = random.nextInt(10);
-
-    if (eventType < 4) {
-      // 자원 변화
-      final resourceChange = random.nextInt(10) + 5;
-      if (random.nextDouble() < homeBias) {
-        player2Resource = (player2Resource - resourceChange).clamp(0, 100);
-        player1Resource = (player1Resource + resourceChange ~/ 2).clamp(0, 100);
-      } else {
-        player1Resource = (player1Resource - resourceChange).clamp(0, 100);
-        player2Resource = (player2Resource + resourceChange ~/ 2).clamp(0, 100);
-      }
-    } else {
-      // 전투
-      final damage1 = random.nextInt(15) + 5;
-      final damage2 = random.nextInt(15) + 5;
-
-      if (random.nextDouble() < homeBias) {
-        player2Army = (player2Army - damage1).clamp(0, 100);
-        player1Army = (player1Army - damage2 ~/ 2).clamp(0, 100);
-        _addLog('${homePlayer.name} 선수, 우세한 상황입니다!');
-      } else {
-        player1Army = (player1Army - damage2).clamp(0, 100);
-        player2Army = (player2Army - damage1 ~/ 2).clamp(0, 100);
-        _addLog('${awayPlayer.name} 선수, 우세한 상황입니다!');
-      }
-    }
-
-    // 랜덤 전투 텍스트
-    if (random.nextInt(3) == 0) {
-      _addLog(battleTexts[random.nextInt(battleTexts.length)]);
-    }
-
-    // 승패 체크
-    if (_checkGameEnd(homePlayer, awayPlayer)) {
-      _gameTimer?.cancel();
-      setState(() {
-        isRunning = false;
-        gameEnded = true;
-      });
-    } else {
-      setState(() {});
-    }
-  }
-
-  bool _checkGameEnd(Player homePlayer, Player awayPlayer) {
-    if (player1Army <= 0 || player2Army <= 0) {
-      final homeWin = player1Army > player2Army;
-      final winner = homeWin ? homePlayer : awayPlayer;
-      final loser = homeWin ? awayPlayer : homePlayer;
-
-      _addLog('');
-      _addLog('${loser.name} 선수, GG를 선언합니다.');
-      _addLog('${winner.name} 선수 승리!');
-
-      // 점수 업데이트
-      ref.read(currentMatchProvider.notifier).recordSetResult(homeWin);
-
-      return true;
-    }
-
-    // GG 조건: (자원+병력) < 상대의 30%
-    final player1Total = player1Resource + player1Army;
-    final player2Total = player2Resource + player2Army;
-
-    if (player1Total < player2Total * 0.3) {
-      _addLog('');
-      _addLog('${homePlayer.name} 선수, GG를 선언합니다.');
-      _addLog('${awayPlayer.name} 선수 승리!');
-      ref.read(currentMatchProvider.notifier).recordSetResult(false);
-      return true;
-    }
-
-    if (player2Total < player1Total * 0.3) {
-      _addLog('');
-      _addLog('${awayPlayer.name} 선수, GG를 선언합니다.');
-      _addLog('${homePlayer.name} 선수 승리!');
-      ref.read(currentMatchProvider.notifier).recordSetResult(true);
-      return true;
-    }
-
-    return false;
-  }
-
-  void _addLog(String text) {
     setState(() {
-      battleLog.add(text);
+      isRunning = true;
+      gameEnded = false;
+      battleLogEntries.clear();
+      player1Army = 50;
+      player2Army = 50;
+      player1Resource = 100;
+      player2Resource = 100;
     });
 
-    // 스크롤 아래로
+    // 배속에 따른 텍스트 간격 (ms)
+    final intervalMs = _getIntervalMs();
+
+    // 시뮬레이션 스트림 시작
+    final stream = _simulationService.simulateMatchWithLog(
+      homePlayer: homePlayer,
+      awayPlayer: awayPlayer,
+      map: map,
+      intervalMs: intervalMs,
+    );
+
+    _simulationSubscription?.cancel();
+    _simulationSubscription = stream.listen(
+      (state) {
+        if (!mounted) return;
+
+        setState(() {
+          player1Army = state.homeArmy;
+          player2Army = state.awayArmy;
+          player1Resource = state.homeResources;
+          player2Resource = state.awayResources;
+
+          // 새 로그만 추가 (BattleLogEntry 사용)
+          if (state.battleLogEntries.length > battleLogEntries.length) {
+            for (int i = battleLogEntries.length; i < state.battleLogEntries.length; i++) {
+              battleLogEntries.add(state.battleLogEntries[i]);
+            }
+            _scrollToBottom();
+          }
+
+          // 경기 종료 처리
+          if (state.isFinished) {
+            isRunning = false;
+            gameEnded = true;
+
+            // 점수 업데이트
+            if (state.homeWin != null) {
+              ref.read(currentMatchProvider.notifier).recordSetResult(state.homeWin!);
+
+              // 선수별 전적 업데이트
+              _updatePlayerRecords(state.homeWin!);
+
+              // 세트 결과 표시
+              lastSetHomeWin = state.homeWin;
+              showSetResult = true;
+            }
+          }
+        });
+      },
+      onError: (error) {
+        debugPrint('시뮬레이션 오류: $error');
+      },
+      onDone: () {
+        if (!mounted) return;
+        setState(() {
+          isRunning = false;
+          gameEnded = true;
+        });
+      },
+    );
+  }
+
+  int _getIntervalMs() {
+    switch (speed) {
+      case 1:
+        return 1000;
+      case 2:
+        return 500;
+      case 4:
+        return 250;
+      case 8:
+        return 125;
+      default:
+        return 500;
+    }
+  }
+
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_logScrollController.hasClients) {
         _logScrollController.animateTo(
@@ -226,24 +208,148 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     });
   }
 
+  /// 로그 엔트리에 따른 색상 반환
+  Color _getLogColor(BattleLogEntry entry, CurrentMatchState matchState) {
+    final gameState = ref.read(gameStateProvider);
+    if (gameState == null) return AppTheme.textPrimary;
+
+    // 플레이어 팀이 홈인지 확인
+    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
+
+    // 승리/GG 관련 텍스트는 특별 색상
+    if (entry.text.contains('승리')) {
+      return AppTheme.accentGreen;
+    }
+    if (entry.text.contains('GG')) {
+      return Colors.orange;
+    }
+
+    // 소유자에 따른 색상
+    switch (entry.owner) {
+      case LogOwner.system:
+        return AppTheme.textSecondary; // 시스템 메시지는 회색
+      case LogOwner.home:
+        // 홈 = 플레이어팀이면 녹색, 아니면 빨간색
+        return isPlayerHome ? const Color(0xFF4CAF50) : const Color(0xFFE57373);
+      case LogOwner.away:
+        // 어웨이 = 플레이어팀이면 녹색, 아니면 빨간색
+        return isPlayerHome ? const Color(0xFFE57373) : const Color(0xFF4CAF50);
+      case LogOwner.clash:
+        return Colors.amber; // 충돌/전투는 노란색
+    }
+  }
+
   void _changeSpeed(int newSpeed) {
+    final wasRunning = isRunning;
+
+    // 기존 스트림 취소
+    _simulationSubscription?.cancel();
+
     setState(() {
       speed = newSpeed;
     });
 
-    if (isRunning) {
-      _gameTimer?.cancel();
-      _gameTimer = Timer.periodic(
-        Duration(milliseconds: 1000 ~/ speed),
-        (timer) {
-          if (!mounted) {
-            timer.cancel();
-            return;
-          }
-          _simulateTurn();
-        },
-      );
+    // 실행 중이었으면 새 배속으로 재시작
+    if (wasRunning && !gameEnded) {
+      _restartWithNewSpeed();
     }
+  }
+
+  /// 선수별 전적 업데이트
+  void _updatePlayerRecords(bool homeWin) {
+    final matchState = ref.read(currentMatchProvider);
+    final gameState = ref.read(gameStateProvider);
+    if (matchState == null || gameState == null) return;
+
+    final homePlayer = _getPlayerById(matchState.currentHomePlayerId);
+    final awayPlayer = _getPlayerById(matchState.currentAwayPlayerId);
+    if (homePlayer == null || awayPlayer == null) return;
+
+    // 홈 선수 전적 업데이트
+    final updatedHomePlayer = homePlayer.applyMatchResult(
+      isWin: homeWin,
+      opponentGrade: awayPlayer.grade,
+      opponentRace: awayPlayer.race,
+      opponentId: awayPlayer.id,
+    );
+
+    // 어웨이 선수 전적 업데이트
+    final updatedAwayPlayer = awayPlayer.applyMatchResult(
+      isWin: !homeWin,
+      opponentGrade: homePlayer.grade,
+      opponentRace: homePlayer.race,
+      opponentId: homePlayer.id,
+    );
+
+    // 게임 상태 업데이트
+    ref.read(gameStateProvider.notifier).updatePlayers([
+      updatedHomePlayer,
+      updatedAwayPlayer,
+    ]);
+  }
+
+  void _restartWithNewSpeed() {
+    final matchState = ref.read(currentMatchProvider);
+    if (matchState == null) return;
+
+    final homePlayer = _getPlayerById(matchState.currentHomePlayerId);
+    final awayPlayer = _getPlayerById(matchState.currentAwayPlayerId);
+    final map = _getCurrentMap();
+
+    if (homePlayer == null || awayPlayer == null || map == null) return;
+
+    final intervalMs = _getIntervalMs();
+
+    // 새 시뮬레이션 시작 (현재 상태 유지하며 계속)
+    final stream = _simulationService.simulateMatchWithLog(
+      homePlayer: homePlayer,
+      awayPlayer: awayPlayer,
+      map: map,
+      intervalMs: intervalMs,
+    );
+
+    _simulationSubscription = stream.listen(
+      (state) {
+        if (!mounted) return;
+
+        setState(() {
+          player1Army = state.homeArmy;
+          player2Army = state.awayArmy;
+          player1Resource = state.homeResources;
+          player2Resource = state.awayResources;
+
+          // 새 로그만 추가 (BattleLogEntry 사용)
+          if (state.battleLogEntries.length > battleLogEntries.length) {
+            for (int i = battleLogEntries.length; i < state.battleLogEntries.length; i++) {
+              battleLogEntries.add(state.battleLogEntries[i]);
+            }
+            _scrollToBottom();
+          }
+
+          if (state.isFinished) {
+            isRunning = false;
+            gameEnded = true;
+            if (state.homeWin != null) {
+              ref.read(currentMatchProvider.notifier).recordSetResult(state.homeWin!);
+
+              // 선수별 전적 업데이트
+              _updatePlayerRecords(state.homeWin!);
+
+              // 세트 결과 표시
+              lastSetHomeWin = state.homeWin;
+              showSetResult = true;
+            }
+          }
+        });
+      },
+      onDone: () {
+        if (!mounted) return;
+        setState(() {
+          isRunning = false;
+          gameEnded = true;
+        });
+      },
+    );
   }
 
   void _nextGame() {
@@ -265,24 +371,21 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
   }
 
   void _prepareNextGame() {
-    final matchState = ref.read(currentMatchProvider);
-    if (matchState == null) return;
-
-    final homePlayer = _getPlayerById(matchState.currentHomePlayerId);
-    final awayPlayer = _getPlayerById(matchState.currentAwayPlayerId);
+    // 기존 스트림 취소
+    _simulationSubscription?.cancel();
 
     setState(() {
       player1Resource = 100;
-      player1Army = 100;
+      player1Army = 50;
       player2Resource = 100;
-      player2Army = 100;
-      battleLog.clear();
+      player2Army = 50;
+      battleLogEntries.clear();
       gameEnded = false;
       showAceSelection = false;
+      showSetResult = false;
+      lastSetHomeWin = null;
     });
 
-    _addLog('Game ${matchState.currentSet + 1} 시작!');
-    _addLog('${homePlayer?.name ?? "?"} vs ${awayPlayer?.name ?? "?"}');
     _startGame();
   }
 
@@ -294,8 +397,12 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     final teamPlayers = gameState.playerTeamPlayers;
     if (playerIndex < 0 || playerIndex >= teamPlayers.length) return;
 
+    // 플레이어 팀이 홈인지 확인
+    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
+    final playerRoster = isPlayerHome ? matchState.homeRoster : matchState.awayRoster;
+
     // 이미 출전한 선수인지 체크
-    final usedPlayers = matchState.homeRoster.whereType<String>().toSet();
+    final usedPlayers = playerRoster.whereType<String>().toSet();
     final selectedPlayer = teamPlayers[playerIndex];
 
     if (usedPlayers.contains(selectedPlayer.id)) {
@@ -305,20 +412,43 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
       return;
     }
 
-    // 에이스 선수 설정
-    ref.read(currentMatchProvider.notifier).setAcePlayer(
-      homeAceId: selectedPlayer.id,
-    );
+    // 에이스 선수 설정 (플레이어 팀 위치에 따라)
+    if (isPlayerHome) {
+      ref.read(currentMatchProvider.notifier).setAcePlayer(
+        homeAceId: selectedPlayer.id,
+      );
+    } else {
+      ref.read(currentMatchProvider.notifier).setAcePlayer(
+        awayAceId: selectedPlayer.id,
+      );
+    }
 
     // 다음 게임 시작
     _prepareNextGame();
   }
 
-  void _showMatchResult() {
+  void _showMatchResult() async {
     final matchState = ref.read(currentMatchProvider);
-    if (matchState == null) return;
+    final gameState = ref.read(gameStateProvider);
+    if (matchState == null || gameState == null) return;
 
-    final isWin = matchState.homeScore > matchState.awayScore;
+    // 플레이어 팀 기준으로 승패 판정
+    final playerTeamId = gameState.playerTeam.id;
+    final isPlayerHome = matchState.homeTeamId == playerTeamId;
+    final playerScore = isPlayerHome ? matchState.homeScore : matchState.awayScore;
+    final opponentScore = isPlayerHome ? matchState.awayScore : matchState.homeScore;
+    final isWin = playerScore > opponentScore;
+
+    // 매치 결과를 게임 상태에 저장
+    ref.read(gameStateProvider.notifier).recordMatchResult(
+      homeTeamId: matchState.homeTeamId,
+      awayTeamId: matchState.awayTeamId,
+      homeScore: matchState.homeScore,
+      awayScore: matchState.awayScore,
+    );
+
+    // 게임 저장
+    await ref.read(gameStateProvider.notifier).save();
 
     showDialog(
       context: context,
@@ -336,7 +466,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '${matchState.homeScore} : ${matchState.awayScore}',
+              '$playerScore : $opponentScore',
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -381,19 +511,41 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
       return _buildAceSelectionScreen(gameState, matchState);
     }
 
-    final homeTeam = gameState.saveData.getTeamById(matchState.homeTeamId);
-    final awayTeam = gameState.saveData.getTeamById(matchState.awayTeamId);
-    final homePlayer = _getPlayerById(matchState.currentHomePlayerId);
-    final awayPlayer = _getPlayerById(matchState.currentAwayPlayerId);
+    // 플레이어 팀 기준으로 좌우 배치 결정
+    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
+
+    // 왼쪽 = 내 팀, 오른쪽 = 상대 팀
+    final leftTeam = isPlayerHome
+        ? gameState.saveData.getTeamById(matchState.homeTeamId)
+        : gameState.saveData.getTeamById(matchState.awayTeamId);
+    final rightTeam = isPlayerHome
+        ? gameState.saveData.getTeamById(matchState.awayTeamId)
+        : gameState.saveData.getTeamById(matchState.homeTeamId);
+    final leftPlayer = isPlayerHome
+        ? _getPlayerById(matchState.currentHomePlayerId)
+        : _getPlayerById(matchState.currentAwayPlayerId);
+    final rightPlayer = isPlayerHome
+        ? _getPlayerById(matchState.currentAwayPlayerId)
+        : _getPlayerById(matchState.currentHomePlayerId);
+
+    // 점수도 내 팀 기준
+    final myScore = isPlayerHome ? matchState.homeScore : matchState.awayScore;
+    final opponentScore = isPlayerHome ? matchState.awayScore : matchState.homeScore;
+
+    // 자원/병력도 내 팀 기준
+    final myResource = isPlayerHome ? player1Resource : player2Resource;
+    final opponentResource = isPlayerHome ? player2Resource : player1Resource;
+    final myArmy = isPlayerHome ? player1Army : player2Army;
+    final opponentArmy = isPlayerHome ? player2Army : player1Army;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('경기 진행'),
-        automaticallyImplyLeading: false,
+        leading: ResetButton.leading(),
         actions: [
           TextButton(
             onPressed: () {
-              _gameTimer?.cancel();
+              _simulationSubscription?.cancel();
               ref.read(currentMatchProvider.notifier).resetMatch();
               context.go('/main');
             },
@@ -405,7 +557,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
         children: [
           Column(
             children: [
-              // 매치 스코어
+              // 매치 스코어 (내 팀 기준)
               Container(
                 padding: const EdgeInsets.all(16),
                 color: AppTheme.cardBackground,
@@ -414,14 +566,14 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        homeTeam?.name ?? '홈팀',
+                        leftTeam?.name ?? '내 팀',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Text(
-                      '${matchState.homeScore} : ${matchState.awayScore}',
+                      '$myScore : $opponentScore',
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -430,7 +582,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        awayTeam?.name ?? '어웨이팀',
+                        rightTeam?.name ?? '상대 팀',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
@@ -452,34 +604,36 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
                 ),
               ),
 
-              // 선수 정보
+              // 선수 정보 (내 팀 선수가 왼쪽)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Expanded(child: _PlayerPanel(player: homePlayer, isHome: true)),
+                    Expanded(child: _PlayerPanel(player: leftPlayer, isHome: true)),
                     const SizedBox(width: 16),
-                    Expanded(child: _PlayerPanel(player: awayPlayer, isHome: false)),
+                    Expanded(child: _PlayerPanel(player: rightPlayer, isHome: false)),
                   ],
                 ),
               ),
 
-              // 자원/병력 바
+              // 자원/병력 바 (내 팀 기준)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   children: [
                     _ResourceBar(
                       label: '자원',
-                      value1: player1Resource,
-                      value2: player2Resource,
+                      value1: myResource,
+                      value2: opponentResource,
+                      maxValue: 500, // 표시용 최대값 (실제 최대 10000)
                       color: Colors.yellow,
                     ),
                     const SizedBox(height: 8),
                     _ResourceBar(
                       label: '병력',
-                      value1: player1Army,
-                      value2: player2Army,
+                      value1: myArmy,
+                      value2: opponentArmy,
+                      maxValue: 100, // 표시용 최대값 (실제 최대 200)
                       color: Colors.red,
                     ),
                   ],
@@ -488,7 +642,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
 
               const SizedBox(height: 16),
 
-              // 전투 로그
+              // 전투 로그 (색상 구분)
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -500,18 +654,15 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
                   ),
                   child: ListView.builder(
                     controller: _logScrollController,
-                    itemCount: battleLog.length,
+                    itemCount: battleLogEntries.length,
                     itemBuilder: (context, index) {
+                      final entry = battleLogEntries[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Text(
-                          battleLog[index],
+                          entry.text,
                           style: TextStyle(
-                            color: battleLog[index].contains('승리')
-                                ? AppTheme.accentGreen
-                                : battleLog[index].contains('GG')
-                                    ? Colors.orange
-                                    : AppTheme.textPrimary,
+                            color: _getLogColor(entry, matchState),
                             fontFamily: 'monospace',
                           ),
                         ),
@@ -565,15 +716,377 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
               ),
             ],
           ),
-          ResetButton.positioned(),
+          // 세트 결과 오버레이
+          if (showSetResult && lastSetHomeWin != null)
+            _buildSetResultOverlay(matchState),
         ],
       ),
     );
   }
 
+  Widget _buildSetResultOverlay(CurrentMatchState matchState) {
+    final gameState = ref.read(gameStateProvider);
+    if (gameState == null) return const SizedBox();
+
+    // 플레이어 팀 기준으로 좌우 배치
+    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
+    final leftTeam = isPlayerHome
+        ? gameState.saveData.getTeamById(matchState.homeTeamId)
+        : gameState.saveData.getTeamById(matchState.awayTeamId);
+    final rightTeam = isPlayerHome
+        ? gameState.saveData.getTeamById(matchState.awayTeamId)
+        : gameState.saveData.getTeamById(matchState.homeTeamId);
+    final myScore = isPlayerHome ? matchState.homeScore : matchState.awayScore;
+    final opponentScore = isPlayerHome ? matchState.awayScore : matchState.homeScore;
+
+    // 다음 세트 번호 (매치 종료가 아닌 경우)
+    final nextSet = matchState.isMatchEnded ? -1 : matchState.currentSet + 1;
+    final isAceNext = !matchState.isMatchEnded && matchState.homeScore == 3 && matchState.awayScore == 3;
+
+    return Container(
+      color: Colors.black.withValues(alpha: 0.95),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // 상단: 팀 로고 + 스코어 (내 팀 기준)
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 16.sp, horizontal: 24.sp),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 내 팀 로고
+                  _buildTeamLogo(leftTeam, isHome: true),
+                  SizedBox(width: 20.sp),
+                  // 스코어 (내 팀 기준)
+                  Text(
+                    '$myScore',
+                    style: TextStyle(
+                      fontSize: 36.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.accentGreen,
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.sp),
+                    child: Text(
+                      ':',
+                      style: TextStyle(
+                        fontSize: 36.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$opponentScore',
+                    style: TextStyle(
+                      fontSize: 36.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.accentGreen,
+                    ),
+                  ),
+                  SizedBox(width: 20.sp),
+                  // 상대 팀 로고
+                  _buildTeamLogo(rightTeam, isHome: false),
+                ],
+              ),
+            ),
+
+            // 다음 세트 표시
+            if (!matchState.isMatchEnded)
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 12.sp),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.chevron_left, color: AppTheme.textSecondary, size: 24.sp),
+                    SizedBox(width: 8.sp),
+                    Text(
+                      isAceNext ? 'ACE Set' : '${nextSet} Set',
+                      style: TextStyle(
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.bold,
+                        color: isAceNext ? Colors.orange : Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 8.sp),
+                    Icon(Icons.chevron_right, color: AppTheme.textSecondary, size: 24.sp),
+                  ],
+                ),
+              ),
+
+            // 중앙: 전체 대진표
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.sp),
+                child: _buildFullBracket(matchState, gameState, nextSet, isAceNext),
+              ),
+            ),
+
+            // 하단: Next 버튼
+            Padding(
+              padding: EdgeInsets.all(16.sp),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _nextGame,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentGreen,
+                    foregroundColor: Colors.black,
+                    padding: EdgeInsets.symmetric(vertical: 16.sp),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        matchState.isMatchEnded
+                            ? '결과 확인'
+                            : isAceNext
+                                ? '에이스 선택'
+                                : 'Next',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: 8.sp),
+                      Icon(Icons.double_arrow, size: 20.sp),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTeamLogo(Team? team, {required bool isHome}) {
+    return Container(
+      width: 60.sp,
+      height: 40.sp,
+      decoration: BoxDecoration(
+        color: team != null
+            ? Color(team.colorValue).withValues(alpha: 0.3)
+            : Colors.grey.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8.sp),
+        border: Border.all(
+          color: team != null ? Color(team.colorValue) : Colors.grey,
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          team?.shortName ?? '???',
+          style: TextStyle(
+            color: team != null ? Color(team.colorValue) : Colors.grey,
+            fontWeight: FontWeight.bold,
+            fontSize: 12.sp,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullBracket(CurrentMatchState matchState, GameState gameState, int nextSet, bool isAceNext) {
+    // 플레이어 팀 기준으로 좌우 배치
+    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
+
+    return Row(
+      children: [
+        // 내 팀 선수 목록 (왼쪽)
+        Expanded(
+          child: _buildTeamRoster(
+            matchState: matchState,
+            gameState: gameState,
+            isHome: isPlayerHome, // 내 팀이 홈이면 true, 아니면 false
+            isLeftSide: true,
+            nextSet: nextSet,
+            isAceNext: isAceNext,
+          ),
+        ),
+        // 중앙: 맵 목록
+        Container(
+          width: 100.sp,
+          child: _buildMapList(matchState, gameState, nextSet, isAceNext),
+        ),
+        // 상대 팀 선수 목록 (오른쪽)
+        Expanded(
+          child: _buildTeamRoster(
+            matchState: matchState,
+            gameState: gameState,
+            isHome: !isPlayerHome, // 내 팀이 홈이면 상대는 away, 아니면 home
+            isLeftSide: false,
+            nextSet: nextSet,
+            isAceNext: isAceNext,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeamRoster({
+    required CurrentMatchState matchState,
+    required GameState gameState,
+    required bool isHome,
+    required bool isLeftSide, // 화면상 왼쪽인지 (내 팀)
+    required int nextSet,
+    required bool isAceNext,
+  }) {
+    final roster = isHome ? matchState.homeRoster : matchState.awayRoster;
+    final setResults = matchState.setResults;
+
+    return ListView.builder(
+      itemCount: 7, // 6세트 + ACE
+      itemBuilder: (context, index) {
+        final isAceSlot = index == 6;
+        final playerId = isAceSlot
+            ? (isHome ? matchState.homeAcePlayerId : matchState.awayAcePlayerId)
+            : (index < roster.length ? roster[index] : null);
+        final player = playerId != null ? _getPlayerById(playerId) : null;
+
+        // 이 세트가 완료되었는지
+        final setCompleted = index < setResults.length;
+        // 이 세트를 이겼는지 (isHome 기준으로 판단)
+        final setWon = setCompleted && setResults[index] == isHome;
+        final setLost = setCompleted && setResults[index] != isHome;
+
+        // 다음 세트인지 하이라이트
+        final isNextSet = (isAceNext && isAceSlot) || (!isAceNext && index == nextSet - 1);
+
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 4.sp),
+          padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 6.sp),
+          decoration: BoxDecoration(
+            color: isNextSet
+                ? AppTheme.accentGreen.withValues(alpha: 0.2)
+                : setCompleted
+                    ? (setWon
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1))
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(4.sp),
+            border: isNextSet
+                ? Border.all(color: AppTheme.accentGreen, width: 2)
+                : null,
+          ),
+          child: Row(
+            // 왼쪽 팀은 오른쪽 정렬, 오른쪽 팀은 왼쪽 정렬
+            mainAxisAlignment: isLeftSide ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (!isLeftSide) ...[
+                // 오른쪽 팀: 승/패 아이콘이 앞에
+                if (setCompleted)
+                  Container(
+                    width: 20.sp,
+                    child: Icon(
+                      setWon ? Icons.circle : Icons.close,
+                      size: 14.sp,
+                      color: setWon ? Colors.green : Colors.red,
+                    ),
+                  ),
+                SizedBox(width: 4.sp),
+              ],
+              // 선수 정보
+              if (player != null) ...[
+                Text(
+                  player.name,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: isNextSet ? FontWeight.bold : FontWeight.normal,
+                    color: setLost
+                        ? AppTheme.textSecondary.withValues(alpha: 0.5)
+                        : Colors.white,
+                    decoration: setLost ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                SizedBox(width: 4.sp),
+                Text(
+                  '(${player.race.code})',
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    color: AppTheme.getRaceColor(player.race.code),
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  isAceSlot ? 'ACE' : '???',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+              if (isLeftSide) ...[
+                // 왼쪽 팀: 승/패 아이콘이 뒤에
+                SizedBox(width: 4.sp),
+                if (setCompleted)
+                  Container(
+                    width: 20.sp,
+                    child: Icon(
+                      setWon ? Icons.circle : Icons.close,
+                      size: 14.sp,
+                      color: setWon ? Colors.green : Colors.red,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMapList(CurrentMatchState matchState, GameState gameState, int nextSet, bool isAceNext) {
+    final seasonMapIds = gameState.saveData.currentSeason.seasonMapIds;
+
+    return ListView.builder(
+      itemCount: 7,
+      itemBuilder: (context, index) {
+        final isAceSlot = index == 6;
+        final mapId = index < seasonMapIds.length ? seasonMapIds[index] : null;
+        final map = mapId != null ? GameMaps.getById(mapId) : null;
+
+        final setCompleted = index < matchState.setResults.length;
+        final isNextSet = (isAceNext && isAceSlot) || (!isAceNext && index == nextSet - 1);
+
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 4.sp),
+          padding: EdgeInsets.symmetric(horizontal: 4.sp, vertical: 6.sp),
+          decoration: BoxDecoration(
+            color: isNextSet
+                ? AppTheme.primaryBlue.withValues(alpha: 0.3)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4.sp),
+          ),
+          child: Center(
+            child: Text(
+              isAceSlot ? 'ACE' : (map?.name ?? 'Map ${index + 1}'),
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: isNextSet ? FontWeight.bold : FontWeight.normal,
+                color: setCompleted
+                    ? AppTheme.textSecondary.withValues(alpha: 0.5)
+                    : isNextSet
+                        ? Colors.white
+                        : AppTheme.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildAceSelectionScreen(GameState gameState, CurrentMatchState matchState) {
     final teamPlayers = gameState.playerTeamPlayers;
-    final usedPlayers = matchState.homeRoster.whereType<String>().toSet();
+    // 플레이어 팀이 홈인지 확인하여 올바른 로스터 사용
+    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
+    final playerRoster = isPlayerHome ? matchState.homeRoster : matchState.awayRoster;
+    final usedPlayers = playerRoster.whereType<String>().toSet();
 
     // 사용 가능한 선수 (아직 출전하지 않은 선수)
     final availablePlayers = <int>[];
@@ -778,17 +1291,23 @@ class _ResourceBar extends StatelessWidget {
   final String label;
   final int value1;
   final int value2;
+  final int maxValue;
   final Color color;
 
   const _ResourceBar({
     required this.label,
     required this.value1,
     required this.value2,
+    required this.maxValue,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    // 비율 계산 (최대값 기준)
+    final ratio1 = (value1 / maxValue).clamp(0.0, 1.0);
+    final ratio2 = (value2 / maxValue).clamp(0.0, 1.0);
+
     return Row(
       children: [
         SizedBox(
@@ -817,7 +1336,7 @@ class _ResourceBar extends StatelessWidget {
                         ),
                         child: FractionallySizedBox(
                           alignment: Alignment.centerRight,
-                          widthFactor: value1 / 100,
+                          widthFactor: ratio1,
                           child: Container(
                             decoration: BoxDecoration(
                               color: color.withOpacity(0.8),
@@ -829,10 +1348,10 @@ class _ResourceBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     SizedBox(
-                      width: 30,
+                      width: 40,
                       child: Text(
                         '$value1',
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 11),
                         textAlign: TextAlign.right,
                       ),
                     ),
@@ -845,10 +1364,10 @@ class _ResourceBar extends StatelessWidget {
                 child: Row(
                   children: [
                     SizedBox(
-                      width: 30,
+                      width: 40,
                       child: Text(
                         '$value2',
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 11),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -861,7 +1380,7 @@ class _ResourceBar extends StatelessWidget {
                         ),
                         child: FractionallySizedBox(
                           alignment: Alignment.centerLeft,
-                          widthFactor: value2 / 100,
+                          widthFactor: ratio2,
                           child: Container(
                             decoration: BoxDecoration(
                               color: color.withOpacity(0.8),

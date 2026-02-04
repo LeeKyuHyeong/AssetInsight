@@ -131,7 +131,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 12.sp),
+      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 12.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -139,15 +139,19 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            'MyStarcraft   Season Mode   2012   S1',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14.sp,
+          Expanded(
+            child: Text(
+              '구단 순위',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
+          // R 버튼 공간 확보
+          SizedBox(width: 48.sp),
         ],
       ),
     );
@@ -222,7 +226,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
 
   Widget _buildRankingList(List<Team> sortedTeams) {
     return Container(
-      margin: EdgeInsets.all(16.sp),
+      margin: EdgeInsets.all(8.sp),
       child: ListView.builder(
         itemCount: sortedTeams.length,
         itemBuilder: (context, index) {
@@ -243,8 +247,8 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
               });
             },
             child: Container(
-              margin: EdgeInsets.symmetric(vertical: 4.sp),
-              padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 8.sp),
+              margin: EdgeInsets.symmetric(vertical: 2.sp),
+              padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 8.sp),
               decoration: BoxDecoration(
                 color: isSelected
                     ? Colors.amber.withOpacity(0.3)
@@ -258,21 +262,23 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                 children: [
                   // 순위
                   SizedBox(
-                    width: 40.sp,
+                    width: 32.sp,
                     child: Text(
-                      '$rank위',
+                      '$rank',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14.sp,
+                        fontWeight: FontWeight.bold,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
 
                   // 팀 로고
                   Container(
-                    width: 40.sp,
-                    height: 30.sp,
-                    margin: EdgeInsets.symmetric(horizontal: 8.sp),
+                    width: 36.sp,
+                    height: 28.sp,
+                    margin: EdgeInsets.only(right: 8.sp),
                     decoration: BoxDecoration(
                       color: Color(team.colorValue).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4.sp),
@@ -282,41 +288,36 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                         team.shortName,
                         style: TextStyle(
                           color: Color(team.colorValue),
-                          fontSize: 10.sp,
+                          fontSize: 9.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
 
-                  // 팀명
+                  // 팀명 + 전적 (세로 배치)
                   Expanded(
-                    child: Text(
-                      team.name,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                  ),
-
-                  // 전적
-                  Text(
-                    '${team.seasonRecord.wins}W ${team.seasonRecord.losses}L',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                    ),
-                  ),
-
-                  SizedBox(width: 16.sp),
-
-                  // 세트 스코어
-                  Text(
-                    '(${team.seasonRecord.setWins}:${team.seasonRecord.setLosses})',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11.sp,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          team.name,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        SizedBox(height: 2.sp),
+                        Text(
+                          '${team.seasonRecord.wins}W ${team.seasonRecord.losses}L (${team.seasonRecord.setWins}:${team.seasonRecord.setLosses})',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 10.sp,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -330,59 +331,79 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
 
   Widget _buildBottomButtons(BuildContext context, List<Team> sortedTeams) {
     return Container(
-      padding: EdgeInsets.all(16.sp),
+      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 12.sp),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // 팀 선택 드롭다운
-          Container(
-            width: 200.sp,
-            padding: EdgeInsets.symmetric(horizontal: 12.sp),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4.sp),
-            ),
-            child: DropdownButton<String>(
-              value: _selectedTeamId,
-              hint: const Text('팀 선택'),
-              isExpanded: true,
-              underline: const SizedBox(),
-              items: sortedTeams.map((team) {
-                return DropdownMenuItem(
-                  value: team.id,
-                  child: Text(team.name),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedTeamId = value;
-                });
-              },
+          Expanded(
+            flex: 3,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.sp),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4.sp),
+              ),
+              child: DropdownButton<String>(
+                value: _selectedTeamId,
+                hint: Text(
+                  '팀 선택',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+                isExpanded: true,
+                underline: const SizedBox(),
+                dropdownColor: Colors.white,
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14.sp,
+                ),
+                items: sortedTeams.map((team) {
+                  return DropdownMenuItem(
+                    value: team.id,
+                    child: Text(
+                      team.name,
+                      style: const TextStyle(color: Colors.black87),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedTeamId = value;
+                  });
+                },
+              ),
             ),
           ),
 
-          SizedBox(width: 24.sp),
+          SizedBox(width: 12.sp),
 
           // EXIT 버튼
-          ElevatedButton(
-            onPressed: () => context.go('/main'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.cardBackground,
-              padding: EdgeInsets.symmetric(horizontal: 48.sp, vertical: 12.sp),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
-                Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
-                SizedBox(width: 8.sp),
-                Text(
-                  'EXIT',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.sp,
-                  ),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: () => context.go('/main'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cardBackground,
+                padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 12.sp),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
+                    Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
+                    SizedBox(width: 4.sp),
+                    Text(
+                      'EXIT',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -595,62 +616,79 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
 
             // 하단 버튼
             Container(
-              padding: EdgeInsets.all(16.sp),
+              padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 12.sp),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // 팀 선택 드롭다운
-                  Container(
-                    width: 200.sp,
-                    padding: EdgeInsets.symmetric(horizontal: 12.sp),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4.sp),
-                    ),
-                    child: DropdownButton<String>(
-                      value: _selectedTeamId,
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      items: allTeams.map((t) {
-                        return DropdownMenuItem(
-                          value: t.id,
-                          child: Text(t.name),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedTeamId = value;
-                        });
-                      },
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8.sp),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4.sp),
+                      ),
+                      child: DropdownButton<String>(
+                        value: _selectedTeamId,
+                        isExpanded: true,
+                        underline: const SizedBox(),
+                        dropdownColor: Colors.white,
+                        style: TextStyle(
+                          color: Colors.black87,
+                          fontSize: 14.sp,
+                        ),
+                        items: allTeams.map((t) {
+                          return DropdownMenuItem(
+                            value: t.id,
+                            child: Text(
+                              t.name,
+                              style: const TextStyle(color: Colors.black87),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedTeamId = value;
+                          });
+                        },
+                      ),
                     ),
                   ),
 
-                  SizedBox(width: 24.sp),
+                  SizedBox(width: 12.sp),
 
                   // EXIT 버튼
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showDetail = false;
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.cardBackground,
-                      padding: EdgeInsets.symmetric(horizontal: 48.sp, vertical: 12.sp),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
-                        Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
-                        SizedBox(width: 8.sp),
-                        Text(
-                          'EXIT',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14.sp,
-                          ),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _showDetail = false;
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.cardBackground,
+                        padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 12.sp),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
+                            Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
+                            SizedBox(width: 4.sp),
+                            Text(
+                              'EXIT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],

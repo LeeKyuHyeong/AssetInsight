@@ -28,9 +28,30 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   // 영입된 선수 목록 (프리뷰 모드용)
   final List<Player> _recruitedPlayers = [];
 
+  // 표시할 무소속 선수 ID 목록 (10~12명 랜덤)
+  List<String> _displayedFreeAgentIds = [];
+  bool _freeAgentsInitialized = false;
+
   // 트레이드 모드 (다른 팀 선수 선택 시)
   bool get _isTradeMode =>
       _selectedSourceId != 'free_agent' && _selectedSourceId != 'my_team';
+
+  /// 무소속 선수 목록 갱신 (10~12명 랜덤 선택, 시즌 동안 동일)
+  void _refreshFreeAgentDisplay(List<Player> allFreeAgents, int seasonNumber) {
+    // 시즌 번호를 시드로 사용하여 같은 시즌에는 항상 동일한 목록
+    final random = Random(seasonNumber * 12345);
+    final availablePlayers = List<Player>.from(allFreeAgents);
+
+    if (availablePlayers.length <= 10) {
+      // 10명 이하면 전부 표시
+      _displayedFreeAgentIds = availablePlayers.map((p) => p.id).toList();
+    } else {
+      // 10~12명 랜덤 선택
+      final displayCount = 10 + random.nextInt(3); // 10, 11, or 12
+      availablePlayers.shuffle(random);
+      _displayedFreeAgentIds = availablePlayers.take(displayCount).map((p) => p.id).toList();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,8 +73,20 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
         ? InitialData.createFreeAgentPool()
         : gameState.saveData.freeAgentPool;
     // 영입된 선수 제외
-    final freeAgents = baseFreeAgents
+    final allFreeAgents = baseFreeAgents
         .where((p) => !_recruitedPlayers.any((r) => r.id == p.id))
+        .toList();
+
+    // 무소속 목록 초기화 (최초 1회, 시즌 번호 기반)
+    final seasonNumber = isPreviewMode ? 1 : gameState.currentSeason.number;
+    if (!_freeAgentsInitialized) {
+      _refreshFreeAgentDisplay(allFreeAgents, seasonNumber);
+      _freeAgentsInitialized = true;
+    }
+
+    // 표시할 무소속 선수 필터링 (영입된 선수 제외)
+    final freeAgents = allFreeAgents
+        .where((p) => _displayedFreeAgentIds.contains(p.id))
         .toList();
 
     // 선택된 소스에 따른 타겟 선수 목록
@@ -709,12 +742,15 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            player.name,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              player.name,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           SizedBox(width: 8.sp),
@@ -746,42 +782,8 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                             color: Colors.amber,
                             fontSize: 12.sp,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      SizedBox(height: 4.sp),
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6.sp,
-                              vertical: 2.sp,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getGradeColor(player.grade).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4.sp),
-                              border: Border.all(
-                                color: _getGradeColor(player.grade),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              player.grade.display,
-                              style: TextStyle(
-                                color: _getGradeColor(player.grade),
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8.sp),
-                          Text(
-                            'Lv.${player.levelValue}',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 11.sp,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -789,42 +791,22 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             ),
           ),
 
-          // 레이더 차트 + 스탯
+          // 레이더 차트 (스탯 숫자 포함) - 더 크게
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(12.sp),
-              child: Row(
-                children: [
-                  // 레이더 차트
-                  Expanded(
-                    child: _buildRadarChart(player),
-                  ),
-
-                  // 스탯 리스트
-                  Expanded(
-                    child: _buildStatsList(player),
-                  ),
-                ],
-              ),
-            ),
+            child: _buildRadarChartWithStats(player),
           ),
 
-          // 컨디션 + 영입 버튼
+          // 컨디션 + 영입 버튼 (컴팩트하게)
           Container(
-            padding: EdgeInsets.all(12.sp),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.grey[700]!, width: 1),
-              ),
-            ),
+            padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 2.sp),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Condition  ${player.displayCondition} %',
+                  'Condition ${player.displayCondition}%',
                   style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12.sp,
+                    color: Colors.grey[500],
+                    fontSize: 9.sp,
                   ),
                 ),
 
@@ -966,6 +948,43 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     );
   }
 
+  Widget _buildRadarChartWithStats(Player player) {
+    final stats = player.stats;
+    final statValues = [
+      stats.sense / 999.0,
+      stats.control / 999.0,
+      stats.attack / 999.0,
+      stats.harass / 999.0,
+      stats.strategy / 999.0,
+      stats.macro / 999.0,
+      stats.defense / 999.0,
+      stats.scout / 999.0,
+    ];
+    final statNumbers = [
+      stats.sense,
+      stats.control,
+      stats.attack,
+      stats.harass,
+      stats.strategy,
+      stats.macro,
+      stats.defense,
+      stats.scout,
+    ];
+    final labels = ['센스', '컨트롤', '공격력', '견제', '전략', '물량', '수비력', '정찰'];
+
+    return CustomPaint(
+      painter: RadarChartWithStatsPainter(
+        stats: statValues,
+        statNumbers: statNumbers,
+        labels: labels,
+        color: _getRaceColor(player.race),
+        grade: player.grade.display,
+        level: player.levelValue,
+      ),
+      child: Container(),
+    );
+  }
+
   Widget _buildStatsList(Player player) {
     final stats = player.stats;
     final statData = [
@@ -979,29 +998,31 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       {'name': '정찰', 'value': stats.scout},
     ];
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: statData.map((stat) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: statData.map((stat) {
         return Padding(
-          padding: EdgeInsets.symmetric(vertical: 1.sp),
+          padding: EdgeInsets.symmetric(vertical: 0.5.sp),
           child: Row(
             children: [
               SizedBox(
-                width: 36.sp,
+                width: 24.sp,
                 child: Text(
                   stat['name'] as String,
                   style: TextStyle(
                     color: Colors.grey[400],
-                    fontSize: 8.sp,
+                    fontSize: 6.sp,
                   ),
                 ),
               ),
               Expanded(
                 child: Container(
-                  height: 5.sp,
+                  height: 3.sp,
                   decoration: BoxDecoration(
                     color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(2.sp),
+                    borderRadius: BorderRadius.circular(1.sp),
                   ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
@@ -1009,21 +1030,21 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.amber,
-                        borderRadius: BorderRadius.circular(2.sp),
+                        borderRadius: BorderRadius.circular(1.sp),
                       ),
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: 4.sp),
+              SizedBox(width: 2.sp),
               SizedBox(
-                width: 24.sp,
+                width: 18.sp,
                 child: Text(
                   '${stat['value']}',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 8.sp,
+                    fontSize: 6.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1032,6 +1053,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
           ),
         );
       }).toList(),
+      ),
     );
   }
 
@@ -1075,12 +1097,12 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             ),
           ),
 
-          SizedBox(width: 24.sp),
+          SizedBox(width: 12.sp),
 
           // 팀/무소속 선택 드롭다운
           Container(
-            width: 220.sp,
-            padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 4.sp),
+            width: 140.sp,
+            padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 4.sp),
             decoration: BoxDecoration(
               color: const Color(0xFF2a2a3e),
               borderRadius: BorderRadius.circular(4.sp),
@@ -1091,14 +1113,14 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                 value: _selectedSourceId,
                 isExpanded: true,
                 dropdownColor: const Color(0xFF2a2a3e),
-                icon: Icon(Icons.arrow_drop_down, color: Colors.amber, size: 28.sp),
+                icon: Icon(Icons.arrow_drop_down, color: Colors.amber, size: 20.sp),
                 items: [
                   DropdownMenuItem(
                     value: 'free_agent',
                     child: Text(
                       '무소속',
                       style: TextStyle(
-                        fontSize: 14.sp,
+                        fontSize: 12.sp,
                         color: Colors.amber,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1109,7 +1131,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                     child: Text(
                       '우리팀',
                       style: TextStyle(
-                        fontSize: 14.sp,
+                        fontSize: 12.sp,
                         color: Colors.cyan,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1120,9 +1142,10 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                     child: Text(
                       team.name,
                       style: TextStyle(
-                        fontSize: 13.sp,
+                        fontSize: 11.sp,
                         color: Colors.white,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   )),
                 ],
@@ -1271,6 +1294,151 @@ class RadarChartPainter extends CustomPainter {
       );
       textPainter.paint(canvas, point);
     }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class RadarChartWithStatsPainter extends CustomPainter {
+  final List<double> stats;
+  final List<int> statNumbers;
+  final List<String> labels;
+  final Color color;
+  final String grade;
+  final int level;
+
+  RadarChartWithStatsPainter({
+    required this.stats,
+    required this.statNumbers,
+    required this.labels,
+    required this.color,
+    required this.grade,
+    required this.level,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = min(size.width, size.height) / 2 - 22;
+    final sides = stats.length;
+
+    // 배경 그리드
+    final gridPaint = Paint()
+      ..color = Colors.grey[700]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    for (var level = 1; level <= 5; level++) {
+      final levelRadius = radius * level / 5;
+      final path = Path();
+      for (var i = 0; i < sides; i++) {
+        final angle = (i * 2 * pi / sides) - pi / 2;
+        final point = Offset(
+          center.dx + levelRadius * cos(angle),
+          center.dy + levelRadius * sin(angle),
+        );
+        if (i == 0) {
+          path.moveTo(point.dx, point.dy);
+        } else {
+          path.lineTo(point.dx, point.dy);
+        }
+      }
+      path.close();
+      canvas.drawPath(path, gridPaint);
+    }
+
+    // 축
+    for (var i = 0; i < sides; i++) {
+      final angle = (i * 2 * pi / sides) - pi / 2;
+      final endPoint = Offset(
+        center.dx + radius * cos(angle),
+        center.dy + radius * sin(angle),
+      );
+      canvas.drawLine(center, endPoint, gridPaint);
+    }
+
+    // 데이터 영역
+    final dataPath = Path();
+    final dataPaint = Paint()
+      ..color = color.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    final dataStrokePaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    for (var i = 0; i < sides; i++) {
+      final angle = (i * 2 * pi / sides) - pi / 2;
+      final value = stats[i].clamp(0.0, 1.0);
+      final point = Offset(
+        center.dx + radius * value * cos(angle),
+        center.dy + radius * value * sin(angle),
+      );
+      if (i == 0) {
+        dataPath.moveTo(point.dx, point.dy);
+      } else {
+        dataPath.lineTo(point.dx, point.dy);
+      }
+    }
+    dataPath.close();
+    canvas.drawPath(dataPath, dataPaint);
+    canvas.drawPath(dataPath, dataStrokePaint);
+
+    // 라벨 + 숫자
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    for (var i = 0; i < sides; i++) {
+      final angle = (i * 2 * pi / sides) - pi / 2;
+      final labelRadius = radius + 20;
+      var point = Offset(
+        center.dx + labelRadius * cos(angle),
+        center.dy + labelRadius * sin(angle),
+      );
+
+      // 라벨과 숫자를 함께 표시
+      textPainter.text = TextSpan(
+        children: [
+          TextSpan(
+            text: '${labels[i]}\n',
+            style: TextStyle(color: Colors.grey[400], fontSize: 8),
+          ),
+          TextSpan(
+            text: '${statNumbers[i]}',
+            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+          ),
+        ],
+      );
+      textPainter.textAlign = TextAlign.center;
+      textPainter.layout();
+
+      point = Offset(
+        point.dx - textPainter.width / 2,
+        point.dy - textPainter.height / 2,
+      );
+      textPainter.paint(canvas, point);
+    }
+
+    // 중앙에 등급과 레벨 표시
+    final gradePainter = TextPainter(textDirection: TextDirection.ltr);
+    gradePainter.text = TextSpan(
+      children: [
+        TextSpan(
+          text: '$grade\n',
+          style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        TextSpan(
+          text: 'Lv.$level',
+          style: TextStyle(color: Colors.grey[400], fontSize: 10),
+        ),
+      ],
+    );
+    gradePainter.textAlign = TextAlign.center;
+    gradePainter.layout();
+    gradePainter.paint(
+      canvas,
+      Offset(center.dx - gradePainter.width / 2, center.dy - gradePainter.height / 2),
+    );
   }
 
   @override

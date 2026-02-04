@@ -33,7 +33,7 @@ class TeamData {
       'id': 'cj_entus',
       'name': 'CJ 엔투스',
       'shortName': 'CJ',
-      'color': 0xFF000066,
+      'color': 0xFFE6B800,
       'ace': '김정우 (Effort)',
     },
     {
@@ -74,7 +74,7 @@ class TeamData {
     {
       'id': 'estro',
       'name': '이스트로',
-      'shortName': 'eSTRO',
+      'shortName': 'EST',
       'color': 0xFF00CC66,
       'ace': '김성대 (Action)',
     },

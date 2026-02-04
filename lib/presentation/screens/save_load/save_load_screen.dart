@@ -36,14 +36,9 @@ class SaveLoadScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('세이브 / 로드'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
-        ),
+        leading: ResetButton.leading(),
       ),
-      body: Stack(
-        children: [
-          ListView.builder(
+      body: ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: saves.length,
             itemBuilder: (context, index) {
@@ -102,13 +97,6 @@ class SaveLoadScreen extends ConsumerWidget {
               );
             },
           ),
-          Positioned(
-            bottom: 80.sp,
-            left: 16.sp,
-            child: const ResetButton(),
-          ),
-        ],
-      ),
     );
   }
 }

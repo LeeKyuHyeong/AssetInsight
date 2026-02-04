@@ -14,6 +14,7 @@ class CurrentMatchState {
   final int homeScore;
   final int awayScore;
   final int currentSet; // 현재 진행 중인 세트 (0-6)
+  final List<bool> setResults; // 각 세트 결과 (true = 홈 승리, false = 어웨이 승리)
 
   const CurrentMatchState({
     required this.homeTeamId,
@@ -25,6 +26,7 @@ class CurrentMatchState {
     this.homeScore = 0,
     this.awayScore = 0,
     this.currentSet = 0,
+    this.setResults = const [],
   });
 
   /// 현재 세트의 홈 선수 ID
@@ -61,6 +63,7 @@ class CurrentMatchState {
     int? homeScore,
     int? awayScore,
     int? currentSet,
+    List<bool>? setResults,
   }) {
     return CurrentMatchState(
       homeTeamId: homeTeamId ?? this.homeTeamId,
@@ -72,6 +75,7 @@ class CurrentMatchState {
       homeScore: homeScore ?? this.homeScore,
       awayScore: awayScore ?? this.awayScore,
       currentSet: currentSet ?? this.currentSet,
+      setResults: setResults ?? this.setResults,
     );
   }
 }
@@ -86,16 +90,19 @@ class CurrentMatchNotifier extends StateNotifier<CurrentMatchState?> {
   void startMatch({
     required String homeTeamId,
     required String awayTeamId,
-    required List<String?> homeRoster,
+    List<String?>? homeRoster,
+    List<String?>? awayRoster,
   }) {
-    // 상대팀 로스터 자동 생성
-    final awayRoster = _generateOpponentRoster(awayTeamId);
+    // 플레이어가 홈일 때: homeRoster 지정, awayRoster 자동 생성
+    // 플레이어가 어웨이일 때: awayRoster 지정, homeRoster 자동 생성
+    final finalHomeRoster = homeRoster ?? _generateOpponentRoster(homeTeamId);
+    final finalAwayRoster = awayRoster ?? _generateOpponentRoster(awayTeamId);
 
     state = CurrentMatchState(
       homeTeamId: homeTeamId,
       awayTeamId: awayTeamId,
-      homeRoster: homeRoster,
-      awayRoster: awayRoster,
+      homeRoster: finalHomeRoster,
+      awayRoster: finalAwayRoster,
     );
   }
 
@@ -146,6 +153,9 @@ class CurrentMatchNotifier extends StateNotifier<CurrentMatchState?> {
     final newHomeScore = homeWin ? state!.homeScore + 1 : state!.homeScore;
     final newAwayScore = homeWin ? state!.awayScore : state!.awayScore + 1;
 
+    // 세트 결과 추가
+    final newSetResults = [...state!.setResults, homeWin];
+
     // 다음 세트로 이동 (매치가 끝나지 않았다면)
     int nextSet = state!.currentSet;
     if (newHomeScore < 4 && newAwayScore < 4) {
@@ -156,6 +166,7 @@ class CurrentMatchNotifier extends StateNotifier<CurrentMatchState?> {
       homeScore: newHomeScore,
       awayScore: newAwayScore,
       currentSet: nextSet,
+      setResults: newSetResults,
     );
   }
 
@@ -163,35 +174,57 @@ class CurrentMatchNotifier extends StateNotifier<CurrentMatchState?> {
   void setAcePlayer({String? homeAceId, String? awayAceId}) {
     if (state == null) return;
 
+    final gameState = _ref.read(gameStateProvider);
+    if (gameState == null) return;
+
+    // 플레이어 팀이 홈인지 확인
+    final isPlayerHome = state!.homeTeamId == gameState.playerTeam.id;
+
     // 상대 에이스 자동 선택 (설정 안 된 경우)
+    String? finalHomeAceId = homeAceId;
     String? finalAwayAceId = awayAceId;
-    if (finalAwayAceId == null && state!.isAceMatch) {
-      finalAwayAceId = _selectOpponentAce();
+
+    if (state!.isAceMatch) {
+      if (isPlayerHome) {
+        // 플레이어가 홈이면, away 에이스 자동 선택
+        if (finalAwayAceId == null) {
+          finalAwayAceId = _selectOpponentAce(isOpponentHome: false);
+        }
+      } else {
+        // 플레이어가 away이면, home 에이스 자동 선택
+        if (finalHomeAceId == null) {
+          finalHomeAceId = _selectOpponentAce(isOpponentHome: true);
+        }
+      }
     }
 
     state = state!.copyWith(
-      homeAcePlayerId: homeAceId,
+      homeAcePlayerId: finalHomeAceId,
       awayAcePlayerId: finalAwayAceId,
     );
   }
 
   /// 상대팀 에이스 자동 선택
-  String? _selectOpponentAce() {
+  String? _selectOpponentAce({required bool isOpponentHome}) {
     if (state == null) return null;
 
     final gameState = _ref.read(gameStateProvider);
     if (gameState == null) return null;
 
-    final awayPlayers = gameState.saveData.getTeamPlayers(state!.awayTeamId);
-    if (awayPlayers.isEmpty) return null;
+    // 상대팀 ID와 로스터 결정
+    final opponentTeamId = isOpponentHome ? state!.homeTeamId : state!.awayTeamId;
+    final opponentRoster = isOpponentHome ? state!.homeRoster : state!.awayRoster;
+
+    final opponentPlayers = gameState.saveData.getTeamPlayers(opponentTeamId);
+    if (opponentPlayers.isEmpty) return null;
 
     // 이미 출전한 선수 제외
-    final usedPlayers = state!.awayRoster.whereType<String>().toSet();
-    final availablePlayers = awayPlayers.where((p) => !usedPlayers.contains(p.id)).toList();
+    final usedPlayers = opponentRoster.whereType<String>().toSet();
+    final availablePlayers = opponentPlayers.where((p) => !usedPlayers.contains(p.id)).toList();
 
     if (availablePlayers.isEmpty) {
       // 사용 가능한 선수가 없으면 가장 높은 등급 선수 재출전
-      final bestPlayer = awayPlayers.reduce((a, b) =>
+      final bestPlayer = opponentPlayers.reduce((a, b) =>
           a.grade.index > b.grade.index ? a : b);
       return bestPlayer.id;
     }

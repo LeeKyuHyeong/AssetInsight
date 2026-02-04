@@ -12,8 +12,9 @@ import '../../widgets/reset_button.dart';
 /// 본선 토너먼트 화면 (32강~결승)
 class MainTournamentScreen extends ConsumerStatefulWidget {
   final String stage; // '32', '16', 'final'
+  final bool viewOnly;
 
-  const MainTournamentScreen({super.key, this.stage = '32'});
+  const MainTournamentScreen({super.key, this.stage = '32', this.viewOnly = false});
 
   @override
   ConsumerState<MainTournamentScreen> createState() =>
@@ -40,6 +41,12 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
   // 배속 설정
   MatchSpeed _matchSpeed = MatchSpeed.x1;
 
+  // 내 팀 선수 ID 목록 (시뮬레이션 표시 여부 결정용)
+  Set<String> _myTeamPlayerIds = {};
+
+  // 관전 모드 (내 팀 선수가 없을 때)
+  bool _isSpectatorMode = false;
+
   @override
   Widget build(BuildContext context) {
     final gameState = ref.watch(gameStateProvider);
@@ -52,6 +59,14 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
     final bracket = gameState.saveData.currentSeason.individualLeague;
     final playerTeam = gameState.playerTeam;
     final playerMap = {for (var p in gameState.saveData.allPlayers) p.id: p};
+
+    // 내 팀 선수 ID 목록
+    _myTeamPlayerIds = gameState.saveData.getTeamPlayers(playerTeam.id).map((p) => p.id).toSet();
+
+    // 본선 토너먼트에 내 팀 선수가 있는지 확인
+    final mainTournamentPlayers = bracket?.mainTournamentPlayers ?? [];
+    final hasMyTeamPlayer = mainTournamentPlayers.any((id) => _myTeamPlayerIds.contains(id));
+    _isSpectatorMode = !hasMyTeamPlayer;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -100,34 +115,66 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
           bottom: BorderSide(color: AppColors.primary.withOpacity(0.3)),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          _buildTeamLogo(team),
-          const Spacer(),
-          Column(
+          Row(
             children: [
-              Text(
-                '개인리그 본선',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-              if (_currentStage.isNotEmpty)
-                Text(
-                  _currentStage,
-                  style: TextStyle(
-                    color: AppColors.accent,
-                    fontSize: 14.sp,
+              _buildTeamLogo(team),
+              const Spacer(),
+              Column(
+                children: [
+                  Text(
+                    '개인리그 본선',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
                   ),
-                ),
+                  if (_currentStage.isNotEmpty)
+                    Text(
+                      _currentStage,
+                      style: TextStyle(
+                        color: AppColors.accent,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                ],
+              ),
+              const Spacer(),
+              // 배속 선택 (내 팀 선수가 있을 때만 표시)
+              if (!_isSpectatorMode)
+                _buildSpeedSelector()
+              else
+                SizedBox(width: 60.sp),
             ],
           ),
-          const Spacer(),
-          // 배속 선택
-          _buildSpeedSelector(),
+          if (_isSpectatorMode) ...[
+            SizedBox(height: 8.sp),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 4.sp),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4.sp),
+                border: Border.all(color: Colors.orange),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.visibility, color: Colors.orange, size: 16.sp),
+                  SizedBox(width: 6.sp),
+                  Text(
+                    '관전 모드 - 우리 팀 선수 없음 (결과만 표시)',
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -424,11 +471,18 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
       );
     }
 
+    final isMyTeamPlayer = _myTeamPlayerIds.contains(player.id);
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 4.sp),
       decoration: BoxDecoration(
-        color: isWinner ? AppColors.accent.withOpacity(0.2) : null,
+        color: isWinner
+            ? AppColors.accent.withOpacity(0.2)
+            : (isMyTeamPlayer ? Colors.blue.withOpacity(0.1) : null),
         borderRadius: BorderRadius.circular(2.sp),
+        border: isMyTeamPlayer && !isWinner
+            ? Border.all(color: Colors.blue.withOpacity(0.5), width: 1)
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -442,12 +496,31 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
                 color: AppColors.accent,
               ),
             ),
+          if (isMyTeamPlayer && !isWinner)
+            Padding(
+              padding: EdgeInsets.only(right: 4.sp),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 3.sp, vertical: 1.sp),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(2.sp),
+                ),
+                child: Text(
+                  'MY',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 7.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           Text(
             player.name,
             style: TextStyle(
-              color: isWinner ? Colors.white : Colors.grey[400],
+              color: isWinner ? Colors.white : (isMyTeamPlayer ? Colors.blue[200] : Colors.grey[400]),
               fontSize: 11.sp,
-              fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
+              fontWeight: isWinner || isMyTeamPlayer ? FontWeight.bold : FontWeight.normal,
             ),
           ),
           SizedBox(width: 4.sp),
@@ -475,12 +548,16 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.list_alt, color: AppColors.accent, size: 18.sp),
+              Icon(
+                _isSpectatorMode ? Icons.visibility : Icons.list_alt,
+                color: _isSpectatorMode ? Colors.orange : AppColors.accent,
+                size: 18.sp,
+              ),
               SizedBox(width: 8.sp),
               Text(
-                '경기 로그',
+                _isSpectatorMode ? '경기 결과' : '경기 로그',
                 style: TextStyle(
-                  color: AppColors.accent,
+                  color: _isSpectatorMode ? Colors.orange : AppColors.accent,
                   fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
                 ),
@@ -489,12 +566,24 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
           ),
           SizedBox(height: 4.sp),
           Text(
-            _currentMatch.isEmpty ? '8강부터 텍스트 시뮬레이션' : _currentMatch,
+            _currentMatch.isEmpty
+                ? (_isSpectatorMode ? '관전 모드 - 결과만 표시' : '8강부터 텍스트 시뮬레이션')
+                : _currentMatch,
             style: TextStyle(
               color: Colors.grey,
               fontSize: 11.sp,
             ),
           ),
+          if (_isSpectatorMode && _currentMatch.isEmpty) ...[
+            SizedBox(height: 4.sp),
+            Text(
+              '(우리 팀 선수 경기는 상세 시뮬레이션)',
+              style: TextStyle(
+                color: Colors.grey.withOpacity(0.7),
+                fontSize: 10.sp,
+              ),
+            ),
+          ],
           SizedBox(height: 12.sp),
           Expanded(
             child: _currentBattleLog.isEmpty
@@ -503,13 +592,15 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.sports_esports,
+                          _isSpectatorMode ? Icons.visibility : Icons.sports_esports,
                           color: Colors.grey[700],
                           size: 40.sp,
                         ),
                         SizedBox(height: 8.sp),
                         Text(
-                          _isSimulating ? '경기 진행중...' : 'Start를 눌러 시작',
+                          _isSimulating
+                              ? '경기 진행중...'
+                              : (_isSpectatorMode ? 'Start를 눌러 결과 확인' : 'Start를 눌러 시작'),
                           style: TextStyle(
                             color: Colors.grey,
                             fontSize: 12.sp,
@@ -572,7 +663,13 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                context.pop();
+              } else {
+                context.go('/main');
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.cardBackground,
               padding: EdgeInsets.symmetric(horizontal: 32.sp, vertical: 12.sp),
@@ -648,16 +745,26 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
       final player2 = playerMap[players[i * 2 + 1]]!;
       final map = maps[i % maps.length];
 
+      // 내 팀 선수가 참가하는 경기인지 확인
+      final isMyTeamMatch = _myTeamPlayerIds.contains(player1.id) || _myTeamPlayerIds.contains(player2.id);
+
       setState(() {
         _currentMatch = '${player1.name} vs ${player2.name}';
         _currentBattleLog = [];
       });
 
-      final winner = await _simulateMatchWithLog(player1, player2, map, playerMap);
+      String winner;
+      if (isMyTeamMatch && !_isSpectatorMode) {
+        // 내 팀 선수 경기: 전체 시뮬레이션
+        winner = await _simulateMatchWithLog(player1, player2, map, playerMap);
+      } else {
+        // 관전 모드 또는 다른 선수 경기: 빠른 결과만
+        winner = await _simulateQuickMatch(player1, player2, map);
+      }
       _quarterFinalWinners.add(winner);
 
       setState(() {});
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: isMyTeamMatch && !_isSpectatorMode ? 500 : 200));
     }
 
     // 4강
@@ -670,16 +777,26 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
       final player2 = playerMap[_quarterFinalWinners[i * 2 + 1]]!;
       final map = maps[(i + 4) % maps.length];
 
+      // 내 팀 선수가 참가하는 경기인지 확인
+      final isMyTeamMatch = _myTeamPlayerIds.contains(player1.id) || _myTeamPlayerIds.contains(player2.id);
+
       setState(() {
         _currentMatch = '${player1.name} vs ${player2.name}';
         _currentBattleLog = [];
       });
 
-      final winner = await _simulateMatchWithLog(player1, player2, map, playerMap);
+      String winner;
+      if (isMyTeamMatch && !_isSpectatorMode) {
+        // 내 팀 선수 경기: 전체 시뮬레이션
+        winner = await _simulateMatchWithLog(player1, player2, map, playerMap);
+      } else {
+        // 관전 모드 또는 다른 선수 경기: 빠른 결과만
+        winner = await _simulateQuickMatch(player1, player2, map);
+      }
       _semiFinalWinners.add(winner);
 
       setState(() {});
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: isMyTeamMatch && !_isSpectatorMode ? 500 : 200));
     }
 
     // 결승
@@ -691,12 +808,22 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
     final finalist2 = playerMap[_semiFinalWinners[1]]!;
     final finalMap = maps[6 % maps.length];
 
+    // 내 팀 선수가 참가하는 경기인지 확인
+    final isFinalMyTeamMatch = _myTeamPlayerIds.contains(finalist1.id) || _myTeamPlayerIds.contains(finalist2.id);
+
     setState(() {
       _currentMatch = '${finalist1.name} vs ${finalist2.name}';
       _currentBattleLog = [];
     });
 
-    final championId = await _simulateMatchWithLog(finalist1, finalist2, finalMap, playerMap);
+    String championId;
+    if (isFinalMyTeamMatch && !_isSpectatorMode) {
+      // 내 팀 선수 결승: 전체 시뮬레이션
+      championId = await _simulateMatchWithLog(finalist1, finalist2, finalMap, playerMap);
+    } else {
+      // 관전 모드 또는 다른 선수 결승: 빠른 결과만
+      championId = await _simulateQuickMatch(finalist1, finalist2, finalMap);
+    }
 
     setState(() {
       _champion = championId;
@@ -712,6 +839,44 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
       runnerUpId: _runnerUp,
     );
     ref.read(gameStateProvider.notifier).updateIndividualLeague(newBracket);
+  }
+
+  /// 빠른 매치 시뮬레이션 (관전 모드용 - 결과만 반환)
+  Future<String> _simulateQuickMatch(Player player1, Player player2, GameMap map) async {
+    // 로그에 간단한 결과만 표시
+    setState(() {
+      _currentBattleLog = [
+        '경기 진행 중...',
+      ];
+    });
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // 능력치 기반 승패 결정
+    final strength1 = player1.stats.total;
+    final strength2 = player2.stats.total;
+    final totalStrength = strength1 + strength2;
+
+    final random = DateTime.now().millisecondsSinceEpoch % 100;
+    final winProb1 = totalStrength > 0 ? (strength1 / totalStrength * 100).round() : 50;
+
+    final isPlayer1Win = random < winProb1;
+    final winnerId = isPlayer1Win ? player1.id : player2.id;
+    final winnerName = isPlayer1Win ? player1.name : player2.name;
+    final loserName = isPlayer1Win ? player2.name : player1.name;
+
+    setState(() {
+      _currentBattleLog = [
+        '${player1.name} vs ${player2.name}',
+        '---',
+        '$winnerName 선수 승리!',
+        '$loserName 선수 GG',
+      ];
+    });
+
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    return winnerId;
   }
 
   Future<String> _simulateMatchWithLog(

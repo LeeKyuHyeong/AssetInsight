@@ -191,8 +191,8 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
 
         // 팀 선택 드롭다운
         Container(
-          width: 300.sp,
-          padding: EdgeInsets.symmetric(horizontal: 16.sp),
+          constraints: BoxConstraints(maxWidth: 280.sp),
+          padding: EdgeInsets.symmetric(horizontal: 12.sp),
           decoration: BoxDecoration(
             color: const Color(0xFF1a1a2e),
             borderRadius: BorderRadius.circular(8.sp),
@@ -548,6 +548,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                                   fontSize: 13.sp,
                                   fontWeight: isFocused ? FontWeight.bold : FontWeight.normal,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               if (player.nickname != null)
                                 Text(
@@ -556,6 +557,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                                     color: Colors.grey[500],
                                     fontSize: 10.sp,
                                   ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                             ],
                           ),
@@ -597,304 +599,146 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
       return const SizedBox.shrink();
     }
 
-    final player = _teamRoster[focusedPlayerIndex];
-
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1a1a2e),
         borderRadius: BorderRadius.circular(8.sp),
         border: Border.all(color: teamColor, width: 2),
       ),
-      child: Column(
-        children: [
-          // 선수 헤더
-          Container(
-            padding: EdgeInsets.all(12.sp),
-            decoration: BoxDecoration(
-              color: teamColor.withOpacity(0.2),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(6.sp)),
-            ),
-            child: Row(
-              children: [
-                // 선수 사진 placeholder
-                Container(
-                  width: 60.sp,
-                  height: 60.sp,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(8.sp),
-                    border: Border.all(color: teamColor, width: 2),
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    color: Colors.grey[600],
-                    size: 40.sp,
-                  ),
-                ),
-                SizedBox(width: 12.sp),
-
-                // 선수 정보
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            player.name,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(width: 8.sp),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6.sp,
-                              vertical: 2.sp,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getRaceColor(player.race).withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(4.sp),
-                            ),
-                            child: Text(
-                              player.race.koreanName,
-                              style: TextStyle(
-                                color: _getRaceColor(player.race),
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (player.nickname != null) ...[
-                        SizedBox(height: 4.sp),
-                        Text(
-                          'ID: ${player.nickname}',
-                          style: TextStyle(
-                            color: Colors.amber,
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: 4.sp),
-                      Row(
-                        children: [
-                          Text(
-                            'Lv.${player.levelValue}',
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 12.sp,
-                            ),
-                          ),
-                          SizedBox(width: 12.sp),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8.sp,
-                              vertical: 2.sp,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getGradeColor(player.grade).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4.sp),
-                              border: Border.all(
-                                color: _getGradeColor(player.grade),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              'Grade ${player.grade.display}',
-                              style: TextStyle(
-                                color: _getGradeColor(player.grade),
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 레이더 차트 (상단) + 스탯 (하단)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(8.sp),
-              child: Column(
-                children: [
-                  // 레이더 차트 (상단)
-                  Expanded(
-                    flex: 3,
-                    child: _buildRadarChart(teamColor),
-                  ),
-
-                  SizedBox(height: 4.sp),
-
-                  // 스탯 리스트 (하단, 컴팩트)
-                  Expanded(
-                    flex: 2,
-                    child: _buildStatsList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+      child: Padding(
+        padding: EdgeInsets.all(8.sp),
+        child: _buildRadarChart(teamColor),
       ),
     );
   }
 
   Widget _buildRadarChart(Color teamColor) {
-    // 모든 능력치를 500으로 고정
-    const fixedStat = 500;
-    final stats = [
-      fixedStat, fixedStat, fixedStat, fixedStat,
-      fixedStat, fixedStat, fixedStat, fixedStat,
+    final player = _teamRoster[focusedPlayerIndex];
+    final stats = player.stats;
+    final statValues = [
+      stats.sense / 999.0,
+      stats.control / 999.0,
+      stats.attack / 999.0,
+      stats.harass / 999.0,
+      stats.strategy / 999.0,
+      stats.macro / 999.0,
+      stats.defense / 999.0,
+      stats.scout / 999.0,
+    ];
+    final statNumbers = [
+      stats.sense,
+      stats.control,
+      stats.attack,
+      stats.harass,
+      stats.strategy,
+      stats.macro,
+      stats.defense,
+      stats.scout,
     ];
     final labels = ['센스', '컨트롤', '공격력', '견제', '전략', '물량', '수비력', '정찰'];
 
     return CustomPaint(
-      painter: RadarChartPainter(
-        stats: stats.map((s) => s / 999.0).toList(),
+      painter: CompactRadarChartPainter(
+        stats: statValues,
+        statNumbers: statNumbers,
         labels: labels,
         color: teamColor,
+        grade: player.grade.display,
+        level: player.levelValue,
       ),
       child: Container(),
     );
   }
 
-  Widget _buildStatsList() {
-    // 모든 능력치를 500으로 고정
-    const fixedStat = 500;
-    final statData = [
-      {'name': '센스', 'value': fixedStat},
-      {'name': '컨트롤', 'value': fixedStat},
-      {'name': '공격력', 'value': fixedStat},
-      {'name': '견제', 'value': fixedStat},
-      {'name': '전략', 'value': fixedStat},
-      {'name': '물량', 'value': fixedStat},
-      {'name': '수비력', 'value': fixedStat},
-      {'name': '정찰', 'value': fixedStat},
-    ];
-
-    // 2열로 표시 (컴팩트)
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 2.sp,
-        crossAxisSpacing: 8.sp,
-        childAspectRatio: 4,
-      ),
-      itemCount: statData.length,
-      itemBuilder: (context, index) {
-        final stat = statData[index];
-        return Row(
-          children: [
-            Text(
-              stat['name'] as String,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 9.sp,
-              ),
-            ),
-            SizedBox(width: 4.sp),
-            Text(
-              '${stat['value']}',
-              style: TextStyle(
-                color: Colors.amber,
-                fontSize: 9.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildBottomButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // New Season Mode 버튼
-        SizedBox(
-          width: 220.sp,
-          height: 50.sp,
-          child: ElevatedButton(
-            onPressed: selectedTeamId == null
-                ? null
-                : () async {
-                    await ref.read(gameStateProvider.notifier).startNewGame(
-                      slotNumber: 1,
-                      selectedTeamId: selectedTeamId!,
-                    );
-                    if (mounted) {
-                      context.go('/director-name');
-                    }
-                  },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: selectedTeamId != null
-                  ? Colors.amber
-                  : Colors.grey[700],
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4.sp),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.play_arrow, size: 24.sp),
-                SizedBox(width: 8.sp),
-                Text(
-                  'New Season Mode',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.sp),
+      child: Row(
+        children: [
+          // New Season Mode 버튼
+          Expanded(
+            flex: 5,
+            child: SizedBox(
+              height: 48.sp,
+              child: ElevatedButton(
+                onPressed: selectedTeamId == null
+                    ? null
+                    : () async {
+                        await ref.read(gameStateProvider.notifier).startNewGame(
+                          slotNumber: 1,
+                          selectedTeamId: selectedTeamId!,
+                        );
+                        if (mounted) {
+                          context.go('/director-name');
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: selectedTeamId != null
+                      ? Colors.amber
+                      : Colors.grey[700],
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4.sp),
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-
-        SizedBox(width: 20.sp),
-
-        // Load 버튼
-        SizedBox(
-          width: 180.sp,
-          height: 50.sp,
-          child: ElevatedButton(
-            onPressed: () {
-              context.go('/save-load');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2a2a3e),
-              foregroundColor: Colors.white70,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4.sp),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.play_arrow, size: 20.sp),
+                      SizedBox(width: 4.sp),
+                      Text(
+                        'New Season',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.folder_open, size: 20.sp),
-                SizedBox(width: 8.sp),
-                Text(
-                  'Load Game',
-                  style: TextStyle(fontSize: 14.sp),
+          ),
+
+          SizedBox(width: 12.sp),
+
+          // Load 버튼
+          Expanded(
+            flex: 4,
+            child: SizedBox(
+              height: 48.sp,
+              child: ElevatedButton(
+                onPressed: () {
+                  context.go('/save-load');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2a2a3e),
+                  foregroundColor: Colors.white70,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4.sp),
+                  ),
                 ),
-              ],
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.folder_open, size: 18.sp),
+                      SizedBox(width: 4.sp),
+                      Text(
+                        'Load',
+                        style: TextStyle(fontSize: 13.sp),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -920,32 +764,38 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
   }
 }
 
-/// 8각형 레이더 차트 페인터
-class RadarChartPainter extends CustomPainter {
-  final List<double> stats; // 0.0 ~ 1.0
+/// 컴팩트 8각형 레이더 차트 페인터 (중앙에 등급/레벨, 꼭지점에 능력치 값)
+class CompactRadarChartPainter extends CustomPainter {
+  final List<double> stats;
+  final List<int> statNumbers;
   final List<String> labels;
   final Color color;
+  final String grade;
+  final int level;
 
-  RadarChartPainter({
+  CompactRadarChartPainter({
     required this.stats,
+    required this.statNumbers,
     required this.labels,
     required this.color,
+    required this.grade,
+    required this.level,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width, size.height) / 2 - 20;
+    final radius = min(size.width, size.height) / 2 - 28;
     final sides = stats.length;
 
-    // 배경 그리드 그리기
+    // 배경 그리드
     final gridPaint = Paint()
       ..color = Colors.grey[700]!
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
-    for (var level = 1; level <= 5; level++) {
-      final levelRadius = radius * level / 5;
+    for (var lvl = 1; lvl <= 5; lvl++) {
+      final levelRadius = radius * lvl / 5;
       final path = Path();
       for (var i = 0; i < sides; i++) {
         final angle = (i * 2 * pi / sides) - pi / 2;
@@ -963,7 +813,7 @@ class RadarChartPainter extends CustomPainter {
       canvas.drawPath(path, gridPaint);
     }
 
-    // 축 그리기
+    // 축
     for (var i = 0; i < sides; i++) {
       final angle = (i * 2 * pi / sides) - pi / 2;
       final endPoint = Offset(
@@ -973,7 +823,7 @@ class RadarChartPainter extends CustomPainter {
       canvas.drawLine(center, endPoint, gridPaint);
     }
 
-    // 데이터 영역 그리기
+    // 데이터 영역
     final dataPath = Path();
     final dataPaint = Paint()
       ..color = color.withOpacity(0.3)
@@ -1001,36 +851,58 @@ class RadarChartPainter extends CustomPainter {
     canvas.drawPath(dataPath, dataPaint);
     canvas.drawPath(dataPath, dataStrokePaint);
 
-    // 라벨 그리기
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
-
+    // 라벨 + 숫자
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
     for (var i = 0; i < sides; i++) {
       final angle = (i * 2 * pi / sides) - pi / 2;
-      final labelRadius = radius + 15;
+      final labelRadius = radius + 22;
       var point = Offset(
         center.dx + labelRadius * cos(angle),
         center.dy + labelRadius * sin(angle),
       );
 
       textPainter.text = TextSpan(
-        text: labels[i],
-        style: TextStyle(
-          color: Colors.grey[400],
-          fontSize: 10,
-        ),
+        children: [
+          TextSpan(
+            text: '${labels[i]}\n',
+            style: TextStyle(color: Colors.grey[400], fontSize: 9),
+          ),
+          TextSpan(
+            text: '${statNumbers[i]}',
+            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+          ),
+        ],
       );
+      textPainter.textAlign = TextAlign.center;
       textPainter.layout();
 
-      // 텍스트 위치 조정
       point = Offset(
         point.dx - textPainter.width / 2,
         point.dy - textPainter.height / 2,
       );
-
       textPainter.paint(canvas, point);
     }
+
+    // 중앙에 등급과 레벨 표시
+    final gradePainter = TextPainter(textDirection: TextDirection.ltr);
+    gradePainter.text = TextSpan(
+      children: [
+        TextSpan(
+          text: '$grade\n',
+          style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        TextSpan(
+          text: 'Lv.$level',
+          style: TextStyle(color: Colors.grey[400], fontSize: 11),
+        ),
+      ],
+    );
+    gradePainter.textAlign = TextAlign.center;
+    gradePainter.layout();
+    gradePainter.paint(
+      canvas,
+      Offset(center.dx - gradePainter.width / 2, center.dy - gradePainter.height / 2),
+    );
   }
 
   @override

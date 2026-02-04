@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../widgets/reset_button.dart';
@@ -37,48 +39,118 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
   String? _selectedPlayerId;
   PlayerInfoMode _mode = PlayerInfoMode.teamInfo;
 
-  @override
-  void initState() {
-    super.initState();
-    // 키보드 리스너 설정
-    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
-  }
+  /// 갤러리에서 선수 사진 선택
+  Future<void> _pickPlayerImage(Player player) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
 
-  @override
-  void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    super.dispose();
-  }
+    if (pickedFile == null) return;
 
-  bool _handleKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent) {
-      final gameState = ref.read(gameStateProvider);
-      if (gameState == null) return false;
+    // 앱 내부 저장소에 이미지 복사
+    final appDir = await getApplicationDocumentsDirectory();
+    final playerImagesDir = Directory('${appDir.path}/player_images');
+    if (!await playerImagesDir.exists()) {
+      await playerImagesDir.create(recursive: true);
+    }
 
-      final players = gameState.saveData.getTeamPlayers(_selectedTeamId);
-      final currentIndex = _selectedPlayerId != null
-          ? players.indexWhere((p) => p.id == _selectedPlayerId)
-          : -1;
+    final fileName = '${player.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final savedImagePath = '${playerImagesDir.path}/$fileName';
 
-      if (event.logicalKey == LogicalKeyboardKey.pageUp) {
-        // 선수 순서 위로
-        if (currentIndex > 0) {
-          setState(() {
-            _selectedPlayerId = players[currentIndex - 1].id;
-          });
-        }
-        return true;
-      } else if (event.logicalKey == LogicalKeyboardKey.pageDown) {
-        // 선수 순서 아래로
-        if (currentIndex < players.length - 1 && currentIndex >= 0) {
-          setState(() {
-            _selectedPlayerId = players[currentIndex + 1].id;
-          });
-        }
-        return true;
+    // 기존 이미지가 있으면 삭제
+    if (player.imagePath != null) {
+      final oldFile = File(player.imagePath!);
+      if (await oldFile.exists()) {
+        await oldFile.delete();
       }
     }
-    return false;
+
+    // 새 이미지 복사
+    await File(pickedFile.path).copy(savedImagePath);
+
+    // 선수 이미지 경로 업데이트
+    ref.read(gameStateProvider.notifier).updatePlayerImage(player.id, savedImagePath);
+
+    // 저장
+    await ref.read(gameStateProvider.notifier).save();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${player.name} 사진이 등록되었습니다'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// 이미지 옵션 메뉴 (길게 누르기)
+  void _showImageOptions(Player player) {
+    if (player.imagePath == null) {
+      _pickPlayerImage(player);
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.white),
+              title: Text(
+                '사진 변경',
+                style: TextStyle(color: Colors.white, fontSize: 14.sp),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _pickPlayerImage(player);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: Text(
+                '사진 삭제',
+                style: TextStyle(color: Colors.red, fontSize: 14.sp),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                await _deletePlayerImage(player);
+              },
+            ),
+            SizedBox(height: 8.sp),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 선수 사진 삭제
+  Future<void> _deletePlayerImage(Player player) async {
+    if (player.imagePath == null) return;
+
+    final file = File(player.imagePath!);
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    ref.read(gameStateProvider.notifier).updatePlayerImage(player.id, null);
+    await ref.read(gameStateProvider.notifier).save();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${player.name} 사진이 삭제되었습니다'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -317,18 +389,49 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
 
           SizedBox(height: 16.sp),
 
-          // 선수 사진 (실루엣)
-          Container(
-            width: 80.sp,
-            height: 80.sp,
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: BorderRadius.circular(8.sp),
-            ),
-            child: Icon(
-              Icons.person,
-              size: 50.sp,
-              color: Colors.grey[600],
+          // 선수 사진 (탭하여 등록/변경)
+          GestureDetector(
+            onTap: () => _pickPlayerImage(player),
+            onLongPress: () => _showImageOptions(player),
+            child: Container(
+              width: 80.sp,
+              height: 80.sp,
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8.sp),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.5),
+                  width: 2,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6.sp),
+                child: player.imagePath != null && File(player.imagePath!).existsSync()
+                    ? Image.file(
+                        File(player.imagePath!),
+                        fit: BoxFit.cover,
+                        width: 80.sp,
+                        height: 80.sp,
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_a_photo,
+                            size: 30.sp,
+                            color: Colors.grey[500],
+                          ),
+                          SizedBox(height: 4.sp),
+                          Text(
+                            '사진등록',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 9.sp,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
 
@@ -872,7 +975,27 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
   }
 
   Widget _buildPlayerVsRecordPanel(Player player) {
-    // TODO: 실제 상대전적 데이터
+    final gameState = ref.read(gameStateProvider);
+    if (gameState == null) {
+      return Container();
+    }
+
+    // 상대전적이 있는 모든 선수 조회
+    final opponentIds = player.record.allOpponentIds;
+    final allPlayers = gameState.saveData.allPlayers;
+
+    // 상대전적이 있는 선수만 필터링하고, 전적 순으로 정렬
+    final opponents = allPlayers
+        .where((p) => opponentIds.contains(p.id))
+        .toList()
+      ..sort((a, b) {
+        final (aWins, aLosses) = player.record.getVsPlayerRecord(a.id);
+        final (bWins, bLosses) = player.record.getVsPlayerRecord(b.id);
+        final aTotal = aWins + aLosses;
+        final bTotal = bWins + bLosses;
+        return bTotal.compareTo(aTotal); // 많이 대전한 순
+      });
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -889,21 +1012,126 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '상대 전적 조회',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Text(
+                  '선수별 상대 전적',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '총 ${opponents.length}명',
+                  style: TextStyle(color: Colors.grey, fontSize: 10.sp),
+                ),
+              ],
             ),
             SizedBox(height: 12.sp),
             Expanded(
-              child: Center(
-                child: Text(
-                  '상대 전적 데이터 없음',
-                  style: TextStyle(color: Colors.grey, fontSize: 12.sp),
-                ),
+              child: opponents.isEmpty
+                  ? Center(
+                      child: Text(
+                        '아직 경기 기록이 없습니다',
+                        style: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: opponents.length,
+                      itemBuilder: (context, index) {
+                        final opponent = opponents[index];
+                        final (wins, losses) = player.record.getVsPlayerRecord(opponent.id);
+                        final total = wins + losses;
+                        final winRate = total > 0 ? (wins / total * 100).toStringAsFixed(0) : '0';
+
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 6.sp),
+                          child: Row(
+                            children: [
+                              // 종족 아이콘
+                              Container(
+                                width: 18.sp,
+                                height: 18.sp,
+                                decoration: BoxDecoration(
+                                  color: _getRaceColor(opponent.race).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(2.sp),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    opponent.race.code,
+                                    style: TextStyle(
+                                      color: _getRaceColor(opponent.race),
+                                      fontSize: 9.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 6.sp),
+                              // 선수명
+                              Expanded(
+                                child: Text(
+                                  opponent.name,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11.sp,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              // 전적
+                              Text(
+                                '$wins',
+                                style: TextStyle(
+                                  color: wins > losses ? Colors.green : Colors.white,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                ' W ',
+                                style: TextStyle(color: AppColors.accent, fontSize: 9.sp),
+                              ),
+                              Text(
+                                '$losses',
+                                style: TextStyle(
+                                  color: losses > wins ? Colors.red : Colors.white,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                ' L ',
+                                style: TextStyle(color: Colors.red, fontSize: 9.sp),
+                              ),
+                              SizedBox(width: 4.sp),
+                              // 승률
+                              Container(
+                                width: 35.sp,
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  '$winRate%',
+                                  style: TextStyle(
+                                    color: wins > losses
+                                        ? Colors.green
+                                        : (wins < losses ? Colors.red : Colors.grey),
+                                    fontSize: 10.sp,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            SizedBox(height: 8.sp),
+            Center(
+              child: Text(
+                '클릭하여 선수 정보로 돌아가기',
+                style: TextStyle(color: Colors.grey, fontSize: 10.sp),
               ),
             ),
           ],
@@ -984,7 +1212,7 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
                 backgroundColor: AppColors.primary,
                 padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 10.sp),
               ),
-              child: Text('연습경기 [Z]', style: TextStyle(color: Colors.white, fontSize: 11.sp)),
+              child: Text('연습경기', style: TextStyle(color: Colors.white, fontSize: 11.sp)),
             ),
 
           SizedBox(width: 8.sp),
@@ -996,7 +1224,7 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
               backgroundColor: AppColors.cardBackground,
               padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 10.sp),
             ),
-            child: Text('선수순위 [X]', style: TextStyle(color: Colors.white, fontSize: 11.sp)),
+            child: Text('선수순위', style: TextStyle(color: Colors.white, fontSize: 11.sp)),
           ),
 
           SizedBox(width: 8.sp),
@@ -1008,7 +1236,7 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
               backgroundColor: AppColors.cardBackground,
               padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 10.sp),
             ),
-            child: Text('구단순위 [C]', style: TextStyle(color: Colors.white, fontSize: 11.sp)),
+            child: Text('구단순위', style: TextStyle(color: Colors.white, fontSize: 11.sp)),
           ),
         ],
       ),

@@ -9,11 +9,12 @@ import '../../../domain/services/individual_league_service.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../widgets/reset_button.dart';
 
-/// 듀얼토너먼트 화면
+/// 듀얼토너먼트 화면 - 12개 조 (3개 라운드 × 4개 조)
 class DualTournamentScreen extends ConsumerStatefulWidget {
-  final int round;
+  final int round; // 1, 2, 3 (어떤 듀얼 토너먼트인지)
+  final bool viewOnly;
 
-  const DualTournamentScreen({super.key, this.round = 1});
+  const DualTournamentScreen({super.key, this.round = 1, this.viewOnly = false});
 
   @override
   ConsumerState<DualTournamentScreen> createState() =>
@@ -25,11 +26,19 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
 
   bool _isSimulating = false;
   bool _isCompleted = false;
-  int _currentRound = 0;
   String _currentMatchInfo = '';
+
+  // 조 이름 (A~L)
+  static const groupNames = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+
+  // 현재 라운드의 조 인덱스 범위
+  int get _startGroupIndex => (widget.round - 1) * 4;
+  int get _endGroupIndex => widget.round * 4;
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
+
     final gameState = ref.watch(gameStateProvider);
     if (gameState == null) {
       return const Scaffold(
@@ -38,7 +47,6 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
     }
 
     final bracket = gameState.saveData.currentSeason.individualLeague;
-    final playerTeam = gameState.playerTeam;
     final playerMap = {for (var p in gameState.saveData.allPlayers) p.id: p};
 
     return Scaffold(
@@ -48,26 +56,66 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
           children: [
             Column(
               children: [
-                _buildHeader(context, playerTeam),
+                _buildHeader(context),
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.all(16.sp),
-                    child: Row(
+                    padding: EdgeInsets.all(8.sp),
+                    child: Column(
                       children: [
-                        // 좌측: 승자조 대진표
+                        // 상단 정보 패널
+                        _buildTopInfoPanel(bracket, playerMap),
+                        SizedBox(height: 8.sp),
+                        // 4개 조 그리드 (2x2)
                         Expanded(
-                          child: _buildWinnersBracket(bracket, playerMap),
-                        ),
-                        SizedBox(width: 16.sp),
-                        // 중앙: 상태 표시 및 진출자
-                        SizedBox(
-                          width: 200.sp,
-                          child: _buildCenterPanel(bracket, playerMap),
-                        ),
-                        SizedBox(width: 16.sp),
-                        // 우측: 패자조 대진표
-                        Expanded(
-                          child: _buildLosersBracket(bracket, playerMap),
+                          child: Column(
+                            children: [
+                              // 상단 2개 조 (A/E/I, B/F/J)
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildGroupCard(
+                                        bracket,
+                                        playerMap,
+                                        _startGroupIndex, // A/E/I 조
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.sp),
+                                    Expanded(
+                                      child: _buildGroupCard(
+                                        bracket,
+                                        playerMap,
+                                        _startGroupIndex + 1, // B/F/J 조
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 8.sp),
+                              // 하단 2개 조 (C/G/K, D/H/L)
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildGroupCard(
+                                        bracket,
+                                        playerMap,
+                                        _startGroupIndex + 2, // C/G/K 조
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.sp),
+                                    Expanded(
+                                      child: _buildGroupCard(
+                                        bracket,
+                                        playerMap,
+                                        _startGroupIndex + 3, // D/H/L 조
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -83,9 +131,9 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, Team team) {
+  Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 12.sp),
+      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 8.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -94,394 +142,337 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
       ),
       child: Row(
         children: [
-          _buildTeamLogo(team),
+          Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
           const Spacer(),
           Text(
             '듀얼 토너먼트',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 24.sp,
+              fontSize: 20.sp,
               fontWeight: FontWeight.bold,
-              letterSpacing: 2,
+              letterSpacing: 4,
             ),
           ),
           const Spacer(),
-          _buildTeamLogo(team),
+          Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
         ],
       ),
     );
   }
 
-  Widget _buildTeamLogo(Team team) {
+  Widget _buildGroupCard(
+    IndividualLeagueBracket? bracket,
+    Map<String, Player> playerMap,
+    int groupIndex,
+  ) {
+    final groupName = groupIndex < groupNames.length ? groupNames[groupIndex] : '?';
+
+    // 조 데이터 가져오기
+    List<String?> groupPlayers = [];
+    if (bracket != null &&
+        bracket.dualTournamentGroups.isNotEmpty &&
+        groupIndex < bracket.dualTournamentGroups.length) {
+      groupPlayers = bracket.dualTournamentGroups[groupIndex];
+    }
+
+    // 4명 슬롯 보장
+    while (groupPlayers.length < 4) {
+      groupPlayers = [...groupPlayers, null];
+    }
+
     return Container(
-      width: 60.sp,
-      height: 40.sp,
       decoration: BoxDecoration(
-        color: Color(team.colorValue).withOpacity(0.2),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(8.sp),
-        border: Border.all(color: Color(team.colorValue)),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      padding: EdgeInsets.all(6.sp),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 조 헤더 (조 이름 + 4명 슬롯)
+          Row(
+            children: [
+              // 조 로고/이름
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 2.sp),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4.sp),
+                ),
+                child: Text(
+                  '$groupName조',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              SizedBox(width: 4.sp),
+              // 4명 슬롯 미니 표시 - Expanded로 감싸기
+              Expanded(
+                child: Row(
+                  children: List.generate(4, (i) {
+                    final playerId = i < groupPlayers.length ? groupPlayers[i] : null;
+                    final player = playerId != null ? playerMap[playerId] : null;
+                    return Expanded(child: _buildMiniPlayerSlot(player, i));
+                  }),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 4.sp),
+          // 대진표
+          Expanded(
+            child: _buildGroupBracket(groupPlayers, playerMap),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniPlayerSlot(Player? player, int index) {
+    final isSeeded = index < 2; // 0, 1번은 시드
+
+    return Container(
+      height: 20.sp,
+      margin: EdgeInsets.only(left: 2.sp),
+      decoration: BoxDecoration(
+        color: player != null
+            ? AppColors.primary.withOpacity(0.2)
+            : Colors.grey.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(3.sp),
+        border: Border.all(
+          color: isSeeded ? AppColors.primary : Colors.grey,
+          width: isSeeded ? 1.5 : 1,
+        ),
       ),
       child: Center(
-        child: Text(
-          team.shortName,
-          style: TextStyle(
-            color: Color(team.colorValue),
-            fontWeight: FontWeight.bold,
-            fontSize: 12.sp,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWinnersBracket(
-    IndividualLeagueBracket? bracket,
-    Map<String, Player> playerMap,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(8.sp),
-      ),
-      padding: EdgeInsets.all(12.sp),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.emoji_events, color: Colors.amber, size: 20.sp),
-              SizedBox(width: 8.sp),
-              Text(
-                '승자조 (Winners Bracket)',
+        child: player != null
+            ? Text(
+                player.race.code,
                 style: TextStyle(
-                  color: Colors.amber,
-                  fontSize: 14.sp,
+                  color: _getRaceColor(player.race),
+                  fontSize: 9.sp,
                   fontWeight: FontWeight.bold,
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.sp),
-          Expanded(
-            child: _buildBracketView(
-              bracket,
-              playerMap,
-              isWinners: true,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLosersBracket(
-    IndividualLeagueBracket? bracket,
-    Map<String, Player> playerMap,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(8.sp),
-      ),
-      padding: EdgeInsets.all(12.sp),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.replay, color: Colors.orange, size: 20.sp),
-              SizedBox(width: 8.sp),
-              Text(
-                '패자조 (Losers Bracket)',
-                style: TextStyle(
-                  color: Colors.orange,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.sp),
-          Expanded(
-            child: _buildBracketView(
-              bracket,
-              playerMap,
-              isWinners: false,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBracketView(
-    IndividualLeagueBracket? bracket,
-    Map<String, Player> playerMap, {
-    required bool isWinners,
-  }) {
-    if (bracket == null || bracket.dualTournamentPlayers.isEmpty) {
-      return Center(
-        child: Text(
-          '대진표가 없습니다',
-          style: TextStyle(color: Colors.grey, fontSize: 12.sp),
-        ),
-      );
-    }
-
-    final players = bracket.dualTournamentPlayers;
-
-    // 간단한 참가자 목록 표시
-    return ListView.builder(
-      itemCount: isWinners ? (players.length / 2).ceil() : (players.length / 2).ceil(),
-      itemBuilder: (context, index) {
-        final player1Index = index * 2;
-        final player2Index = index * 2 + 1;
-
-        if (player1Index >= players.length) return const SizedBox();
-
-        final player1 = playerMap[players[player1Index]];
-        final player2 = player2Index < players.length
-            ? playerMap[players[player2Index]]
-            : null;
-
-        // 결과가 있으면 표시
-        IndividualMatchResult? matchResult;
-        if (bracket.dualTournamentResults.isNotEmpty &&
-            index < bracket.dualTournamentResults.length) {
-          matchResult = bracket.dualTournamentResults[index];
-        }
-
-        return Container(
-          margin: EdgeInsets.only(bottom: 8.sp),
-          padding: EdgeInsets.all(8.sp),
-          decoration: BoxDecoration(
-            color: Colors.grey[800],
-            borderRadius: BorderRadius.circular(4.sp),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildPlayerSlot(
-                  player1,
-                  isWinner: matchResult?.winnerId == player1?.id,
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.sp),
-                child: Text(
-                  'vs',
-                  style: TextStyle(color: Colors.grey, fontSize: 10.sp),
-                ),
-              ),
-              Expanded(
-                child: _buildPlayerSlot(
-                  player2,
-                  isWinner: matchResult?.winnerId == player2?.id,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPlayerSlot(Player? player, {bool isWinner = false}) {
-    if (player == null) {
-      return Container(
-        padding: EdgeInsets.all(4.sp),
-        child: Text(
-          '-',
-          style: TextStyle(color: Colors.grey, fontSize: 11.sp),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
-    return Container(
-      padding: EdgeInsets.all(4.sp),
-      decoration: BoxDecoration(
-        color: isWinner ? AppColors.accent.withOpacity(0.2) : null,
-        borderRadius: BorderRadius.circular(2.sp),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isWinner)
-            Icon(Icons.check, size: 12.sp, color: AppColors.accent),
-          Expanded(
-            child: Text(
-              player.name,
-              style: TextStyle(
-                color: isWinner ? Colors.white : Colors.grey[400],
-                fontSize: 11.sp,
-                fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            '(${player.race.code})',
-            style: TextStyle(
-              color: _getRaceColor(player.race),
-              fontSize: 10.sp,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCenterPanel(
-    IndividualLeagueBracket? bracket,
-    Map<String, Player> playerMap,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(8.sp),
-      ),
-      padding: EdgeInsets.all(12.sp),
-      child: Column(
-        children: [
-          // 상태 메시지
-          if (_isSimulating) ...[
-            const CircularProgressIndicator(color: AppColors.accent),
-            SizedBox(height: 16.sp),
-            Text(
-              '경기 진행중',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14.sp,
-              ),
-            ),
-            SizedBox(height: 8.sp),
-            Text(
-              'Round $_currentRound',
-              style: TextStyle(
-                color: AppColors.accent,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (_currentMatchInfo.isNotEmpty) ...[
-              SizedBox(height: 8.sp),
-              Text(
-                _currentMatchInfo,
+              )
+            : Text(
+                '?',
                 style: TextStyle(
                   color: Colors.grey,
-                  fontSize: 11.sp,
+                  fontSize: 8.sp,
                 ),
-                textAlign: TextAlign.center,
               ),
-            ],
-          ] else if (_isCompleted) ...[
-            Icon(Icons.check_circle, color: AppColors.accent, size: 40.sp),
-            SizedBox(height: 12.sp),
-            Text(
-              '듀얼토너먼트 완료!',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ] else ...[
-            Icon(Icons.sports_esports, color: Colors.grey, size: 40.sp),
-            SizedBox(height: 12.sp),
-            Text(
-              '듀얼토너먼트',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14.sp,
-              ),
-            ),
-            SizedBox(height: 4.sp),
-            Text(
-              '24명 참가',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 12.sp,
-              ),
-            ),
-          ],
-          SizedBox(height: 24.sp),
-          // 본선 진출자 목록
-          Expanded(
-            child: _buildAdvancingPlayers(bracket, playerMap),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildAdvancingPlayers(
+  Widget _buildGroupBracket(List<String?> groupPlayers, Map<String, Player> playerMap) {
+    // 듀얼 토너먼트 대진표
+    // 1경기: 0 vs 1 (시드 vs 시드)
+    // 2경기: 2 vs 3 (PC방 승자 vs PC방 승자)
+    // 승자전: 1경기 승자 vs 2경기 승자
+    // 패자전: 1경기 패자 vs 2경기 패자
+    // 최종전: 승자전 패자 vs 패자전 승자
+
+    final player0 = groupPlayers.length > 0 && groupPlayers[0] != null
+        ? playerMap[groupPlayers[0]] : null;
+    final player1 = groupPlayers.length > 1 && groupPlayers[1] != null
+        ? playerMap[groupPlayers[1]] : null;
+    final player2 = groupPlayers.length > 2 && groupPlayers[2] != null
+        ? playerMap[groupPlayers[2]] : null;
+    final player3 = groupPlayers.length > 3 && groupPlayers[3] != null
+        ? playerMap[groupPlayers[3]] : null;
+
+    return Column(
+      children: [
+        // 1경기, 2경기
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: _buildMatchRow('< 1 경기 >', player0, player1)),
+              SizedBox(width: 8.sp),
+              Expanded(child: _buildMatchRow('< 2 경기 >', player2, player3)),
+            ],
+          ),
+        ),
+        // 승자전, 패자전
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(child: _buildMatchRow('< 승자전 >', null, null, placeholder: '???')),
+              SizedBox(width: 8.sp),
+              Expanded(child: _buildMatchRow('< 패자전 >', null, null, placeholder: '???')),
+            ],
+          ),
+        ),
+        // 최종전
+        Expanded(
+          child: _buildMatchRow('< 최종전 >', null, null, placeholder: '???'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMatchRow(String title, Player? player1, Player? player2, {String placeholder = '???'}) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 9.sp,
+          ),
+        ),
+        SizedBox(height: 2.sp),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: _buildPlayerName(player1, placeholder),
+            ),
+            Text(
+              ' vs ',
+              style: TextStyle(color: Colors.grey, fontSize: 8.sp),
+            ),
+            Expanded(
+              child: _buildPlayerName(player2, placeholder),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlayerName(Player? player, String placeholder) {
+    if (player == null) {
+      return Text(
+        placeholder,
+        style: TextStyle(color: Colors.grey, fontSize: 10.sp),
+        textAlign: TextAlign.center,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            player.name,
+            style: TextStyle(color: Colors.white, fontSize: 10.sp),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Text(
+          ' (${player.race.code})',
+          style: TextStyle(
+            color: _getRaceColor(player.race),
+            fontSize: 9.sp,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopInfoPanel(
     IndividualLeagueBracket? bracket,
     Map<String, Player> playerMap,
   ) {
-    final advancingPlayers = bracket?.mainTournamentPlayers ?? [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '본선 진출자 (${advancingPlayers.length}/8)',
-          style: TextStyle(
-            color: AppColors.accent,
-            fontSize: 12.sp,
-            fontWeight: FontWeight.bold,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(8.sp),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 10.sp),
+      child: Row(
+        children: [
+          // 라운드 표시
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 8.sp),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4.sp),
+            ),
+            child: Text(
+              '#${widget.round}',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-        ),
-        SizedBox(height: 8.sp),
-        Expanded(
-          child: advancingPlayers.isEmpty
-              ? Center(
-                  child: Text(
-                    '아직 없음',
-                    style: TextStyle(color: Colors.grey, fontSize: 11.sp),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: advancingPlayers.length,
-                  itemBuilder: (context, index) {
-                    final player = playerMap[advancingPlayers[index]];
-                    if (player == null) return const SizedBox();
-
-                    return Container(
-                      padding: EdgeInsets.symmetric(vertical: 4.sp),
-                      child: Row(
+          SizedBox(width: 16.sp),
+          // 상태 메시지
+          Expanded(
+            child: _isSimulating
+                ? Row(
+                    children: [
+                      SizedBox(
+                        width: 20.sp,
+                        height: 20.sp,
+                        child: const CircularProgressIndicator(
+                          color: AppColors.accent,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                      SizedBox(width: 12.sp),
+                      Text(
+                        '경기 진행중${_currentMatchInfo.isNotEmpty ? ' - $_currentMatchInfo' : ''}',
+                        style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                      ),
+                    ],
+                  )
+                : _isCompleted
+                    ? Row(
                         children: [
-                          Text(
-                            '${index + 1}.',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 11.sp,
-                            ),
-                          ),
+                          Icon(Icons.check_circle, color: AppColors.accent, size: 20.sp),
                           SizedBox(width: 8.sp),
-                          Expanded(
-                            child: Text(
-                              player.name,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11.sp,
-                              ),
-                            ),
-                          ),
                           Text(
-                            '(${player.race.code})',
+                            '완료!',
                             style: TextStyle(
-                              color: _getRaceColor(player.race),
-                              fontSize: 10.sp,
+                              color: AppColors.accent,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
+                      )
+                    : Text(
+                        '진행되지 않았습니다',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12.sp,
+                        ),
                       ),
-                    );
-                  },
+          ),
+          // 맵 정보
+          Row(
+            children: [
+              Text(
+                '맵: ',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 10.sp,
                 ),
-        ),
-      ],
+              ),
+              Text(
+                '네오아웃라이어 / 네오제이드 / 네오체인리액션',
+                style: TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -490,50 +481,57 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
     IndividualLeagueBracket? bracket,
     Map<String, Player> playerMap,
   ) {
+    final bool canStart = !widget.viewOnly && !_isSimulating;
+
     return Container(
-      padding: EdgeInsets.all(16.sp),
+      padding: EdgeInsets.all(12.sp),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                context.pop();
+              } else {
+                context.go('/main');
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.cardBackground,
-              padding: EdgeInsets.symmetric(horizontal: 32.sp, vertical: 12.sp),
+              padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 10.sp),
             ),
             child: Row(
               children: [
                 Icon(Icons.arrow_back, color: Colors.white, size: 16.sp),
                 SizedBox(width: 8.sp),
                 Text(
-                  'EXIT',
-                  style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                  'EXIT (Bar)',
+                  style: TextStyle(color: Colors.white, fontSize: 12.sp),
                 ),
               ],
             ),
           ),
-          SizedBox(width: 24.sp),
-          ElevatedButton(
-            onPressed: _isSimulating
-                ? null
-                : () => _isCompleted
-                    ? _goToNextStage(context)
-                    : _startSimulation(bracket, playerMap),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isSimulating ? Colors.grey : AppColors.primary,
-              padding: EdgeInsets.symmetric(horizontal: 32.sp, vertical: 12.sp),
+          SizedBox(width: 16.sp),
+          if (canStart)
+            ElevatedButton(
+              onPressed: _isCompleted
+                  ? () => _goToNextStage(context)
+                  : () => _startSimulation(bracket, playerMap),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 10.sp),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    _isCompleted ? 'Next' : 'Start',
+                    style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                  ),
+                  SizedBox(width: 8.sp),
+                  Icon(Icons.arrow_forward, color: Colors.white, size: 16.sp),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Text(
-                  _isCompleted ? 'Next' : 'Start',
-                  style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                ),
-                SizedBox(width: 8.sp),
-                Icon(Icons.arrow_forward, color: Colors.white, size: 16.sp),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -543,35 +541,29 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
     IndividualLeagueBracket? bracket,
     Map<String, Player> playerMap,
   ) async {
-    if (bracket == null || bracket.dualTournamentPlayers.isEmpty) {
+    if (bracket == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PC방 예선을 먼저 진행해주세요')),
+        const SnackBar(content: Text('대진표 데이터가 없습니다')),
       );
       return;
     }
 
     setState(() {
       _isSimulating = true;
-      _currentRound = 1;
     });
 
-    // 시뮬레이션 진행 (애니메이션 효과)
-    for (var i = 1; i <= 7; i++) {
-      await Future.delayed(const Duration(milliseconds: 800));
+    // 시뮬레이션 애니메이션
+    for (var i = _startGroupIndex; i < _endGroupIndex; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
       setState(() {
-        _currentRound = i;
-        _currentMatchInfo = _getRoundName(i);
+        _currentMatchInfo = '${groupNames[i]}조 경기 진행중...';
       });
     }
 
-    // 실제 시뮬레이션
-    final newBracket = _leagueService.simulateDualTournament(
-      bracket: bracket,
-      playerMap: playerMap,
-    );
+    await Future.delayed(const Duration(milliseconds: 500));
 
-    ref.read(gameStateProvider.notifier).updateIndividualLeague(newBracket);
+    // TODO: 실제 시뮬레이션 로직 구현
 
     setState(() {
       _isSimulating = false;
@@ -579,29 +571,14 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
     });
   }
 
-  String _getRoundName(int round) {
-    switch (round) {
-      case 1:
-        return '승자조 1라운드';
-      case 2:
-        return '승자조 2라운드';
-      case 3:
-        return '패자조 1라운드';
-      case 4:
-        return '패자조 2라운드';
-      case 5:
-        return '승자조 3라운드';
-      case 6:
-        return '패자조 3라운드';
-      case 7:
-        return '최종 라운드';
-      default:
-        return '';
-    }
-  }
-
   void _goToNextStage(BuildContext context) {
-    context.push('/group-draw');
+    if (widget.round < 3) {
+      // 다음 듀얼 토너먼트
+      context.push('/dual-tournament/${widget.round + 1}');
+    } else {
+      // 조지명식으로
+      context.push('/group-draw');
+    }
   }
 
   Color _getRaceColor(Race race) {

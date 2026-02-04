@@ -3,6 +3,7 @@ import 'player.dart';
 import 'team.dart';
 import 'item.dart';
 import 'season.dart';
+import 'match.dart';
 
 part 'save_data.g.dart';
 
@@ -39,6 +40,9 @@ class SaveData {
   @HiveField(9)
   final List<Player> freeAgentPool; // 무소속 선수 풀
 
+  @HiveField(10)
+  final IndividualLeagueBracket? previousSeasonIndividualLeague; // 이전 시즌 개인리그 결과 (시드 배정용)
+
   const SaveData({
     required this.slotNumber,
     required this.playerTeamId,
@@ -50,6 +54,7 @@ class SaveData {
     required this.savedAt,
     this.totalPlayTime = 0,
     this.freeAgentPool = const [],
+    this.previousSeasonIndividualLeague,
   });
 
   Team get playerTeam => allTeams.firstWhere((t) => t.id == playerTeamId);
@@ -146,6 +151,8 @@ class SaveData {
       currentSeason: newSeason,
       seasonHistories: [...seasonHistories, history],
       allTeams: newTeams,
+      // 이전 시즌 개인리그 결과 저장 (다음 시즌 시드 배정용)
+      previousSeasonIndividualLeague: currentSeason.individualLeague,
     );
   }
 
@@ -170,6 +177,7 @@ class SaveData {
     DateTime? savedAt,
     int? totalPlayTime,
     List<Player>? freeAgentPool,
+    IndividualLeagueBracket? previousSeasonIndividualLeague,
   }) {
     return SaveData(
       slotNumber: slotNumber ?? this.slotNumber,
@@ -182,6 +190,7 @@ class SaveData {
       savedAt: savedAt ?? this.savedAt,
       totalPlayTime: totalPlayTime ?? this.totalPlayTime,
       freeAgentPool: freeAgentPool ?? this.freeAgentPool,
+      previousSeasonIndividualLeague: previousSeasonIndividualLeague ?? this.previousSeasonIndividualLeague,
     );
   }
 }

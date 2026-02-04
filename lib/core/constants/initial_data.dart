@@ -39,127 +39,267 @@ class InitialData {
   }
 
   /// 무소속 선수 풀 생성
+  /// 무소속 선수 풀 - 레전드 및 은퇴/무소속 프로게이머
   static List<Player> createFreeAgentPool() {
     return [
+      // ===== 레전드 프로게이머 (은퇴/무소속) =====
       Player(
-        id: 'free_001',
-        name: '김진수',
+        id: 'free_nada',
+        name: '이윤열',
+        nickname: 'NaDa',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 380, control: 420, attack: 400, harass: 350,
-          strategy: 380, macro: 360, defense: 340, scout: 370,
+          sense: 820, control: 880, attack: 840, harass: 800,
+          strategy: 900, macro: 860, defense: 780, scout: 820,
         ),
-        levelValue: 2,
+        levelValue: 9, // 레전드, 은퇴 임박
       ),
       Player(
-        id: 'free_002',
-        name: '박현우',
+        id: 'free_savior',
+        name: '마재윤',
+        nickname: 'sAviOr',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 320, control: 380, attack: 350, harass: 400,
-          strategy: 340, macro: 420, defense: 300, scout: 310,
+          sense: 880, control: 900, attack: 860, harass: 880,
+          strategy: 940, macro: 920, defense: 800, scout: 860,
         ),
-        levelValue: 1,
+        levelValue: 8, // 마에스트로, 승부조작 전
       ),
       Player(
-        id: 'free_003',
-        name: '이상민',
+        id: 'free_kingdom',
+        name: '박용욱',
+        nickname: 'Kingdom',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 450, control: 480, attack: 420, harass: 380,
-          strategy: 500, macro: 440, defense: 410, scout: 420,
+          sense: 640, control: 700, attack: 680, harass: 660,
+          strategy: 720, macro: 680, defense: 620, scout: 660,
         ),
-        levelValue: 3,
+        levelValue: 8, // 악마토스
       ),
       Player(
-        id: 'free_004',
-        name: '최준영',
-        raceIndex: Race.terran.index,
-        stats: const PlayerStats(
-          sense: 280, control: 320, attack: 340, harass: 290,
-          strategy: 300, macro: 310, defense: 280, scout: 260,
-        ),
-        levelValue: 1,
-      ),
-      Player(
-        id: 'free_005',
-        name: '정우진',
+        id: 'free_gorush',
+        name: '박태민',
+        nickname: 'GoRush',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 520, control: 560, attack: 580, harass: 540,
-          strategy: 500, macro: 580, defense: 480, scout: 510,
+          sense: 660, control: 720, attack: 680, harass: 740,
+          strategy: 700, macro: 760, defense: 640, scout: 680,
+        ),
+        levelValue: 7, // 운영의 마술사
+      ),
+      Player(
+        id: 'free_anytime',
+        name: '안기효',
+        nickname: 'Anytime',
+        raceIndex: Race.protoss.index,
+        stats: const PlayerStats(
+          sense: 580, control: 640, attack: 620, harass: 580,
+          strategy: 660, macro: 620, defense: 580, scout: 620,
+        ),
+        levelValue: 6, // 하부리그의 총사령관
+      ),
+      Player(
+        id: 'free_midas',
+        name: '전상욱',
+        nickname: 'Midas',
+        raceIndex: Race.terran.index,
+        stats: const PlayerStats(
+          sense: 560, control: 620, attack: 640, harass: 540,
+          strategy: 600, macro: 560, defense: 540, scout: 520,
         ),
         levelValue: 5,
       ),
       Player(
-        id: 'free_006',
-        name: '한승우',
-        raceIndex: Race.protoss.index,
-        stats: const PlayerStats(
-          sense: 360, control: 400, attack: 380, harass: 340,
-          strategy: 420, macro: 380, defense: 350, scout: 370,
-        ),
-        levelValue: 2,
-      ),
-      Player(
-        id: 'free_007',
-        name: '윤태호',
-        raceIndex: Race.terran.index,
-        stats: const PlayerStats(
-          sense: 440, control: 480, attack: 500, harass: 420,
-          strategy: 460, macro: 440, defense: 420, scout: 400,
-        ),
-        levelValue: 4,
-      ),
-      Player(
-        id: 'free_008',
-        name: '강민석',
+        id: 'free_roro',
+        name: '신노열',
+        nickname: 'RorO',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 300, control: 340, attack: 320, harass: 360,
-          strategy: 310, macro: 350, defense: 290, scout: 280,
+          sense: 540, control: 600, attack: 580, harass: 620,
+          strategy: 520, macro: 640, defense: 500, scout: 540,
+        ),
+        levelValue: 3, // 신인
+      ),
+      Player(
+        id: 'free_yeonsung',
+        name: '최연성',
+        nickname: 'go.go',
+        raceIndex: Race.terran.index,
+        stats: const PlayerStats(
+          sense: 580, control: 640, attack: 600, harass: 560,
+          strategy: 660, macro: 600, defense: 580, scout: 600,
+        ),
+        levelValue: 8, // 코치 전향
+      ),
+      Player(
+        id: 'free_jungmin',
+        name: '김정민',
+        nickname: 'Veggie',
+        raceIndex: Race.terran.index,
+        stats: const PlayerStats(
+          sense: 600, control: 660, attack: 640, harass: 580,
+          strategy: 680, macro: 620, defense: 600, scout: 620,
+        ),
+        levelValue: 7, // 해설가 전향
+      ),
+      Player(
+        id: 'free_snow',
+        name: '장윤철',
+        nickname: 'SnOw',
+        raceIndex: Race.protoss.index,
+        stats: const PlayerStats(
+          sense: 480, control: 540, attack: 520, harass: 480,
+          strategy: 560, macro: 520, defense: 480, scout: 500,
+        ),
+        levelValue: 2, // 2군본좌 신인
+      ),
+      // ===== 2010년 이후 데뷔 신인 (미래의 스타) =====
+      Player(
+        id: 'free_rain',
+        name: '정윤종',
+        nickname: 'Rain',
+        raceIndex: Race.protoss.index,
+        stats: const PlayerStats(
+          sense: 580, control: 640, attack: 620, harass: 580,
+          strategy: 680, macro: 620, defense: 560, scout: 600,
+        ),
+        levelValue: 1, // 2009 드래프트, 2010 SKT T1 입단
+      ),
+      Player(
+        id: 'free_bogus',
+        name: '이신형',
+        nickname: 'Bogus',
+        raceIndex: Race.terran.index,
+        stats: const PlayerStats(
+          sense: 560, control: 620, attack: 640, harass: 540,
+          strategy: 580, macro: 600, defense: 520, scout: 540,
+        ),
+        levelValue: 1, // 2008 드래프트, STX 연습생 (훗날 INnoVation)
+      ),
+      Player(
+        id: 'free_mini',
+        name: '변현제',
+        nickname: 'Mini',
+        raceIndex: Race.protoss.index,
+        stats: const PlayerStats(
+          sense: 480, control: 540, attack: 520, harass: 480,
+          strategy: 560, macro: 520, defense: 480, scout: 500,
+        ),
+        levelValue: 1, // 2010 상반기 드래프트 STX 4차 지명
+      ),
+      Player(
+        id: 'free_maru',
+        name: '조성주',
+        nickname: 'Maru',
+        raceIndex: Race.terran.index,
+        stats: const PlayerStats(
+          sense: 520, control: 600, attack: 580, harass: 500,
+          strategy: 560, macro: 540, defense: 480, scout: 500,
+        ),
+        levelValue: 1, // 2010 엘리트 스쿨리그 출신, 훗날 SC2 최강자
+      ),
+      Player(
+        id: 'free_byhydra',
+        name: '신동원',
+        nickname: 'By.Hydra',
+        raceIndex: Race.zerg.index,
+        stats: const PlayerStats(
+          sense: 540, control: 600, attack: 580, harass: 620,
+          strategy: 520, macro: 620, defense: 500, scout: 540,
+        ),
+        levelValue: 2, // 2008 드래프트 CJ 1차 지명, MSL 2010 우승
+      ),
+      Player(
+        id: 'free_yoonsoo',
+        name: '어윤수',
+        nickname: 'soO',
+        raceIndex: Race.zerg.index,
+        stats: const PlayerStats(
+          sense: 500, control: 560, attack: 540, harass: 580,
+          strategy: 480, macro: 580, defense: 460, scout: 500,
+        ),
+        levelValue: 1, // 2010년대 저그 신예
+      ),
+      // ===== 아마추어/신인 선수 =====
+      Player(
+        id: 'free_amateur1',
+        name: '김성운',
+        raceIndex: Race.zerg.index,
+        stats: const PlayerStats(
+          sense: 420, control: 480, attack: 460, harass: 500,
+          strategy: 400, macro: 520, defense: 380, scout: 420,
+        ),
+        levelValue: 1, // 2009 드래프트 1위
+      ),
+      Player(
+        id: 'free_amateur2',
+        name: '조기석',
+        raceIndex: Race.zerg.index,
+        stats: const PlayerStats(
+          sense: 400, control: 460, attack: 440, harass: 480,
+          strategy: 380, macro: 500, defense: 360, scout: 400,
+        ),
+        levelValue: 1, // IEF 2008 3위
+      ),
+      Player(
+        id: 'free_amateur3',
+        name: '이경민',
+        raceIndex: Race.protoss.index,
+        stats: const PlayerStats(
+          sense: 380, control: 440, attack: 420, harass: 380,
+          strategy: 460, macro: 420, defense: 380, scout: 420,
+        ),
+        levelValue: 1, // 스쿨리그 MVP
+      ),
+      Player(
+        id: 'free_amateur4',
+        name: '김학수',
+        raceIndex: Race.terran.index,
+        stats: const PlayerStats(
+          sense: 340, control: 400, attack: 420, harass: 360,
+          strategy: 380, macro: 360, defense: 340, scout: 320,
         ),
         levelValue: 1,
       ),
       Player(
-        id: 'free_009',
-        name: '임재현',
-        raceIndex: Race.protoss.index,
+        id: 'free_amateur5',
+        name: '한지원',
+        raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 560, harass: 540,
-          strategy: 640, macro: 600, defense: 560, scout: 580,
-        ),
-        levelValue: 6,
-      ),
-      Player(
-        id: 'free_010',
-        name: '조성훈',
-        raceIndex: Race.terran.index,
-        stats: const PlayerStats(
-          sense: 240, control: 280, attack: 300, harass: 260,
-          strategy: 250, macro: 270, defense: 240, scout: 230,
+          sense: 320, control: 380, attack: 360, harass: 400,
+          strategy: 340, macro: 420, defense: 300, scout: 340,
         ),
         levelValue: 1,
       ),
       Player(
-        id: 'free_011',
-        name: '서영민',
-        raceIndex: Race.zerg.index,
-        stats: const PlayerStats(
-          sense: 400, control: 440, attack: 460, harass: 480,
-          strategy: 420, macro: 460, defense: 380, scout: 400,
-        ),
-        levelValue: 3,
-      ),
-      Player(
-        id: 'free_012',
-        name: '김도현',
+        id: 'free_amateur6',
+        name: '신성은',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 340, control: 380, attack: 360, harass: 320,
-          strategy: 400, macro: 360, defense: 340, scout: 350,
+          sense: 360, control: 420, attack: 400, harass: 360,
+          strategy: 440, macro: 400, defense: 360, scout: 380,
         ),
-        levelValue: 2,
+        levelValue: 1,
+      ),
+      Player(
+        id: 'free_amateur7',
+        name: '이호준',
+        raceIndex: Race.terran.index,
+        stats: const PlayerStats(
+          sense: 300, control: 360, attack: 380, harass: 320,
+          strategy: 340, macro: 320, defense: 300, scout: 280,
+        ),
+        levelValue: 1,
+      ),
+      Player(
+        id: 'free_amateur8',
+        name: '김봉준',
+        raceIndex: Race.zerg.index,
+        stats: const PlayerStats(
+          sense: 280, control: 340, attack: 320, harass: 360,
+          strategy: 300, macro: 380, defense: 280, scout: 300,
+        ),
+        levelValue: 1,
       ),
     ];
   }
@@ -179,7 +319,7 @@ class InitialData {
         'oz_zero', 'oz_movie',
       ],
       acePlayerId: 'oz_jaedong',
-      money: 500,
+      money: 0,
     );
   }
 
@@ -321,7 +461,7 @@ class InitialData {
         'skt_reserve1', 'skt_reserve2',
       ],
       acePlayerId: 'skt_bisu',
-      money: 600,
+      money: 0,
     );
   }
 
@@ -456,11 +596,11 @@ class InitialData {
       colorValue: 0xFF0066CC,
       playerIds: [
         'ssg_stork', 'ssg_jangbi', 'ssg_zero', 'ssg_reality',
-        'ssg_turn', 'ssg_yellow', 'ssg_jokiseok', 'ssg_firebathero',
+        'ssg_turn', 'ssg_yellow', 'ssg_jokiseok', 'ssg_brave',
         'ssg_reserve1', 'ssg_reserve2',
       ],
       acePlayerId: 'ssg_stork',
-      money: 550,
+      money: 0,
     );
   }
 
@@ -494,7 +634,7 @@ class InitialData {
         id: 'ssg_zero',
         name: '이성은',
         nickname: 'ZerO',
-        raceIndex: Race.zerg.index,
+        raceIndex: Race.terran.index,
         stats: const PlayerStats(
           sense: 540, control: 580, attack: 560, harass: 600,
           strategy: 520, macro: 600, defense: 520, scout: 540,
@@ -550,15 +690,15 @@ class InitialData {
         teamId: 'samsung_khan',
       ),
       Player(
-        id: 'ssg_firebathero',
+        id: 'ssg_brave',
         name: '임태규',
-        nickname: 'firebathero',
-        raceIndex: Race.terran.index,
+        nickname: 'BravE',
+        raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 580, control: 640, attack: 680, harass: 560,
-          strategy: 600, macro: 560, defense: 540, scout: 520,
+          sense: 420, control: 460, attack: 440, harass: 400,
+          strategy: 480, macro: 440, defense: 420, scout: 440,
         ),
-        levelValue: 6,
+        levelValue: 2,
         teamId: 'samsung_khan',
       ),
       Player(
@@ -599,7 +739,7 @@ class InitialData {
         'kt_choiyongju', 'kt_reserve1',
       ],
       acePlayerId: 'kt_flash',
-      money: 700,
+      money: 0,
     );
   }
 
@@ -731,14 +871,14 @@ class InitialData {
       id: 'cj_entus',
       name: 'CJ 엔투스',
       shortName: 'CJ',
-      colorValue: 0xFF000066,
+      colorValue: 0xFFE6B800, // CJ 골드/노랑
       playerIds: [
         'cj_effort', 'cj_light', 'cj_skyhigh', 'cj_movie',
         'cj_iris', 'cj_puma', 'cj_reserve1', 'cj_reserve2',
         'cj_reserve3', 'cj_reserve4',
       ],
       acePlayerId: 'cj_effort',
-      money: 480,
+      money: 0,
     );
   }
 
@@ -784,7 +924,7 @@ class InitialData {
         id: 'cj_movie',
         name: '변형태',
         nickname: 'Movie',
-        raceIndex: Race.zerg.index,
+        raceIndex: Race.terran.index,
         stats: const PlayerStats(
           sense: 520, control: 560, attack: 540, harass: 580,
           strategy: 500, macro: 580, defense: 500, scout: 520,
@@ -876,7 +1016,7 @@ class InitialData {
         'wjs_reserve3', 'wjs_reserve4',
       ],
       acePlayerId: 'wjs_killer',
-      money: 450,
+      money: 0,
     );
   }
 
@@ -1009,21 +1149,21 @@ class InitialData {
       shortName: 'HITE',
       colorValue: 0xFF66CCFF,
       playerIds: [
-        'hite_july', 'hite_zergbong', 'hite_jobyungse', 'hite_leekyungmin',
+        'hite_leta', 'hite_zergbong', 'hite_jobyungse', 'hite_leekyungmin',
         'hite_hydra', 'hite_anytime', 'hite_remember', 'hite_kal',
         'hite_reserve1', 'hite_reserve2',
       ],
-      acePlayerId: 'hite_july',
-      money: 400,
+      acePlayerId: 'hite_leta',
+      money: 0,
     );
   }
 
   static List<Player> _createHiteSparkyzPlayers() {
     return [
       Player(
-        id: 'hite_july',
+        id: 'hite_leta',
         name: '신상문',
-        nickname: 'July',
+        nickname: 'Leta',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
           sense: 620, control: 680, attack: 700, harass: 600,
@@ -1148,11 +1288,11 @@ class InitialData {
       colorValue: 0xFFFFCC00,
       playerIds: [
         'stx_modesty', 'stx_calm', 'stx_joiljang', 'stx_hyvaa',
-        'stx_kwanro', 'stx_firebathero', 'stx_shindaegeun',
-        'stx_reserve1', 'stx_reserve2', 'stx_reserve3',
+        'stx_kwanro', 'stx_frozen', 'stx_shindaegeun',
+        'stx_july', 'stx_reserve1', 'stx_reserve2',
       ],
       acePlayerId: 'stx_modesty',
-      money: 500,
+      money: 0,
     );
   }
 
@@ -1218,9 +1358,9 @@ class InitialData {
         teamId: 'stx_soul',
       ),
       Player(
-        id: 'stx_firebathero',
+        id: 'stx_frozen',
         name: '김동건',
-        nickname: 'firebathero',
+        nickname: 'FrOzen',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
           sense: 520, control: 580, attack: 620, harass: 500,
@@ -1238,6 +1378,18 @@ class InitialData {
           strategy: 420, macro: 400, defense: 380, scout: 360,
         ),
         levelValue: 3,
+        teamId: 'stx_soul',
+      ),
+      Player(
+        id: 'stx_july',
+        name: '박성준',
+        nickname: 'July',
+        raceIndex: Race.zerg.index,
+        stats: const PlayerStats(
+          sense: 780, control: 860, attack: 880, harass: 800,
+          strategy: 720, macro: 820, defense: 700, scout: 740,
+        ),
+        levelValue: 6,
         teamId: 'stx_soul',
       ),
       Player(
@@ -1262,17 +1414,6 @@ class InitialData {
         levelValue: 1,
         teamId: 'stx_soul',
       ),
-      Player(
-        id: 'stx_reserve3',
-        name: '김진우',
-        raceIndex: Race.terran.index,
-        stats: const PlayerStats(
-          sense: 280, control: 320, attack: 340, harass: 260,
-          strategy: 300, macro: 280, defense: 260, scout: 240,
-        ),
-        levelValue: 1,
-        teamId: 'stx_soul',
-      ),
     ];
   }
 
@@ -1284,12 +1425,12 @@ class InitialData {
       shortName: 'WMF',
       colorValue: 0xFFFF9900,
       playerIds: [
-        'wmf_kal', 'wmf_shine', 'wmf_july', 'wmf_taeyang',
+        'wmf_kal', 'wmf_shine', 'wmf_mind', 'wmf_taeyang',
         'wmf_yellow', 'wmf_reserve1', 'wmf_reserve2', 'wmf_reserve3',
         'wmf_reserve4', 'wmf_reserve5',
       ],
       acePlayerId: 'wmf_kal',
-      money: 420,
+      money: 0,
     );
   }
 
@@ -1320,9 +1461,9 @@ class InitialData {
         teamId: 'wemade_fox',
       ),
       Player(
-        id: 'wmf_july',
+        id: 'wmf_mind',
         name: '박성균',
-        nickname: 'July',
+        nickname: 'Mind',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
           sense: 580, control: 640, attack: 680, harass: 560,
@@ -1426,7 +1567,7 @@ class InitialData {
         'mbc_reserve4', 'mbc_reserve5',
       ],
       acePlayerId: 'mbc_upmagic',
-      money: 380,
+      money: 0,
     );
   }
 
@@ -1562,7 +1703,7 @@ class InitialData {
         'estro_reserve7',
       ],
       acePlayerId: 'estro_action',
-      money: 350,
+      money: 0,
     );
   }
 
@@ -1696,7 +1837,7 @@ class InitialData {
         'ace_reserve4', 'ace_reserve5',
       ],
       acePlayerId: 'ace_yellow',
-      money: 450,
+      money: 0,
     );
   }
 

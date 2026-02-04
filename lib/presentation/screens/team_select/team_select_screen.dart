@@ -20,14 +20,9 @@ class _TeamSelectScreenState extends ConsumerState<TeamSelectScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('게임단 선택'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
-        ),
+        leading: ResetButton.leading(),
       ),
-      body: Stack(
-        children: [
-          Column(
+      body: Column(
             children: [
               const Padding(
                 padding: EdgeInsets.all(16.0),
@@ -135,9 +130,6 @@ class _TeamSelectScreenState extends ConsumerState<TeamSelectScreen> {
               ),
             ],
           ),
-          ResetButton.positioned(),
-        ],
-      ),
     );
   }
 }

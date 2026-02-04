@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../domain/models/models.dart';
@@ -502,7 +503,14 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
         children: [
           // EXIT 버튼
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              // 뒤로가기 가능하면 pop, 아니면 info로 이동
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/info');
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.cardBackground,
               padding: EdgeInsets.symmetric(horizontal: 48.sp, vertical: 12.sp),

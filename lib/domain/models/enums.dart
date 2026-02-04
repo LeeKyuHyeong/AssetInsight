@@ -171,7 +171,8 @@ enum MatchSpeed {
 enum BuildStyle {
   aggressive('공격형'),
   defensive('수비형'),
-  balanced('밸런스');
+  balanced('밸런스'),
+  cheese('치즈');
 
   final String koreanName;
   const BuildStyle(this.koreanName);
@@ -203,4 +204,29 @@ enum IndividualLeagueStage {
 
   final String koreanName;
   const IndividualLeagueStage(this.koreanName);
+}
+
+/// 시즌 단계
+enum SeasonPhase {
+  regularSeason('정규 시즌'),
+  playoffReady('플레이오프 대기'),
+  playoff34('플레이오프 3,4위전'),
+  individualSemiFinal('개인리그 4강'),
+  playoff23('플레이오프 2,3위전'),
+  individualFinal('개인리그 결승'),
+  playoffFinal('플레이오프 결승'),
+  seasonEnd('시즌 종료');
+
+  final String koreanName;
+  const SeasonPhase(this.koreanName);
+}
+
+/// 플레이오프 매치 타입
+enum PlayoffMatchType {
+  thirdFourth('3,4위전'),
+  secondThird('2,3위전'),
+  final_('결승전');
+
+  final String koreanName;
+  const PlayoffMatchType(this.koreanName);
 }

@@ -22,6 +22,11 @@ import '../presentation/screens/season_end/season_end_screen.dart';
 import '../presentation/screens/winners_league/winners_league_screen.dart';
 import '../presentation/screens/director_name/director_name_screen.dart';
 import '../presentation/screens/season_map_draw/season_map_draw_screen.dart';
+import '../presentation/screens/shop/shop_screen.dart';
+import '../presentation/screens/info/info_screen.dart';
+import '../presentation/screens/action/action_screen.dart';
+import '../presentation/screens/playoff/playoff_schedule_screen.dart';
+import '../presentation/screens/equipment/equipment_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -76,27 +81,35 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/individual-league/pcbang',
         name: 'pcbangQualifier',
-        builder: (context, state) => const PcBangQualifierScreen(),
+        builder: (context, state) {
+          final viewOnly = state.uri.queryParameters['viewOnly'] == 'true';
+          return PcBangQualifierScreen(viewOnly: viewOnly);
+        },
       ),
       GoRoute(
         path: '/individual-league/dual/:round',
         name: 'dualTournament',
         builder: (context, state) {
           final round = int.tryParse(state.pathParameters['round'] ?? '1') ?? 1;
-          return DualTournamentScreen(round: round);
+          final viewOnly = state.uri.queryParameters['viewOnly'] == 'true';
+          return DualTournamentScreen(round: round, viewOnly: viewOnly);
         },
       ),
       GoRoute(
         path: '/individual-league/group-draw',
         name: 'groupDraw',
-        builder: (context, state) => const GroupDrawScreen(),
+        builder: (context, state) {
+          final viewOnly = state.uri.queryParameters['viewOnly'] == 'true';
+          return GroupDrawScreen(viewOnly: viewOnly);
+        },
       ),
       GoRoute(
         path: '/individual-league/main/:stage',
         name: 'mainTournament',
         builder: (context, state) {
           final stage = state.pathParameters['stage'] ?? '32';
-          return MainTournamentScreen(stage: stage);
+          final viewOnly = state.uri.queryParameters['viewOnly'] == 'true';
+          return MainTournamentScreen(stage: stage, viewOnly: viewOnly);
         },
       ),
       GoRoute(
@@ -144,6 +157,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/initial-recruit',
         name: 'initialRecruit',
         builder: (context, state) => const TransferScreen(isInitialRecruit: true),
+      ),
+      // 상점, 정보, 행동 화면
+      GoRoute(
+        path: '/shop',
+        name: 'shop',
+        builder: (context, state) => const ShopScreen(),
+      ),
+      GoRoute(
+        path: '/info',
+        name: 'info',
+        builder: (context, state) => const InfoScreen(),
+      ),
+      GoRoute(
+        path: '/action',
+        name: 'action',
+        builder: (context, state) => const ActionScreen(),
+      ),
+      // 플레이오프 화면
+      GoRoute(
+        path: '/playoff',
+        name: 'playoff',
+        builder: (context, state) => const PlayoffScheduleScreen(),
+      ),
+      // 장비 관리 화면
+      GoRoute(
+        path: '/equipment',
+        name: 'equipment',
+        builder: (context, state) => const EquipmentScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

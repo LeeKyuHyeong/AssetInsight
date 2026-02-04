@@ -294,18 +294,63 @@ class _SeasonMapDrawScreenState extends ConsumerState<SeasonMapDrawScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 맵 이름
-          Text(
-            map.name,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 10.sp,
-              fontWeight: FontWeight.bold,
+          // 맵 썸네일 + 이름
+          Container(
+            height: 50.sp,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color(0xFF252540),
+              borderRadius: BorderRadius.circular(4.sp),
+              border: Border.all(color: Colors.grey[600]!, width: 1),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            child: Stack(
+              children: [
+                // 맵 썸네일 배경 (지형 패턴)
+                Center(
+                  child: Icon(
+                    Icons.map,
+                    color: Colors.grey[500],
+                    size: 32.sp,
+                  ),
+                ),
+                // 맵 이름 오버레이
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4.sp, vertical: 3.sp),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(3.sp),
+                        bottomRight: Radius.circular(3.sp),
+                      ),
+                    ),
+                    child: Text(
+                      map.name,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 4.sp),
+          SizedBox(height: 6.sp),
 
           // 스탯 바 (컴팩트)
           Expanded(
@@ -319,7 +364,7 @@ class _SeasonMapDrawScreenState extends ConsumerState<SeasonMapDrawScreen> {
             ),
           ),
 
-          SizedBox(height: 2.sp),
+          SizedBox(height: 4.sp),
 
           // 종족 상성 (한 줄로)
           Row(
@@ -363,8 +408,9 @@ class _SeasonMapDrawScreenState extends ConsumerState<SeasonMapDrawScreen> {
   }
 
   Widget _buildMatchupCompact(String race1, String race2, int percentage) {
+    final race2Percentage = 100 - percentage;
     return Text(
-      '$race1$percentage',
+      '$race1$percentage:$race2$race2Percentage',
       style: TextStyle(color: Colors.grey[400], fontSize: 7.sp),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'match.dart';
+import 'enums.dart';
 
 part 'season.g.dart';
 
@@ -33,6 +34,12 @@ class Season {
   @HiveField(8)
   final String? proleagueRunnerUpId; // 프로리그 준우승팀 ID
 
+  @HiveField(9)
+  final int phaseIndex; // SeasonPhase enum index
+
+  @HiveField(10)
+  final PlayoffBracket? playoff; // 플레이오프 대진표
+
   const Season({
     required this.number,
     this.seasonMapIds = const [],
@@ -43,7 +50,11 @@ class Season {
     this.isCompleted = false,
     this.proleagueChampionId,
     this.proleagueRunnerUpId,
+    this.phaseIndex = 0,
+    this.playoff,
   });
+
+  SeasonPhase get phase => SeasonPhase.values[phaseIndex];
 
   ScheduleItem? get currentMatch =>
       currentMatchIndex < proleagueSchedule.length
@@ -67,6 +78,8 @@ class Season {
       isCompleted: isCompleted,
       proleagueChampionId: proleagueChampionId,
       proleagueRunnerUpId: proleagueRunnerUpId,
+      phaseIndex: phaseIndex,
+      playoff: playoff,
     );
   }
 
@@ -88,6 +101,8 @@ class Season {
       isCompleted: isCompleted,
       proleagueChampionId: proleagueChampionId,
       proleagueRunnerUpId: proleagueRunnerUpId,
+      phaseIndex: phaseIndex,
+      playoff: playoff,
     );
   }
 
@@ -103,6 +118,8 @@ class Season {
       isCompleted: isCompleted,
       proleagueChampionId: proleagueChampionId,
       proleagueRunnerUpId: proleagueRunnerUpId,
+      phaseIndex: phaseIndex,
+      playoff: playoff,
     );
   }
 
@@ -118,6 +135,168 @@ class Season {
       isCompleted: true,
       proleagueChampionId: championId,
       proleagueRunnerUpId: runnerUpId,
+      phaseIndex: SeasonPhase.seasonEnd.index,
+      playoff: playoff,
+    );
+  }
+
+  /// 시즌 단계 변경
+  Season updatePhase(SeasonPhase newPhase) {
+    return Season(
+      number: number,
+      seasonMapIds: seasonMapIds,
+      proleagueSchedule: proleagueSchedule,
+      currentMatchIndex: currentMatchIndex,
+      matchesSinceLastBonus: matchesSinceLastBonus,
+      individualLeague: individualLeague,
+      isCompleted: isCompleted,
+      proleagueChampionId: proleagueChampionId,
+      proleagueRunnerUpId: proleagueRunnerUpId,
+      phaseIndex: newPhase.index,
+      playoff: playoff,
+    );
+  }
+
+  /// 플레이오프 업데이트
+  Season updatePlayoff(PlayoffBracket newPlayoff) {
+    return Season(
+      number: number,
+      seasonMapIds: seasonMapIds,
+      proleagueSchedule: proleagueSchedule,
+      currentMatchIndex: currentMatchIndex,
+      matchesSinceLastBonus: matchesSinceLastBonus,
+      individualLeague: individualLeague,
+      isCompleted: isCompleted,
+      proleagueChampionId: proleagueChampionId,
+      proleagueRunnerUpId: proleagueRunnerUpId,
+      phaseIndex: phaseIndex,
+      playoff: newPlayoff,
+    );
+  }
+
+  /// 정규 시즌 완료 여부
+  bool get isRegularSeasonCompleted => !hasNextMatch;
+
+  /// copyWith
+  Season copyWith({
+    int? number,
+    List<String>? seasonMapIds,
+    List<ScheduleItem>? proleagueSchedule,
+    int? currentMatchIndex,
+    int? matchesSinceLastBonus,
+    IndividualLeagueBracket? individualLeague,
+    bool? isCompleted,
+    String? proleagueChampionId,
+    String? proleagueRunnerUpId,
+    int? phaseIndex,
+    PlayoffBracket? playoff,
+  }) {
+    return Season(
+      number: number ?? this.number,
+      seasonMapIds: seasonMapIds ?? this.seasonMapIds,
+      proleagueSchedule: proleagueSchedule ?? this.proleagueSchedule,
+      currentMatchIndex: currentMatchIndex ?? this.currentMatchIndex,
+      matchesSinceLastBonus: matchesSinceLastBonus ?? this.matchesSinceLastBonus,
+      individualLeague: individualLeague ?? this.individualLeague,
+      isCompleted: isCompleted ?? this.isCompleted,
+      proleagueChampionId: proleagueChampionId ?? this.proleagueChampionId,
+      proleagueRunnerUpId: proleagueRunnerUpId ?? this.proleagueRunnerUpId,
+      phaseIndex: phaseIndex ?? this.phaseIndex,
+      playoff: playoff ?? this.playoff,
+    );
+  }
+}
+
+/// 플레이오프 대진표
+@HiveType(typeId: 20)
+class PlayoffBracket {
+  @HiveField(0)
+  final String firstPlaceTeamId; // 1위 팀 (결승 직행)
+
+  @HiveField(1)
+  final String secondPlaceTeamId; // 2위 팀
+
+  @HiveField(2)
+  final String thirdPlaceTeamId; // 3위 팀
+
+  @HiveField(3)
+  final String fourthPlaceTeamId; // 4위 팀
+
+  @HiveField(4)
+  final MatchResult? match34; // 3,4위전 결과
+
+  @HiveField(5)
+  final MatchResult? match23; // 2,3위전 결과 (3위 = 3,4위전 승자)
+
+  @HiveField(6)
+  final MatchResult? matchFinal; // 결승전 결과
+
+  const PlayoffBracket({
+    required this.firstPlaceTeamId,
+    required this.secondPlaceTeamId,
+    required this.thirdPlaceTeamId,
+    required this.fourthPlaceTeamId,
+    this.match34,
+    this.match23,
+    this.matchFinal,
+  });
+
+  /// 3,4위전 승자 (新 3위)
+  String? get winner34 => match34?.winnerTeamId;
+
+  /// 2,3위전 승자 (결승 진출)
+  String? get winner23 => match23?.winnerTeamId;
+
+  /// 프로리그 우승팀
+  String? get champion => matchFinal?.winnerTeamId;
+
+  /// 프로리그 준우승팀
+  String? get runnerUp {
+    if (matchFinal == null) return null;
+    return matchFinal!.winnerTeamId == firstPlaceTeamId
+        ? winner23
+        : firstPlaceTeamId;
+  }
+
+  /// 현재 진행해야 할 플레이오프 매치
+  PlayoffMatchType? get currentMatch {
+    if (match34 == null) return PlayoffMatchType.thirdFourth;
+    if (match23 == null) return PlayoffMatchType.secondThird;
+    if (matchFinal == null) return PlayoffMatchType.final_;
+    return null; // 모든 경기 완료
+  }
+
+  /// 다음 매치의 홈/어웨이 팀
+  (String homeTeamId, String awayTeamId)? get nextMatchTeams {
+    switch (currentMatch) {
+      case PlayoffMatchType.thirdFourth:
+        return (thirdPlaceTeamId, fourthPlaceTeamId);
+      case PlayoffMatchType.secondThird:
+        return (secondPlaceTeamId, winner34!);
+      case PlayoffMatchType.final_:
+        return (firstPlaceTeamId, winner23!);
+      case null:
+        return null;
+    }
+  }
+
+  PlayoffBracket copyWith({
+    String? firstPlaceTeamId,
+    String? secondPlaceTeamId,
+    String? thirdPlaceTeamId,
+    String? fourthPlaceTeamId,
+    MatchResult? match34,
+    MatchResult? match23,
+    MatchResult? matchFinal,
+  }) {
+    return PlayoffBracket(
+      firstPlaceTeamId: firstPlaceTeamId ?? this.firstPlaceTeamId,
+      secondPlaceTeamId: secondPlaceTeamId ?? this.secondPlaceTeamId,
+      thirdPlaceTeamId: thirdPlaceTeamId ?? this.thirdPlaceTeamId,
+      fourthPlaceTeamId: fourthPlaceTeamId ?? this.fourthPlaceTeamId,
+      match34: match34 ?? this.match34,
+      match23: match23 ?? this.match23,
+      matchFinal: matchFinal ?? this.matchFinal,
     );
   }
 }

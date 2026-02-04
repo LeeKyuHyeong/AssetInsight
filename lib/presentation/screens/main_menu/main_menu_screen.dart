@@ -44,10 +44,10 @@ class MainMenuScreen extends ConsumerWidget {
               ],
             ),
 
-            // R 버튼 (좌측 상단)
+            // R 버튼 (우측 상단, 헤더 내부)
             Positioned(
-              top: 60.sp,
-              left: 12.sp,
+              top: 12.sp,
+              right: 12.sp,
               child: _buildRButton(context),
             ),
           ],
@@ -118,53 +118,37 @@ class MainMenuScreen extends ConsumerWidget {
               ),
             ),
           ),
-          SizedBox(width: 16.sp),
+          SizedBox(width: 12.sp),
 
-          // 팀명 + 에이스 (가로)
+          // 팀명 + 에이스 (세로 배치)
           Expanded(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   playerTeam.name,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18.sp,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.bold,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(width: 12.sp),
+                SizedBox(height: 2.sp),
                 Text(
-                  '에이스: ${playerTeam.acePlayerId ?? "미정"}',
+                  'S$seasonNumber',
                   style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12.sp,
+                    color: Colors.amber,
+                    fontSize: 11.sp,
                   ),
                 ),
               ],
             ),
           ),
 
-          // 우측: 모드 정보
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 6.sp),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(4.sp),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 16.sp),
-                SizedBox(width: 8.sp),
-                Text(
-                  'MyStarcraft  |  Season Mode  |  2012  S$seasonNumber',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12.sp,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // R 버튼 공간 확보
+          SizedBox(width: 48.sp),
         ],
       ),
     );
@@ -207,21 +191,24 @@ class MainMenuScreen extends ConsumerWidget {
     );
   }
 
-  // 개인리그 일정 이름 (7라운드)
+  // 개인리그 일정 이름 (10주차)
   static const List<String> _individualLeagueNames = [
     'PC방 예선전',
     '듀얼토너먼트 1R',
     '듀얼토너먼트 2R',
-    '조지명식 / 듀얼토너먼트 3R',
-    '32강 1,2R',
-    '16강 1,2R',
+    '듀얼토너먼트 3R',
+    '조지명식',
+    '32강 1R',
+    '32강 2R',
+    '16강 1R',
+    '16강 2R',
     '8강 / 4강 / 결승',
   ];
 
   Widget _buildSeasonScheduleMain(BuildContext context, dynamic gameState, Team playerTeam, List<Team> allTeams, bool isPreviewMode) {
-    // Preview 모드일 때 샘플 일정 생성 (14라운드)
+    // Preview 모드일 때 샘플 일정 생성 (20라운드)
     final List<Map<String, dynamic>> previewMatches = isPreviewMode
-        ? List.generate(14, (i) {
+        ? List.generate(20, (i) {
             final opponentTeam = allTeams[(i + 1) % allTeams.length];
             return {
               'round': i + 1,
@@ -264,7 +251,7 @@ class MainMenuScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '총 14경기 | 2경기마다 개인리그 & 컨디션 회복',
+                  '총 20경기 | 2경기마다 개인리그 & 컨디션 회복',
                   style: TextStyle(
                     color: Colors.cyan,
                     fontSize: 11.sp,
@@ -279,7 +266,7 @@ class MainMenuScreen extends ConsumerWidget {
             child: isPreviewMode
                 ? ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 4.sp),
-                    itemCount: 28, // 14 matches + 7 condition rows + 7 league rows
+                    itemCount: 40, // 20 matches + 10 condition rows + 10 league rows
                     itemBuilder: (ctx, index) {
                       // 4개마다 그룹: match1, match2, 컨디션회복, 개인리그
                       final groupIndex = index ~/ 4;
@@ -289,12 +276,13 @@ class MainMenuScreen extends ConsumerWidget {
                         // 컨디션 회복 행
                         return _buildConditionRow();
                       } else if (posInGroup == 3) {
-                        // 개인리그 행
-                        return _buildLeagueRow(context, groupIndex);
+                        // 개인리그 행 - Preview에서는 2주차(groupIndex=1)까지만 완료로 표시
+                        final weekCompleted = groupIndex < 2;
+                        return _buildLeagueRow(context, groupIndex, canStart: weekCompleted);
                       } else {
                         // 매치 행 (posInGroup 0 or 1)
                         final matchIndex = groupIndex * 2 + posInGroup;
-                        if (matchIndex >= 14) return const SizedBox.shrink();
+                        if (matchIndex >= 20) return const SizedBox.shrink();
                         final match = previewMatches[matchIndex];
                         return _buildScheduleRow(
                           context: context,
@@ -319,14 +307,17 @@ class MainMenuScreen extends ConsumerWidget {
     );
   }
 
-  // 개인리그 라우트 매핑
+  // 개인리그 라우트 매핑 (10주차)
   static const List<String> _individualLeagueRoutes = [
     '/individual-league/pcbang',      // PC방 예선전
     '/individual-league/dual/1',      // 듀얼토너먼트 1R
     '/individual-league/dual/2',      // 듀얼토너먼트 2R
-    '/individual-league/group-draw',  // 조지명식 / 듀얼토너먼트 3R
-    '/individual-league/main/32',     // 32강
-    '/individual-league/main/16',     // 16강
+    '/individual-league/dual/3',      // 듀얼토너먼트 3R
+    '/individual-league/group-draw',  // 조지명식
+    '/individual-league/main/32-1',   // 32강 1R
+    '/individual-league/main/32-2',   // 32강 2R
+    '/individual-league/main/16-1',   // 16강 1R
+    '/individual-league/main/16-2',   // 16강 2R
     '/individual-league/main/final',  // 8강 / 4강 / 결승
   ];
 
@@ -357,7 +348,7 @@ class MainMenuScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeagueRow(BuildContext context, int eventIndex) {
+  Widget _buildLeagueRow(BuildContext context, int eventIndex, {bool canStart = false}) {
     final eventName = eventIndex < _individualLeagueNames.length
         ? _individualLeagueNames[eventIndex]
         : '개인리그';
@@ -365,33 +356,54 @@ class MainMenuScreen extends ConsumerWidget {
         ? _individualLeagueRoutes[eventIndex]
         : '/individual-league';
 
+    // 시작 불가능하면 대진표 조회만 가능
+    final isLocked = !canStart;
+
     return GestureDetector(
       onTap: () {
-        // 개인리그 대진표 화면으로 이동
-        context.go(route);
+        // 개인리그 대진표 화면으로 이동 (조회 or 진행)
+        context.go('$route?viewOnly=${isLocked ? 'true' : 'false'}');
       },
       child: Container(
         margin: EdgeInsets.symmetric(vertical: 2.sp),
         padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 6.sp),
         decoration: BoxDecoration(
-          color: Colors.amber.withOpacity(0.1),
+          color: isLocked
+              ? Colors.grey.withOpacity(0.1)
+              : Colors.amber.withOpacity(0.1),
           borderRadius: BorderRadius.circular(4.sp),
-          border: Border.all(color: Colors.amber.withOpacity(0.3), width: 1),
+          border: Border.all(
+            color: isLocked
+                ? Colors.grey.withOpacity(0.3)
+                : Colors.amber.withOpacity(0.3),
+            width: 1,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.emoji_events, color: Colors.amber, size: 14.sp),
+            Icon(
+              isLocked ? Icons.lock : Icons.emoji_events,
+              color: isLocked ? Colors.grey : Colors.amber,
+              size: 14.sp,
+            ),
             SizedBox(width: 8.sp),
             Text(
               eventName,
               style: TextStyle(
-                color: Colors.amber,
+                color: isLocked ? Colors.grey : Colors.amber,
                 fontSize: 10.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(width: 8.sp),
+            Text(
+              isLocked ? '(대진표 조회)' : '',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 9.sp,
+              ),
+            ),
             Icon(Icons.arrow_forward_ios, color: Colors.grey[500], size: 10.sp),
           ],
         ),
@@ -400,20 +412,23 @@ class MainMenuScreen extends ConsumerWidget {
   }
 
   Widget _buildRealScheduleList(BuildContext context, dynamic gameState, Team playerTeam) {
-    final schedule = gameState.saveData.currentSeason.proleagueSchedule;
+    final List<ScheduleItem> schedule = List<ScheduleItem>.from(
+      gameState.saveData.currentSeason.proleagueSchedule
+    );
     final playerTeamId = gameState.saveData.playerTeamId;
 
+    // 내 팀 매치만 필터링하고 라운드 순으로 정렬
     final myMatches = schedule.where((s) =>
       s.homeTeamId == playerTeamId || s.awayTeamId == playerTeamId
-    ).toList();
+    ).toList()..sort((a, b) => a.roundNumber.compareTo(b.roundNumber));
 
     // 첫 번째 미완료 매치 인덱스 찾기
     final firstIncompleteIndex = myMatches.indexWhere((m) => !m.isCompleted);
 
-    // 총 아이템 수: 14매치 + 7개 컨디션 회복 + 7개 개인리그 = 28개
+    // 총 아이템 수: 20매치 + 10개 컨디션 회복 + 10개 개인리그 = 40개
     return ListView.builder(
       padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 4.sp),
-      itemCount: 28,
+      itemCount: 40,
       itemBuilder: (ctx, index) {
         // 4개마다 그룹: match1, match2, 컨디션회복, 개인리그
         final groupIndex = index ~/ 4;
@@ -423,8 +438,14 @@ class MainMenuScreen extends ConsumerWidget {
           // 컨디션 회복 행
           return _buildConditionRow();
         } else if (posInGroup == 3) {
-          // 개인리그 행
-          return _buildLeagueRow(context, groupIndex);
+          // 개인리그 행 - 이전 2경기 완료 여부 체크
+          final weekFirstMatchIndex = groupIndex * 2;
+          final weekSecondMatchIndex = groupIndex * 2 + 1;
+          final weekCompleted = weekFirstMatchIndex < myMatches.length &&
+              weekSecondMatchIndex < myMatches.length &&
+              myMatches[weekFirstMatchIndex].isCompleted &&
+              myMatches[weekSecondMatchIndex].isCompleted;
+          return _buildLeagueRow(context, groupIndex, canStart: weekCompleted);
         } else {
           // 매치 행 (posInGroup 0 or 1)
           final matchIndex = groupIndex * 2 + posInGroup;
@@ -706,7 +727,9 @@ class MainMenuScreen extends ConsumerWidget {
       );
     }
 
-    final schedule = gameState.saveData.currentSeason.proleagueSchedule;
+    final List<ScheduleItem> schedule = List<ScheduleItem>.from(
+      gameState.saveData.currentSeason.proleagueSchedule
+    );
     final playerTeamId = gameState.saveData.playerTeamId;
 
     // 내 팀 경기만 필터링
@@ -1180,28 +1203,28 @@ class MainMenuScreen extends ConsumerWidget {
               _BottomButton(
                 icon: Icons.shopping_cart,
                 label: '상점',
-                onPressed: () {},
+                onPressed: () => context.go('/shop'),
+              ),
+
+              // 장비 관리
+              _BottomButton(
+                icon: Icons.build,
+                label: '장비',
+                onPressed: () => context.go('/equipment'),
               ),
 
               // 정보 관리
               _BottomButton(
                 icon: Icons.info_outline,
                 label: '정보',
-                onPressed: () {},
+                onPressed: () => context.go('/info'),
               ),
 
               // 행동 관리
               _BottomButton(
-                icon: Icons.settings,
+                icon: Icons.fitness_center,
                 label: '행동',
-                onPressed: () {},
-              ),
-
-              // 저장
-              _BottomButton(
-                icon: Icons.save,
-                label: '저장',
-                onPressed: () => context.go('/save-load'),
+                onPressed: () => context.go('/action'),
               ),
             ],
           ),

@@ -242,6 +242,12 @@ class PlayerRecord {
   @HiveField(11)
   final int maxWinStreak; // 최대 연승
 
+  @HiveField(12)
+  final Map<String, int> vsPlayerWins; // 선수별 승리 (playerId -> wins)
+
+  @HiveField(13)
+  final Map<String, int> vsPlayerLosses; // 선수별 패배 (playerId -> losses)
+
   const PlayerRecord({
     this.wins = 0,
     this.losses = 0,
@@ -255,7 +261,21 @@ class PlayerRecord {
     this.runnerUps = 0,
     this.currentWinStreak = 0,
     this.maxWinStreak = 0,
+    this.vsPlayerWins = const {},
+    this.vsPlayerLosses = const {},
   });
+
+  /// 특정 선수와의 상대전적 조회
+  (int wins, int losses) getVsPlayerRecord(String playerId) {
+    final w = vsPlayerWins[playerId] ?? 0;
+    final l = vsPlayerLosses[playerId] ?? 0;
+    return (w, l);
+  }
+
+  /// 상대전적이 있는 모든 선수 ID 목록
+  Set<String> get allOpponentIds {
+    return {...vsPlayerWins.keys, ...vsPlayerLosses.keys};
+  }
 
   double get winRate => wins + losses > 0 ? wins / (wins + losses) : 0.0;
 
@@ -274,7 +294,12 @@ class PlayerRecord {
           ? vsProtossWins / (vsProtossWins + vsProtossLosses)
           : 0.0;
 
-  PlayerRecord addWin(Race opponentRace) {
+  PlayerRecord addWin(Race opponentRace, {String? opponentId}) {
+    final newVsPlayerWins = Map<String, int>.from(vsPlayerWins);
+    if (opponentId != null) {
+      newVsPlayerWins[opponentId] = (newVsPlayerWins[opponentId] ?? 0) + 1;
+    }
+
     return PlayerRecord(
       wins: wins + 1,
       losses: losses,
@@ -288,10 +313,17 @@ class PlayerRecord {
       runnerUps: runnerUps,
       currentWinStreak: currentWinStreak + 1,
       maxWinStreak: max(maxWinStreak, currentWinStreak + 1),
+      vsPlayerWins: newVsPlayerWins,
+      vsPlayerLosses: vsPlayerLosses,
     );
   }
 
-  PlayerRecord addLoss(Race opponentRace) {
+  PlayerRecord addLoss(Race opponentRace, {String? opponentId}) {
+    final newVsPlayerLosses = Map<String, int>.from(vsPlayerLosses);
+    if (opponentId != null) {
+      newVsPlayerLosses[opponentId] = (newVsPlayerLosses[opponentId] ?? 0) + 1;
+    }
+
     return PlayerRecord(
       wins: wins,
       losses: losses + 1,
@@ -305,6 +337,8 @@ class PlayerRecord {
       runnerUps: runnerUps,
       currentWinStreak: 0,
       maxWinStreak: maxWinStreak,
+      vsPlayerWins: vsPlayerWins,
+      vsPlayerLosses: newVsPlayerLosses,
     );
   }
 
@@ -322,6 +356,8 @@ class PlayerRecord {
       runnerUps: runnerUps,
       currentWinStreak: currentWinStreak,
       maxWinStreak: maxWinStreak,
+      vsPlayerWins: vsPlayerWins,
+      vsPlayerLosses: vsPlayerLosses,
     );
   }
 
@@ -339,6 +375,8 @@ class PlayerRecord {
       runnerUps: runnerUps + 1,
       currentWinStreak: currentWinStreak,
       maxWinStreak: maxWinStreak,
+      vsPlayerWins: vsPlayerWins,
+      vsPlayerLosses: vsPlayerLosses,
     );
   }
 }
@@ -382,6 +420,9 @@ class Player {
   @HiveField(11)
   final int seasonSinceLastLevelUp; // 마지막 레벨업 후 경과 시즌
 
+  @HiveField(12)
+  final String? imagePath; // 선수 사진 경로 (로컬 저장소)
+
   Player({
     required this.id,
     required this.name,
@@ -395,6 +436,7 @@ class Player {
     this.isSlump = false,
     this.injuryGames = 0,
     this.seasonSinceLastLevelUp = 0,
+    this.imagePath,
   });
 
   Race get race => Race.values[raceIndex];
@@ -403,6 +445,9 @@ class Player {
   int get displayCondition => min(condition, 100);
   bool get isInjured => injuryGames > 0;
   bool get isFreeAgent => teamId == null;
+
+  /// 능력치 합계 (시드 배정 시 동등 등급 비교용)
+  int get totalStats => stats.total;
 
   /// 이적료 계산 (만원)
   int get transferFee {
@@ -416,6 +461,8 @@ class Player {
   Player applyMatchResult({
     required bool isWin,
     required Grade opponentGrade,
+    required Race opponentRace,
+    String? opponentId,
   }) {
     // 등급 차이 계산 (-값: 상대가 높음)
     final gradeDiff = grade.compareTo(opponentGrade);
@@ -445,10 +492,10 @@ class Player {
     // 컨디션 변화
     final conditionChange = isWin ? -4 : -5;
 
-    // 연승/연패 체크
+    // 연승/연패 체크 (상대 종족 및 선수 ID 기록)
     final newRecord = isWin
-        ? record.addWin(race) // TODO: 상대 종족으로 변경 필요
-        : record.addLoss(race);
+        ? record.addWin(opponentRace, opponentId: opponentId)
+        : record.addLoss(opponentRace, opponentId: opponentId);
 
     return copyWith(
       stats: newStats,
@@ -555,6 +602,8 @@ class Player {
     bool? isSlump,
     int? injuryGames,
     int? seasonSinceLastLevelUp,
+    String? imagePath,
+    bool clearImagePath = false,
   }) {
     return Player(
       id: id ?? this.id,
@@ -569,6 +618,7 @@ class Player {
       isSlump: isSlump ?? this.isSlump,
       injuryGames: injuryGames ?? this.injuryGames,
       seasonSinceLastLevelUp: seasonSinceLastLevelUp ?? this.seasonSinceLastLevelUp,
+      imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
     );
   }
 }

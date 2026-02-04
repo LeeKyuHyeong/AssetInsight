@@ -123,6 +123,19 @@ class AppTheme {
         color: Color(0xFF2A3A4A),
         thickness: 1,
       ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: Colors.white,
+        unselectedLabelColor: textSecondary,
+        indicatorColor: accentGreen,
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.normal,
+          fontSize: 14,
+        ),
+      ),
     );
   }
 }

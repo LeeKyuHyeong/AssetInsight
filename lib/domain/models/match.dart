@@ -206,13 +206,13 @@ class IndividualLeagueBracket {
   final List<IndividualMatchResult> pcBangResults;
 
   @HiveField(3)
-  final List<String> dualTournamentPlayers; // 듀얼토너먼트 진출자
+  final List<String> dualTournamentPlayers; // 듀얼토너먼트 진출자 (시드 순서대로)
 
   @HiveField(4)
   final List<IndividualMatchResult> dualTournamentResults;
 
   @HiveField(5)
-  final List<String> mainTournamentPlayers; // 32강 진출자
+  final List<String> mainTournamentPlayers; // 32강 진출자 (시드 순서대로)
 
   @HiveField(6)
   final List<IndividualMatchResult> mainTournamentResults;
@@ -222,6 +222,21 @@ class IndividualLeagueBracket {
 
   @HiveField(8)
   final String? runnerUpId;
+
+  @HiveField(9)
+  final List<String> dualTournamentSeeds; // 듀얼토너먼트 시드 선수 (이전 시즌 32강 진출자)
+
+  @HiveField(10)
+  final List<String> mainTournamentSeeds; // 본선 시드 선수 (이전 시즌 8강 진출자)
+
+  @HiveField(11)
+  final List<String> top8Players; // 8강 진출자 (다음 시즌 조지명식 직행)
+
+  @HiveField(12)
+  final List<List<String?>> dualTournamentGroups; // 듀얼토너먼트 12개 조 (각 조 4명)
+
+  @HiveField(13)
+  final List<List<String?>> mainTournamentGroups; // 본선 8개 조 (각 조 4명)
 
   const IndividualLeagueBracket({
     required this.seasonNumber,
@@ -233,6 +248,11 @@ class IndividualLeagueBracket {
     this.mainTournamentResults = const [],
     this.championId,
     this.runnerUpId,
+    this.dualTournamentSeeds = const [],
+    this.mainTournamentSeeds = const [],
+    this.top8Players = const [],
+    this.dualTournamentGroups = const [],
+    this.mainTournamentGroups = const [],
   });
 
   bool get isCompleted => championId != null;
@@ -247,6 +267,11 @@ class IndividualLeagueBracket {
     List<IndividualMatchResult>? mainTournamentResults,
     String? championId,
     String? runnerUpId,
+    List<String>? dualTournamentSeeds,
+    List<String>? mainTournamentSeeds,
+    List<String>? top8Players,
+    List<List<String?>>? dualTournamentGroups,
+    List<List<String?>>? mainTournamentGroups,
   }) {
     return IndividualLeagueBracket(
       seasonNumber: seasonNumber ?? this.seasonNumber,
@@ -258,6 +283,11 @@ class IndividualLeagueBracket {
       mainTournamentResults: mainTournamentResults ?? this.mainTournamentResults,
       championId: championId ?? this.championId,
       runnerUpId: runnerUpId ?? this.runnerUpId,
+      dualTournamentSeeds: dualTournamentSeeds ?? this.dualTournamentSeeds,
+      mainTournamentSeeds: mainTournamentSeeds ?? this.mainTournamentSeeds,
+      top8Players: top8Players ?? this.top8Players,
+      dualTournamentGroups: dualTournamentGroups ?? this.dualTournamentGroups,
+      mainTournamentGroups: mainTournamentGroups ?? this.mainTournamentGroups,
     );
   }
 }

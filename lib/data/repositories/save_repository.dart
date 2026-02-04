@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../domain/models/models.dart';
 import '../../core/constants/initial_data.dart';
+import '../../domain/services/individual_league_service.dart';
 
 /// 세이브 데이터 저장소
 class SaveRepository {
@@ -21,6 +22,13 @@ class SaveRepository {
     _saveBox = await Hive.openBox<Map<dynamic, dynamic>>(_saveBoxName);
     _slotInfoBox = await Hive.openBox<Map<dynamic, dynamic>>(_slotInfoBoxName);
     _isInitialized = true;
+  }
+
+  /// 모든 세이브 데이터 삭제 (앱 최초 실행 시)
+  Future<void> clearAllSaves() async {
+    await initialize();
+    await _saveBox.clear();
+    await _slotInfoBox.clear();
   }
 
   /// 슬롯 정보 목록 조회
@@ -104,8 +112,12 @@ class SaveRepository {
       return team;
     }).toList();
 
-    // 첫 시즌 생성
-    final firstSeason = _createFirstSeason(updatedTeams);
+    // 첫 시즌 생성 (개인리그 대진표 포함)
+    final firstSeason = _createFirstSeason(
+      teams: updatedTeams,
+      players: players,
+      playerTeamId: selectedTeamId,
+    );
 
     return SaveData(
       slotNumber: slotNumber,
@@ -119,7 +131,11 @@ class SaveRepository {
   }
 
   /// 첫 시즌 생성
-  Season _createFirstSeason(List<Team> teams) {
+  Season _createFirstSeason({
+    required List<Team> teams,
+    required List<Player> players,
+    required String playerTeamId,
+  }) {
     // 시즌맵 랜덤 선정 (12개 중 7개)
     final allMaps = GameMaps.all;
     final shuffledMaps = List<GameMap>.from(allMaps)..shuffle(Random());
@@ -128,14 +144,24 @@ class SaveRepository {
     // 프로리그 일정 생성
     final schedule = _createProleagueSchedule(teams);
 
+    // 개인리그 대진표 생성 (PC방 예선 조 편성까지)
+    final leagueService = IndividualLeagueService();
+    final individualLeague = leagueService.createIndividualLeagueBracket(
+      allPlayers: players,
+      playerTeamId: playerTeamId,
+      seasonNumber: 1,
+      previousSeasonBracket: null,
+    );
+
     return Season(
       number: 1,
       seasonMapIds: seasonMaps,
       proleagueSchedule: schedule,
+      individualLeague: individualLeague,
     );
   }
 
-  /// 프로리그 일정 생성 (각 팀당 2경기씩 = 12경기)
+  /// 프로리그 일정 생성 (각 팀당 20경기 = 10주차 × 2경기)
   List<ScheduleItem> _createProleagueSchedule(List<Team> teams) {
     final schedule = <ScheduleItem>[];
     final teamIds = teams.map((t) => t.id).toList();
@@ -145,8 +171,8 @@ class SaveRepository {
     int matchId = 1;
     final shuffledTeams = List<String>.from(teamIds)..shuffle(random);
 
-    // 6라운드 진행 (각 팀당 2경기)
-    for (int round = 1; round <= 6; round++) {
+    // 20라운드 진행 (각 팀당 20경기, 10주차 × 2경기)
+    for (int round = 1; round <= 20; round++) {
       // 매 라운드 6경기 (12팀 / 2)
       for (int i = 0; i < 6; i++) {
         final homeIndex = i;
@@ -366,6 +392,8 @@ class SaveRepository {
       'isCompleted': season.isCompleted,
       'proleagueChampionId': season.proleagueChampionId,
       'proleagueRunnerUpId': season.proleagueRunnerUpId,
+      'phaseIndex': season.phaseIndex,
+      'playoff': season.playoff != null ? _serializePlayoff(season.playoff!) : null,
     };
   }
 
@@ -384,6 +412,40 @@ class SaveRepository {
       isCompleted: data['isCompleted'] as bool,
       proleagueChampionId: data['proleagueChampionId'] as String?,
       proleagueRunnerUpId: data['proleagueRunnerUpId'] as String?,
+      phaseIndex: (data['phaseIndex'] as int?) ?? 0,
+      playoff: data['playoff'] != null
+          ? _deserializePlayoff(Map<String, dynamic>.from(data['playoff'] as Map))
+          : null,
+    );
+  }
+
+  Map<String, dynamic> _serializePlayoff(PlayoffBracket playoff) {
+    return {
+      'firstPlaceTeamId': playoff.firstPlaceTeamId,
+      'secondPlaceTeamId': playoff.secondPlaceTeamId,
+      'thirdPlaceTeamId': playoff.thirdPlaceTeamId,
+      'fourthPlaceTeamId': playoff.fourthPlaceTeamId,
+      'match34': playoff.match34 != null ? _serializeMatchResult(playoff.match34!) : null,
+      'match23': playoff.match23 != null ? _serializeMatchResult(playoff.match23!) : null,
+      'matchFinal': playoff.matchFinal != null ? _serializeMatchResult(playoff.matchFinal!) : null,
+    };
+  }
+
+  PlayoffBracket _deserializePlayoff(Map<String, dynamic> data) {
+    return PlayoffBracket(
+      firstPlaceTeamId: data['firstPlaceTeamId'] as String,
+      secondPlaceTeamId: data['secondPlaceTeamId'] as String,
+      thirdPlaceTeamId: data['thirdPlaceTeamId'] as String,
+      fourthPlaceTeamId: data['fourthPlaceTeamId'] as String,
+      match34: data['match34'] != null
+          ? _deserializeMatchResult(Map<String, dynamic>.from(data['match34'] as Map))
+          : null,
+      match23: data['match23'] != null
+          ? _deserializeMatchResult(Map<String, dynamic>.from(data['match23'] as Map))
+          : null,
+      matchFinal: data['matchFinal'] != null
+          ? _deserializeMatchResult(Map<String, dynamic>.from(data['matchFinal'] as Map))
+          : null,
     );
   }
 
