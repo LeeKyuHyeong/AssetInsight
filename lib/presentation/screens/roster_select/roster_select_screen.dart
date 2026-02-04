@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../data/providers/game_provider.dart';
+import '../../../data/providers/match_provider.dart';
 import '../../../domain/models/models.dart';
 import '../../widgets/reset_button.dart';
 
@@ -15,8 +16,8 @@ class RosterSelectScreen extends ConsumerStatefulWidget {
 }
 
 class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
-  // 7맵에 배치된 선수 인덱스 (null = 빈 슬롯)
-  final List<int?> selectedPlayers = List.filled(7, null);
+  // 6세트에 배치된 선수 인덱스 (null = 빈 슬롯)
+  final List<int?> selectedPlayers = List.filled(6, null);
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +36,10 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     // 상대팀 선택 (현재는 첫 번째 다른 팀)
     final opponentTeam = gameState.saveData.allTeams
         .firstWhere((t) => t.id != playerTeam.id);
+
+    // 선택된 선수 수
+    final selectedCount = selectedPlayers.where((p) => p != null).length;
+    final canSubmit = selectedCount >= 6; // 6명 필수
 
     return Scaffold(
       appBar: AppBar(
@@ -98,11 +103,23 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
               ),
 
               // 맵 슬롯
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  '맵별 선수 배치 (7전 4선승제)',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Text(
+                      '맵별 선수 배치 (7전 4선승제)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '1~6세트 필수 입력 / 7세트(에이스결정전)는 3:3일 때 선택',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               SizedBox(
@@ -112,6 +129,15 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: 7,
                   itemBuilder: (context, index) {
+                    // 7세트는 에이스 결정전 표시
+                    if (index == 6) {
+                      return _AceSlot(
+                        onTap: () {
+                          // 에이스 결정전은 나중에 설정
+                        },
+                      );
+                    }
+
                     final playerIndex = selectedPlayers[index];
                     final player = playerIndex != null && playerIndex < teamPlayers.length
                         ? teamPlayers[playerIndex]
@@ -163,9 +189,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                       onTap: isAssigned
                           ? null
                           : () {
-                              // 빈 슬롯 찾아서 배치
+                              // 빈 슬롯 찾아서 배치 (1~6세트만)
                               final emptySlot = selectedPlayers.indexOf(null);
-                              if (emptySlot != -1) {
+                              if (emptySlot != -1 && emptySlot < 6) {
                                 setState(() {
                                   selectedPlayers[emptySlot] = index;
                                 });
@@ -183,8 +209,8 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: selectedPlayers.where((p) => p != null).length >= 4
-                        ? () => context.go('/match')
+                    onPressed: canSubmit
+                        ? () => _submitRoster(playerTeam, opponentTeam, teamPlayers)
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accentGreen,
@@ -192,7 +218,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                       disabledBackgroundColor: AppTheme.cardBackground,
                     ),
                     child: Text(
-                      '로스터 제출 (${selectedPlayers.where((p) => p != null).length}/7)',
+                      canSubmit
+                          ? '로스터 제출'
+                          : '선수 배치 필요 ($selectedCount/6)',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -207,6 +235,26 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         ],
       ),
     );
+  }
+
+  void _submitRoster(Team playerTeam, Team opponentTeam, List<Player> teamPlayers) {
+    // 선택된 선수 ID 목록 생성
+    final homeRoster = selectedPlayers.map((index) {
+      if (index != null && index < teamPlayers.length) {
+        return teamPlayers[index].id;
+      }
+      return null;
+    }).toList();
+
+    // 매치 시작
+    ref.read(currentMatchProvider.notifier).startMatch(
+      homeTeamId: playerTeam.id,
+      awayTeamId: opponentTeam.id,
+      homeRoster: homeRoster,
+    );
+
+    // 경기 화면으로 이동
+    context.go('/match');
   }
 }
 
@@ -294,6 +342,60 @@ class _MapSlot extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AceSlot extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AceSlot({
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 80,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.orange.withOpacity(0.5),
+            width: 2,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'ACE',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Icon(
+              Icons.star,
+              size: 24,
+              color: Colors.orange.withOpacity(0.5),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '3:3시 선택',
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.orange.withOpacity(0.7),
+              ),
+            ),
           ],
         ),
       ),

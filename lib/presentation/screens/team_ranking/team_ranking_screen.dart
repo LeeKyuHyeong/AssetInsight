@@ -247,11 +247,11 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
               padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 8.sp),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary.withOpacity(0.3)
+                    ? Colors.amber.withOpacity(0.3)
                     : AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(4.sp),
                 border: isSelected
-                    ? Border.all(color: AppColors.accent)
+                    ? Border.all(color: Colors.amber, width: 1)
                     : null,
               ),
               child: Row(
