@@ -506,7 +506,7 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
                 Icon(Icons.arrow_back, color: Colors.white, size: 16.sp),
                 SizedBox(width: 8.sp),
                 Text(
-                  'EXIT [Bar]',
+                  'EXIT',
                   style: TextStyle(color: Colors.white, fontSize: 14.sp),
                 ),
               ],
@@ -526,7 +526,7 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
             child: Row(
               children: [
                 Text(
-                  _isCompleted ? 'Next [Bar]' : 'Start [Bar]',
+                  _isCompleted ? 'Next' : 'Start',
                   style: TextStyle(color: Colors.white, fontSize: 14.sp),
                 ),
                 SizedBox(width: 8.sp),

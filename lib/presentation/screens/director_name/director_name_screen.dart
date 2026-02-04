@@ -235,7 +235,7 @@ class _DirectorNameScreenState extends ConsumerState<DirectorNameScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Next [Bar]',
+              'Next',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16.sp,

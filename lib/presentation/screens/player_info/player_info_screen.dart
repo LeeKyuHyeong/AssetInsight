@@ -969,7 +969,7 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
                 Icon(Icons.arrow_left, color: Colors.white, size: 14.sp),
                 Icon(Icons.arrow_left, color: Colors.white, size: 14.sp),
                 SizedBox(width: 4.sp),
-                Text('EXIT [Bar]', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
+                Text('EXIT', style: TextStyle(color: Colors.white, fontSize: 12.sp)),
               ],
             ),
           ),

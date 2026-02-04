@@ -120,19 +120,19 @@ class MainMenuScreen extends ConsumerWidget {
           ),
           SizedBox(width: 16.sp),
 
-          // 팀명
+          // 팀명 + 에이스 (가로)
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
                 Text(
                   playerTeam.name,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20.sp,
+                    fontSize: 18.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                SizedBox(width: 12.sp),
                 Text(
                   '에이스: ${playerTeam.acePlayerId ?? "미정"}',
                   style: TextStyle(
@@ -1157,7 +1157,7 @@ class MainMenuScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Next [Bar]',
+                    'Next',
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
@@ -1206,16 +1206,6 @@ class MainMenuScreen extends ConsumerWidget {
             ],
           ),
 
-          SizedBox(width: 12.sp),
-
-          // 저장
-          _BottomButton(
-            icon: Icons.save,
-            label: '저장',
-            onPressed: () {
-              context.go('/save-load');
-            },
-          ),
         ],
       ),
     );

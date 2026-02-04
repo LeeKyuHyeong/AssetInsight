@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
+import '../../../data/providers/game_provider.dart';
+import '../../../domain/models/models.dart';
 import '../../widgets/reset_button.dart';
 
 class RosterSelectScreen extends ConsumerStatefulWidget {
@@ -13,24 +15,27 @@ class RosterSelectScreen extends ConsumerStatefulWidget {
 }
 
 class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
-  // 7맵에 배치된 선수 (null = 빈 슬롯)
+  // 7맵에 배치된 선수 인덱스 (null = 빈 슬롯)
   final List<int?> selectedPlayers = List.filled(7, null);
-
-  // 샘플 선수 데이터
-  final List<Map<String, dynamic>> players = [
-    {'name': '김택용', 'race': 'P', 'grade': 'SS', 'condition': 100},
-    {'name': '도재욱', 'race': 'P', 'grade': 'S+', 'condition': 95},
-    {'name': '정명훈', 'race': 'T', 'grade': 'S', 'condition': 100},
-    {'name': '박재혁', 'race': 'T', 'grade': 'A+', 'condition': 90},
-    {'name': '이승석', 'race': 'Z', 'grade': 'A', 'condition': 100},
-    {'name': '한상봉', 'race': 'Z', 'grade': 'B+', 'condition': 85},
-    {'name': '정경두', 'race': 'P', 'grade': 'B', 'condition': 100},
-    {'name': '권오혁', 'race': 'T', 'grade': 'B', 'condition': 100},
-  ];
 
   @override
   Widget build(BuildContext context) {
     Responsive.init(context);
+
+    final gameState = ref.watch(gameStateProvider);
+    if (gameState == null) {
+      return const Scaffold(
+        body: Center(child: Text('게임 데이터를 불러올 수 없습니다')),
+      );
+    }
+
+    final playerTeam = gameState.playerTeam;
+    final teamPlayers = gameState.playerTeamPlayers;
+
+    // 상대팀 선택 (현재는 첫 번째 다른 팀)
+    final opponentTeam = gameState.saveData.allTeams
+        .firstWhere((t) => t.id != playerTeam.id);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('로스터 선택'),
@@ -42,137 +47,161 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
       body: Stack(
         children: [
           Column(
-        children: [
-          // 매치 정보
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppTheme.cardBackground,
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Column(
+            children: [
+              // 매치 정보
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: AppTheme.cardBackground,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Text('SK텔레콤 T1', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('HOME', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    Column(
+                      children: [
+                        Text(
+                          playerTeam.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const Text(
+                          'HOME',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Text(
+                      'VS',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.accentGreen,
+                      ),
+                    ),
+                    Column(
+                      children: [
+                        Text(
+                          opponentTeam.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const Text(
+                          'AWAY',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-                Text(
-                  'VS',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.accentGreen,
-                  ),
-                ),
-                Column(
-                  children: [
-                    Text('삼성전자 칸', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text('AWAY', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                  ],
-                ),
-              ],
-            ),
-          ),
+              ),
 
-          // 맵 슬롯
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              '맵별 선수 배치 (7전 4선승제)',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          SizedBox(
-            height: 100,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: 7,
-              itemBuilder: (context, index) {
-                return _MapSlot(
-                  mapNumber: index + 1,
-                  player: selectedPlayers[index] != null
-                      ? players[selectedPlayers[index]!]
-                      : null,
-                  onTap: () {
-                    // 선수 선택 해제
-                    if (selectedPlayers[index] != null) {
-                      setState(() {
-                        selectedPlayers[index] = null;
-                      });
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-
-          const Divider(),
-
-          // 선수 목록
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Text('선수 목록', style: TextStyle(fontWeight: FontWeight.bold)),
-                Spacer(),
-                Text('터치하여 맵에 배치', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: players.length,
-              itemBuilder: (context, index) {
-                final player = players[index];
-                final isAssigned = selectedPlayers.contains(index);
-
-                return _PlayerCard(
-                  player: player,
-                  isAssigned: isAssigned,
-                  onTap: isAssigned
-                      ? null
-                      : () {
-                          // 빈 슬롯 찾아서 배치
-                          final emptySlot = selectedPlayers.indexOf(null);
-                          if (emptySlot != -1) {
-                            setState(() {
-                              selectedPlayers[emptySlot] = index;
-                            });
-                          }
-                        },
-                );
-              },
-            ),
-          ),
-
-          // 제출 버튼
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: selectedPlayers.where((p) => p != null).length >= 4
-                    ? () => context.go('/match')
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accentGreen,
-                  foregroundColor: Colors.black,
-                  disabledBackgroundColor: AppTheme.cardBackground,
-                ),
+              // 맵 슬롯
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Text(
-                  '로스터 제출 (${selectedPlayers.where((p) => p != null).length}/7)',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  '맵별 선수 배치 (7전 4선승제)',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: 7,
+                  itemBuilder: (context, index) {
+                    final playerIndex = selectedPlayers[index];
+                    final player = playerIndex != null && playerIndex < teamPlayers.length
+                        ? teamPlayers[playerIndex]
+                        : null;
+
+                    return _MapSlot(
+                      mapNumber: index + 1,
+                      player: player,
+                      onTap: () {
+                        // 선수 선택 해제
+                        if (selectedPlayers[index] != null) {
+                          setState(() {
+                            selectedPlayers[index] = null;
+                          });
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              const Divider(),
+
+              // 선수 목록
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Text('선수 목록', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Spacer(),
+                    Text(
+                      '터치하여 맵에 배치',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: teamPlayers.length,
+                  itemBuilder: (context, index) {
+                    final player = teamPlayers[index];
+                    final isAssigned = selectedPlayers.contains(index);
+
+                    return _PlayerCard(
+                      player: player,
+                      isAssigned: isAssigned,
+                      onTap: isAssigned
+                          ? null
+                          : () {
+                              // 빈 슬롯 찾아서 배치
+                              final emptySlot = selectedPlayers.indexOf(null);
+                              if (emptySlot != -1) {
+                                setState(() {
+                                  selectedPlayers[emptySlot] = index;
+                                });
+                              }
+                            },
+                    );
+                  },
+                ),
+              ),
+
+              // 제출 버튼
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: selectedPlayers.where((p) => p != null).length >= 4
+                        ? () => context.go('/match')
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accentGreen,
+                      foregroundColor: Colors.black,
+                      disabledBackgroundColor: AppTheme.cardBackground,
+                    ),
+                    child: Text(
+                      '로스터 제출 (${selectedPlayers.where((p) => p != null).length}/7)',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
           ),
           ResetButton.positioned(),
         ],
@@ -183,7 +212,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
 
 class _MapSlot extends StatelessWidget {
   final int mapNumber;
-  final Map<String, dynamic>? player;
+  final Player? player;
   final VoidCallback onTap;
 
   const _MapSlot({
@@ -194,6 +223,8 @@ class _MapSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final raceCode = player?.race.code ?? '';
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -221,9 +252,9 @@ class _MapSlot extends StatelessWidget {
             if (player != null) ...[
               CircleAvatar(
                 radius: 16,
-                backgroundColor: AppTheme.getRaceColor(player!['race']),
+                backgroundColor: AppTheme.getRaceColor(raceCode),
                 child: Text(
-                  player!['race'],
+                  raceCode,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -233,7 +264,7 @@ class _MapSlot extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                player!['name'],
+                player!.name,
                 style: const TextStyle(fontSize: 10),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -271,7 +302,7 @@ class _MapSlot extends StatelessWidget {
 }
 
 class _PlayerCard extends StatelessWidget {
-  final Map<String, dynamic> player;
+  final Player player;
   final bool isAssigned;
   final VoidCallback? onTap;
 
@@ -283,6 +314,10 @@ class _PlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final raceCode = player.race.code;
+    final gradeString = player.grade.display; // Grade enum display name
+    final condition = player.condition;
+
     return Card(
       color: isAssigned
           ? AppTheme.cardBackground.withOpacity(0.5)
@@ -291,9 +326,9 @@ class _PlayerCard extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor: AppTheme.getRaceColor(player['race']),
+          backgroundColor: AppTheme.getRaceColor(raceCode),
           child: Text(
-            player['race'],
+            raceCode,
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -301,23 +336,23 @@ class _PlayerCard extends StatelessWidget {
           ),
         ),
         title: Text(
-          player['name'],
+          player.name,
           style: TextStyle(
             color: isAssigned ? AppTheme.textSecondary : AppTheme.textPrimary,
           ),
         ),
-        subtitle: Text('컨디션: ${player['condition']}%'),
+        subtitle: Text('컨디션: $condition%'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.getGradeColor(player['grade']),
+                color: AppTheme.getGradeColor(gradeString),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                player['grade'],
+                gradeString,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.black,

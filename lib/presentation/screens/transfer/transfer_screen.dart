@@ -886,25 +886,25 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: statData.map((stat) {
         return Padding(
-          padding: EdgeInsets.symmetric(vertical: 2.sp),
+          padding: EdgeInsets.symmetric(vertical: 1.sp),
           child: Row(
             children: [
               SizedBox(
-                width: 45.sp,
+                width: 36.sp,
                 child: Text(
                   stat['name'] as String,
                   style: TextStyle(
                     color: Colors.grey[400],
-                    fontSize: 10.sp,
+                    fontSize: 8.sp,
                   ),
                 ),
               ),
               Expanded(
                 child: Container(
-                  height: 6.sp,
+                  height: 5.sp,
                   decoration: BoxDecoration(
                     color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(3.sp),
+                    borderRadius: BorderRadius.circular(2.sp),
                   ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
@@ -912,21 +912,21 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.amber,
-                        borderRadius: BorderRadius.circular(3.sp),
+                        borderRadius: BorderRadius.circular(2.sp),
                       ),
                     ),
                   ),
                 ),
               ),
-              SizedBox(width: 6.sp),
+              SizedBox(width: 4.sp),
               SizedBox(
-                width: 30.sp,
+                width: 24.sp,
                 child: Text(
                   '${stat['value']}',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10.sp,
+                    fontSize: 8.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -968,7 +968,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             child: Row(
               children: [
                 Text(
-                  'Next [Bar]',
+                  'Next',
                   style: TextStyle(fontSize: 14.sp),
                 ),
                 SizedBox(width: 8.sp),

@@ -553,7 +553,7 @@ class _SeasonScheduleScreenState extends ConsumerState<SeasonScheduleScreen> {
             child: Row(
               children: [
                 Text(
-                  'Next [Bar]',
+                  'Next',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 14.sp,

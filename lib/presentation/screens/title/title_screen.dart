@@ -721,19 +721,23 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
             ),
           ),
 
-          // 레이더 차트 + 스탯
+          // 레이더 차트 (상단) + 스탯 (하단)
           Expanded(
             child: Padding(
-              padding: EdgeInsets.all(12.sp),
-              child: Row(
+              padding: EdgeInsets.all(8.sp),
+              child: Column(
                 children: [
-                  // 레이더 차트
+                  // 레이더 차트 (상단)
                   Expanded(
+                    flex: 3,
                     child: _buildRadarChart(teamColor),
                   ),
 
-                  // 스탯 리스트
+                  SizedBox(height: 4.sp),
+
+                  // 스탯 리스트 (하단, 컴팩트)
                   Expanded(
+                    flex: 2,
                     child: _buildStatsList(),
                   ),
                 ],
@@ -778,59 +782,39 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
       {'name': '정찰', 'value': fixedStat},
     ];
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: statData.map((stat) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 3.sp),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 50.sp,
-                child: Text(
-                  stat['name'] as String,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 11.sp,
-                  ),
-                ),
+    // 2열로 표시 (컴팩트)
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 2.sp,
+        crossAxisSpacing: 8.sp,
+        childAspectRatio: 4,
+      ),
+      itemCount: statData.length,
+      itemBuilder: (context, index) {
+        final stat = statData[index];
+        return Row(
+          children: [
+            Text(
+              stat['name'] as String,
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 9.sp,
               ),
-              Expanded(
-                child: Container(
-                  height: 8.sp,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(4.sp),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: (stat['value'] as int) / 999.0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.amber,
-                        borderRadius: BorderRadius.circular(4.sp),
-                      ),
-                    ),
-                  ),
-                ),
+            ),
+            SizedBox(width: 4.sp),
+            Text(
+              '${stat['value']}',
+              style: TextStyle(
+                color: Colors.amber,
+                fontSize: 9.sp,
+                fontWeight: FontWeight.bold,
               ),
-              SizedBox(width: 8.sp),
-              SizedBox(
-                width: 35.sp,
-                child: Text(
-                  '${stat['value']}',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
-      }).toList(),
+      },
     );
   }
 

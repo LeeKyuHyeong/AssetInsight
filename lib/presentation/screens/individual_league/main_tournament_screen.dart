@@ -582,7 +582,7 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
                 Icon(Icons.arrow_back, color: Colors.white, size: 16.sp),
                 SizedBox(width: 8.sp),
                 Text(
-                  'EXIT [Bar]',
+                  'EXIT',
                   style: TextStyle(color: Colors.white, fontSize: 14.sp),
                 ),
               ],
@@ -602,7 +602,7 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
             child: Row(
               children: [
                 Text(
-                  _isCompleted ? 'Finish [Bar]' : 'Start [Bar]',
+                  _isCompleted ? 'Finish' : 'Start',
                   style: TextStyle(color: Colors.white, fontSize: 14.sp),
                 ),
                 SizedBox(width: 8.sp),

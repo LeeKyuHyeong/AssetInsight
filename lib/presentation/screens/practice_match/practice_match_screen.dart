@@ -484,7 +484,7 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
             child: Row(
               children: [
                 Text(
-                  'Start [Bar]',
+                  'Start',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 14.sp,

@@ -192,10 +192,8 @@ class _SeasonMapDrawScreenState extends ConsumerState<SeasonMapDrawScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableHeight = constraints.maxHeight;
-        final availableWidth = constraints.maxWidth;
 
-        // 3x3 그리드 계산
-        final cellWidth = (availableWidth - 16.sp) / 3;
+        // 3행 높이 계산 (간격 포함)
         final cellHeight = (availableHeight - 16.sp) / 3;
 
         return Column(
@@ -205,47 +203,169 @@ class _SeasonMapDrawScreenState extends ConsumerState<SeasonMapDrawScreen> {
               height: cellHeight,
               child: Row(
                 children: [
-                  _buildMapCard(_seasonMaps[0], cellWidth, cellHeight),
-                  SizedBox(width: 8.sp),
-                  _buildCenterPanel(cellWidth, cellHeight),
-                  SizedBox(width: 8.sp),
-                  _buildMapCard(_seasonMaps[1], cellWidth, cellHeight),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[0])),
+                  SizedBox(width: 6.sp),
+                  Expanded(child: _buildCenterPanelFlex()),
+                  SizedBox(width: 6.sp),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[1])),
                 ],
               ),
             ),
-            SizedBox(height: 8.sp),
+            SizedBox(height: 6.sp),
 
             // 중간 행 (맵 2, 3, 4)
             SizedBox(
               height: cellHeight,
               child: Row(
                 children: [
-                  _buildMapCard(_seasonMaps[2], cellWidth, cellHeight),
-                  SizedBox(width: 8.sp),
-                  _buildMapCard(_seasonMaps[3], cellWidth, cellHeight),
-                  SizedBox(width: 8.sp),
-                  _buildMapCard(_seasonMaps[4], cellWidth, cellHeight),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[2])),
+                  SizedBox(width: 6.sp),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[3])),
+                  SizedBox(width: 6.sp),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[4])),
                 ],
               ),
             ),
-            SizedBox(height: 8.sp),
+            SizedBox(height: 6.sp),
 
             // 하단 행 (맵 5, 6, 7)
             SizedBox(
               height: cellHeight,
               child: Row(
                 children: [
-                  _buildMapCard(_seasonMaps[5], cellWidth, cellHeight),
-                  SizedBox(width: 8.sp),
-                  _buildMapCard(_seasonMaps[6], cellWidth, cellHeight),
-                  SizedBox(width: 8.sp),
-                  _buildMapCard(_seasonMaps[7], cellWidth, cellHeight),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[5])),
+                  SizedBox(width: 6.sp),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[6])),
+                  SizedBox(width: 6.sp),
+                  Expanded(child: _buildMapCardFlex(_seasonMaps[7])),
                 ],
               ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildCenterPanelFlex() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.amber.withOpacity(0.1),
+            Colors.amber.withOpacity(0.05),
+          ],
+        ),
+        border: Border.all(color: Colors.amber.withOpacity(0.5), width: 2),
+        borderRadius: BorderRadius.circular(6.sp),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.casino, color: Colors.amber, size: 24.sp),
+          SizedBox(height: 4.sp),
+          Text(
+            '맵 추첨',
+            style: TextStyle(
+              color: Colors.amber,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            '2012 S1',
+            style: TextStyle(color: Colors.grey[400], fontSize: 9.sp),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapCardFlex(_SeasonMapInfo map) {
+    return Container(
+      padding: EdgeInsets.all(6.sp),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a2e),
+        borderRadius: BorderRadius.circular(6.sp),
+        border: Border.all(color: Colors.grey[700]!, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 맵 이름
+          Text(
+            map.name,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: 4.sp),
+
+          // 스탯 바 (컴팩트)
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildStatBarCompact('러시', map.rushDistance, Colors.green),
+                _buildStatBarCompact('자원', map.resources, Colors.amber),
+                _buildStatBarCompact('복잡', map.complexity, Colors.orange),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 2.sp),
+
+          // 종족 상성 (한 줄로)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildMatchupCompact('T', 'Z', map.tvz),
+              _buildMatchupCompact('Z', 'P', map.zvp),
+              _buildMatchupCompact('P', 'T', map.pvt),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatBarCompact(String label, double value, Color color) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 20.sp,
+          child: Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 7.sp)),
+        ),
+        Expanded(
+          child: Container(
+            height: 4.sp,
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(2.sp),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: value,
+              child: Container(
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2.sp)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMatchupCompact(String race1, String race2, int percentage) {
+    return Text(
+      '$race1$percentage',
+      style: TextStyle(color: Colors.grey[400], fontSize: 7.sp),
     );
   }
 

@@ -513,7 +513,7 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
                 Icon(Icons.arrow_left, color: Colors.white, size: 16.sp),
                 SizedBox(width: 8.sp),
                 Text(
-                  'EXIT [Bar]',
+                  'EXIT',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 14.sp,
