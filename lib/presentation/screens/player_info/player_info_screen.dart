@@ -589,7 +589,7 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
               style: TextStyle(color: Colors.grey, fontSize: 10.sp),
             ),
 
-            Spacer(),
+            const Spacer(),
 
             Center(
               child: Text(
@@ -816,7 +816,7 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
               ),
             ),
 
-            Spacer(),
+            const Spacer(),
 
             Center(
               child: Text(
@@ -964,7 +964,7 @@ class _PlayerInfoScreenState extends ConsumerState<PlayerInfoScreen> {
             ),
           ),
 
-          Spacer(),
+          const Spacer(),
 
           // 연습경기 버튼 (내 팀일 때만)
           if (!widget.isOtherTeam)

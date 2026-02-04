@@ -362,7 +362,7 @@ class IndividualLeagueService {
     );
 
     return IndividualMatchResult(
-      id: '${stage.name}_${player1Id}_${player2Id}',
+      id: '${stage.name}_${player1Id}_$player2Id',
       player1Id: player1Id,
       player2Id: player2Id,
       winnerId: setResult.homeWin ? player1Id : player2Id,

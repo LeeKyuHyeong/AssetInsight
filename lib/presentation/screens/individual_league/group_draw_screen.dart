@@ -194,7 +194,7 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: AppColors.accent),
+            const CircularProgressIndicator(color: AppColors.accent),
             SizedBox(height: 24.sp),
             Text(
               '조 추첨 중...',

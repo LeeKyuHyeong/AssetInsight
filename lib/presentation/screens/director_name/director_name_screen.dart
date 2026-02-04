@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
-import '../../../domain/models/models.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../widgets/reset_button.dart';
 
@@ -119,7 +118,7 @@ class _DirectorNameScreenState extends ConsumerState<DirectorNameScreen> {
                         SizedBox(height: 48.sp),
 
                         // 이름 입력란
-                        Container(
+                        SizedBox(
                           width: 200.sp,
                           child: TextField(
                             controller: _nameController,

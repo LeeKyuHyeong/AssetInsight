@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 /// 반응형 디자인을 위한 전역 유틸리티 클래스
-/// 기준 해상도: 1280 x 800 (16:10 비율)
+/// 기준 해상도: 800 x 360 (모바일 가로 모드 기준)
 class Responsive {
-  static const double baseWidth = 1280;
-  static const double baseHeight = 800;
+  // 모바일 가로 모드 기준 (일반적인 폰 해상도)
+  static const double baseWidth = 800;
+  static const double baseHeight = 360;
 
   static late MediaQueryData _mediaQueryData;
   static late double screenWidth;
@@ -25,6 +26,11 @@ class Responsive {
 
     // 너비/높이 중 작은 비율 사용 (비율 유지)
     scale = scaleWidth < scaleHeight ? scaleWidth : scaleHeight;
+
+    // 최소 스케일 보장 (너무 작아지지 않도록)
+    if (scale < 0.8) scale = 0.8;
+    // 최대 스케일 제한 (태블릿에서 너무 커지지 않도록)
+    if (scale > 2.0) scale = 2.0;
   }
 
   /// 너비 비율 적용
@@ -71,10 +77,10 @@ class Responsive {
     );
   }
 
-  /// 화면 타입 판별
-  static bool get isMobile => screenWidth < 600;
-  static bool get isTablet => screenWidth >= 600 && screenWidth < 1024;
-  static bool get isDesktop => screenWidth >= 1024;
+  /// 화면 타입 판별 (가로 모드 기준)
+  static bool get isMobile => screenWidth < 800;
+  static bool get isTablet => screenWidth >= 800 && screenWidth < 1200;
+  static bool get isDesktop => screenWidth >= 1200;
 
   /// 디바이스 방향
   static bool get isPortrait => screenHeight > screenWidth;

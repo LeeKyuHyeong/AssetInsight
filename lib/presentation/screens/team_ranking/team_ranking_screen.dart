@@ -209,7 +209,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
           SizedBox(height: 8.sp),
 
           Text(
-            '${rank}위',
+            '$rank위',
             style: TextStyle(
               color: Colors.white,
               fontSize: 12.sp,
@@ -344,7 +344,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
             ),
             child: DropdownButton<String>(
               value: _selectedTeamId,
-              hint: Text('팀 선택'),
+              hint: const Text('팀 선택'),
               isExpanded: true,
               underline: const SizedBox(),
               items: sortedTeams.map((team) {

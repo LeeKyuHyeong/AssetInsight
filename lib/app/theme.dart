@@ -65,7 +65,6 @@ class AppTheme {
         primary: primaryBlue,
         secondary: accentGreen,
         surface: cardBackground,
-        background: backgroundDark,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: primaryBlue,

@@ -368,7 +368,7 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
   }
 
   Widget _buildConnector() {
-    return Container(
+    return SizedBox(
       width: 20.sp,
       child: CustomPaint(
         painter: _BracketLinePainter(),

@@ -312,7 +312,7 @@ class _PcBangQualifierScreenState extends ConsumerState<PcBangQualifierScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: AppColors.accent),
+            const CircularProgressIndicator(color: AppColors.accent),
             SizedBox(height: 16.sp),
             Text(
               '경기가 진행중입니다',
@@ -630,7 +630,7 @@ class _PcBangQualifierScreenState extends ConsumerState<PcBangQualifierScreen> {
           padding: EdgeInsets.symmetric(vertical: 4.sp),
           child: Row(
             children: [
-              Container(
+              SizedBox(
                 width: 40.sp,
                 child: Text(
                   '${entry.key}조',
@@ -675,7 +675,7 @@ class _PcBangQualifierScreenState extends ConsumerState<PcBangQualifierScreen> {
           padding: EdgeInsets.symmetric(vertical: 4.sp),
           child: Row(
             children: [
-              Container(
+              SizedBox(
                 width: 30.sp,
                 child: Text(
                   '${index + 1}.',

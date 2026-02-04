@@ -51,7 +51,7 @@ class WinnersLeagueScreen extends ConsumerStatefulWidget {
 }
 
 class _WinnersLeagueScreenState extends ConsumerState<WinnersLeagueScreen> {
-  int _currentRound = 1; // 현재 라운드
+  final int _currentRound = 1; // 현재 라운드
   int _selectedMatchIndex = 0;
   bool _isSimulating = false;
   double _simulationSpeed = 1.0;
@@ -436,7 +436,7 @@ class _WinnersLeagueScreenState extends ConsumerState<WinnersLeagueScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              Spacer(),
+              const Spacer(),
               Text(
                 '승자유지 방식',
                 style: TextStyle(

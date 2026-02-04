@@ -424,29 +424,73 @@ class MainMenuScreen extends ConsumerWidget {
       s.homeTeamId == playerTeamId || s.awayTeamId == playerTeamId
     ).toList();
 
-    return ListView.builder(
-      padding: EdgeInsets.all(8.sp),
-      itemCount: myMatches.length,
-      itemBuilder: (ctx, index) {
-        final match = myMatches[index];
-        final isHome = match.homeTeamId == playerTeamId;
-        final opponentId = isHome ? match.awayTeamId : match.homeTeamId;
-        final opponent = gameState.saveData.getTeamById(opponentId);
+    // 첫 번째 미완료 매치 인덱스 찾기
+    final firstIncompleteIndex = myMatches.indexWhere((m) => !m.isCompleted);
 
-        return _buildScheduleRow(
-          context: context,
-          round: match.roundNumber,
-          opponentShort: opponent?.shortName ?? '???',
-          opponentName: opponent?.name ?? '???',
-          opponentColor: opponent?.colorValue ?? 0xFF888888,
-          opponentId: opponentId,
-          isCompleted: match.isCompleted,
-          isHome: isHome,
-          homeScore: match.result?.homeScore,
-          awayScore: match.result?.awayScore,
-          isNext: !match.isCompleted && index == myMatches.indexWhere((m) => !m.isCompleted),
-        );
+    // 총 아이템 수: 14매치 + 7개 컨디션 회복 + 7개 개인리그 = 28개
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 4.sp),
+      itemCount: 28,
+      itemBuilder: (ctx, index) {
+        // 4개마다 그룹: match1, match2, 컨디션회복, 개인리그
+        final groupIndex = index ~/ 4;
+        final posInGroup = index % 4;
+
+        if (posInGroup == 2) {
+          // 컨디션 회복 행
+          return _buildConditionRow();
+        } else if (posInGroup == 3) {
+          // 개인리그 행
+          return _buildLeagueRow(context, groupIndex);
+        } else {
+          // 매치 행 (posInGroup 0 or 1)
+          final matchIndex = groupIndex * 2 + posInGroup;
+          if (matchIndex >= myMatches.length) {
+            // No Match 표시
+            return _buildNoMatchRow();
+          }
+
+          final match = myMatches[matchIndex];
+          final isHome = match.homeTeamId == playerTeamId;
+          final opponentId = isHome ? match.awayTeamId : match.homeTeamId;
+          final opponent = gameState.saveData.getTeamById(opponentId);
+
+          return _buildScheduleRow(
+            context: context,
+            round: match.roundNumber,
+            opponentShort: opponent?.shortName ?? '???',
+            opponentName: opponent?.name ?? '???',
+            opponentColor: opponent?.colorValue ?? 0xFF888888,
+            opponentId: opponentId,
+            isCompleted: match.isCompleted,
+            isHome: isHome,
+            homeScore: match.result?.homeScore,
+            awayScore: match.result?.awayScore,
+            isNext: matchIndex == firstIncompleteIndex,
+          );
+        }
       },
+    );
+  }
+
+  Widget _buildNoMatchRow() {
+    return Container(
+      margin: EdgeInsets.only(bottom: 4.sp),
+      padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 10.sp),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a2e).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(4.sp),
+      ),
+      child: Center(
+        child: Text(
+          'No Match',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 11.sp,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ),
     );
   }
 

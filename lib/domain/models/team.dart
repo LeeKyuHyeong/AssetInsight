@@ -1,5 +1,4 @@
 import 'package:hive/hive.dart';
-import 'player.dart';
 
 part 'team.g.dart';
 

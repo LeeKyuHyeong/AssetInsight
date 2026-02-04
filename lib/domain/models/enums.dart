@@ -1,4 +1,5 @@
 /// MyStar 게임 열거형 정의
+library;
 
 /// 종족
 enum Race {

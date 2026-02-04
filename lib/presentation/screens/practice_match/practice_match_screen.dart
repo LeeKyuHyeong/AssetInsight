@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../domain/models/models.dart';
@@ -19,7 +18,7 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
   String? _selectedMyPlayerId;
   String? _selectedOpponentPlayerId;
   String _selectedMapId = '';
-  bool _isSimulating = false;
+  final bool _isSimulating = false;
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +302,7 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
           ),
           child: DropdownButton<String>(
             value: _selectedMapId.isEmpty ? null : _selectedMapId,
-            hint: Text('맵 선택'),
+            hint: const Text('맵 선택'),
             isExpanded: true,
             underline: const SizedBox(),
             items: maps.map((map) {
@@ -505,7 +504,9 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
   void _startMatch() {
     if (_selectedMyPlayerId == null ||
         _selectedOpponentPlayerId == null ||
-        _selectedMapId.isEmpty) return;
+        _selectedMapId.isEmpty) {
+      return;
+    }
 
     // TODO: 경기 시뮬레이션 화면으로 이동
     // 연습경기는 스탯에 영향 없음

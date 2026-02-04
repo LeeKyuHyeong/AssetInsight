@@ -346,7 +346,7 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
         children: [
           // 상태 메시지
           if (_isSimulating) ...[
-            CircularProgressIndicator(color: AppColors.accent),
+            const CircularProgressIndicator(color: AppColors.accent),
             SizedBox(height: 16.sp),
             Text(
               '경기 진행중',

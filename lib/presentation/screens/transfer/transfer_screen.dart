@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../core/constants/initial_data.dart';
 import '../../../domain/models/models.dart';
@@ -27,7 +26,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   String _selectedSourceId = 'free_agent'; // 기본값: 무소속
 
   // 영입된 선수 목록 (프리뷰 모드용)
-  List<Player> _recruitedPlayers = [];
+  final List<Player> _recruitedPlayers = [];
 
   @override
   Widget build(BuildContext context) {
