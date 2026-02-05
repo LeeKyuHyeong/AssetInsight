@@ -2,6 +2,11 @@ import '../../domain/models/models.dart';
 
 /// 마이스타크래프트 1.29.01 버전 (2012년 10월) 기준 초기 게임 데이터
 /// 8개 팀: KT 롤스터, 삼성전자 칸, STX SouL, SK텔레콤 T1, 웅진 스타즈, CJ 엔투스, 공군 ACE, 제8게임단
+///
+/// 등급 밸런스 조정 (2026-02-05):
+/// - 최고 등급: A+ (각 팀 에이스 1명)
+/// - 서브 에이스: A ~ A- (팀당 1~2명)
+/// - 일반 선수: B+ 이하
 class InitialData {
   /// 모든 팀 생성
   static List<Team> createTeams() {
@@ -33,19 +38,18 @@ class InitialData {
 
   /// 무소속 선수 풀 생성
   /// 1.29.01 버전 기준 무소속/은퇴 프로게이머
-  /// 능력치 최대 A등급 (합계 4799 이하)
   static List<Player> createFreeAgentPool() {
     return [
-      // ===== 레전드 프로게이머 (은퇴/무소속) - A등급 =====
+      // ===== 레전드 프로게이머 (은퇴/무소속) - A-~B+ =====
       Player(
         id: 'free_nada',
         name: '이윤열',
         nickname: 'NaDa',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 600, control: 620, attack: 600, harass: 580,
-          strategy: 620, macro: 600, defense: 560, scout: 570,
-        ), // 합계: 4750 (A+)
+          sense: 460, control: 480, attack: 460, harass: 440,
+          strategy: 480, macro: 460, defense: 420, scout: 430,
+        ), // 합계: 3630 (A-)
         levelValue: 10, // 은퇴
       ),
       Player(
@@ -54,9 +58,9 @@ class InitialData {
         nickname: 'BoxeR',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 580, harass: 600,
-          strategy: 620, macro: 560, defense: 520, scout: 560,
-        ), // 합계: 4600 (A+)
+          sense: 420, control: 450, attack: 440, harass: 450,
+          strategy: 470, macro: 420, defense: 390, scout: 420,
+        ), // 합계: 3460 (B+)
         levelValue: 10, // 은퇴
       ),
       Player(
@@ -65,9 +69,9 @@ class InitialData {
         nickname: 'iloveoov',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 560, control: 580, attack: 570, harass: 540,
-          strategy: 570, macro: 580, defense: 560, scout: 540,
-        ), // 합계: 4500 (A+)
+          sense: 420, control: 440, attack: 430, harass: 400,
+          strategy: 430, macro: 440, defense: 420, scout: 400,
+        ), // 합계: 3380 (B+)
         levelValue: 10, // 은퇴
       ),
       Player(
@@ -76,9 +80,9 @@ class InitialData {
         nickname: 'YellOw',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 580, harass: 620,
-          strategy: 560, macro: 620, defense: 540, scout: 520,
-        ), // 합계: 4600 (A+)
+          sense: 420, control: 450, attack: 440, harass: 470,
+          strategy: 420, macro: 470, defense: 400, scout: 390,
+        ), // 합계: 3460 (B+)
         levelValue: 10, // 은퇴
       ),
       Player(
@@ -87,9 +91,9 @@ class InitialData {
         nickname: 'Nal_rA',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 520, control: 540, attack: 530, harass: 510,
-          strategy: 580, macro: 530, defense: 490, scout: 500,
-        ), // 합계: 4200 (A)
+          sense: 390, control: 410, attack: 400, harass: 380,
+          strategy: 440, macro: 400, defense: 360, scout: 370,
+        ), // 합계: 3150 (B)
         levelValue: 10, // 은퇴
       ),
       Player(
@@ -98,22 +102,21 @@ class InitialData {
         nickname: 'Reach',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 470, control: 490, attack: 480, harass: 460,
-          strategy: 500, macro: 480, defense: 460, scout: 460,
-        ), // 합계: 3800 (A-)
+          sense: 350, control: 370, attack: 360, harass: 340,
+          strategy: 380, macro: 360, defense: 340, scout: 340,
+        ), // 합계: 2840 (B)
         levelValue: 10, // 은퇴
       ),
       // ===== 해체된 팀 출신 =====
-      // 이제동은 제8게임단 소속 (t8_jaedong)으로 중복 제거
       Player(
         id: 'free_luxury',
         name: '구성훈',
         nickname: 'Luxury',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 540, control: 580, attack: 600, harass: 520,
-          strategy: 560, macro: 540, defense: 520, scout: 500,
-        ), // 합계: 4360 (A)
+          sense: 400, control: 430, attack: 450, harass: 380,
+          strategy: 420, macro: 400, defense: 380, scout: 360,
+        ), // 합계: 3220 (B+)
         levelValue: 7,
       ),
       Player(
@@ -122,22 +125,20 @@ class InitialData {
         nickname: 'Kal',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 520, control: 540, attack: 530, harass: 500,
-          strategy: 560, macro: 530, defense: 510, scout: 510,
-        ), // 합계: 4200 (A)
-        levelValue: 7, // 위메이드 폭스 해체 후
+          sense: 380, control: 400, attack: 390, harass: 360,
+          strategy: 420, macro: 390, defense: 370, scout: 370,
+        ), // 합계: 3080 (B)
+        levelValue: 7,
       ),
-      // 이영한(Shine)은 삼성전자 칸 소속 (ssg_shine)으로 중복 제거
       // ===== 신인/아마추어 =====
-      // 김성운은 웅진 스타즈 소속 (wjs_kimseongwoon)으로 중복 제거
       Player(
         id: 'free_amateur2',
         name: '이준혁',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 400, control: 460, attack: 480, harass: 380,
-          strategy: 420, macro: 400, defense: 380, scout: 360,
-        ), // 합계: 3280 (B+)
+          sense: 300, control: 340, attack: 360, harass: 280,
+          strategy: 320, macro: 300, defense: 280, scout: 260,
+        ), // 합계: 2440 (B-)
         levelValue: 1,
       ),
       Player(
@@ -145,9 +146,9 @@ class InitialData {
         name: '박민규',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 380, control: 440, attack: 420, harass: 380,
-          strategy: 460, macro: 420, defense: 380, scout: 420,
-        ), // 합계: 3300 (B+)
+          sense: 280, control: 320, attack: 300, harass: 280,
+          strategy: 340, macro: 300, defense: 280, scout: 300,
+        ), // 합계: 2400 (B-)
         levelValue: 1,
       ),
       Player(
@@ -155,9 +156,9 @@ class InitialData {
         name: '김태현',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 340, control: 400, attack: 420, harass: 360,
-          strategy: 380, macro: 360, defense: 340, scout: 320,
-        ), // 합계: 2920 (B)
+          sense: 260, control: 300, attack: 320, harass: 260,
+          strategy: 280, macro: 260, defense: 260, scout: 240,
+        ), // 합계: 2180 (C+)
         levelValue: 1,
       ),
       Player(
@@ -165,9 +166,9 @@ class InitialData {
         name: '이동수',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 320, control: 380, attack: 360, harass: 400,
-          strategy: 340, macro: 420, defense: 300, scout: 340,
-        ), // 합계: 2860 (B)
+          sense: 240, control: 280, attack: 260, harass: 300,
+          strategy: 260, macro: 320, defense: 220, scout: 260,
+        ), // 합계: 2140 (C+)
         levelValue: 1,
       ),
       Player(
@@ -175,9 +176,9 @@ class InitialData {
         name: '최준혁',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 360, control: 420, attack: 400, harass: 360,
-          strategy: 440, macro: 400, defense: 360, scout: 380,
-        ), // 합계: 3120 (B)
+          sense: 270, control: 310, attack: 290, harass: 270,
+          strategy: 330, macro: 290, defense: 270, scout: 280,
+        ), // 합계: 2310 (C+)
         levelValue: 1,
       ),
     ];
@@ -204,141 +205,141 @@ class InitialData {
 
   static List<Player> _createKtRolsterPlayers() {
     return [
-      // 이영호 (Flash) - A+, 9레벨, 6500
+      // 이영호 (Flash) - A+, 9레벨
       Player(
         id: 'kt_flash',
         name: '이영호',
         nickname: 'Flash',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 820, control: 880, attack: 860, harass: 800,
-          strategy: 840, macro: 860, defense: 820, scout: 820,
-        ),
+          sense: 580, control: 620, attack: 600, harass: 560,
+          strategy: 590, macro: 600, defense: 570, scout: 570,
+        ), // 합계: 4690 (A+)
         levelValue: 9,
         teamId: 'kt_rolster',
       ),
-      // 김성대 (Action) - B-, 5레벨, 5500
+      // 김성대 (Action) - B, 5레벨
       Player(
         id: 'kt_action',
         name: '김성대',
         nickname: 'Action',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 740,
-          strategy: 660, macro: 720, defense: 640, scout: 680,
-        ),
+          sense: 380, control: 410, attack: 390, harass: 420,
+          strategy: 360, macro: 410, defense: 340, scout: 370,
+        ), // 합계: 3080 (B)
         levelValue: 5,
         teamId: 'kt_rolster',
       ),
-      // 김대엽 (Stats) - B, 6레벨, 5750
+      // 김대엽 (Stats) - B+, 6레벨
       Player(
         id: 'kt_stats',
         name: '김대엽',
         nickname: 'Stats',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 680,
-          strategy: 760, macro: 740, defense: 700, scout: 720,
-        ),
+          sense: 410, control: 440, attack: 420, harass: 380,
+          strategy: 460, macro: 440, defense: 400, scout: 420,
+        ), // 합계: 3370 (B+)
         levelValue: 6,
         teamId: 'kt_rolster',
       ),
-      // 김태균 - C+, 4레벨, 5350
+      // 김태균 - B-, 4레벨
       Player(
         id: 'kt_taegyun',
         name: '김태균',
         nickname: 'TaeGyun',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 700, macro: 680, defense: 660, scout: 680,
-        ),
+          sense: 340, control: 370, attack: 350, harass: 320,
+          strategy: 370, macro: 350, defense: 340, scout: 350,
+        ), // 합계: 2790 (B-)
         levelValue: 4,
         teamId: 'kt_rolster',
       ),
-      // 우정호 - C-, 6레벨, 5000
+      // 우정호 - C+, 6레벨
       Player(
         id: 'kt_woojungho',
         name: '우정호',
         nickname: 'Free',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 600, control: 640, attack: 620, harass: 580,
-          strategy: 660, macro: 640, defense: 620, scout: 640,
-        ),
+          sense: 290, control: 320, attack: 300, harass: 270,
+          strategy: 340, macro: 320, defense: 300, scout: 320,
+        ), // 합계: 2460 (B-)
         levelValue: 6,
         teamId: 'kt_rolster',
       ),
-      // 박성균 - B, 8레벨, 5700
+      // 박성균 (July) - B, 8레벨
       Player(
         id: 'kt_parkseonggyun',
         name: '박성균',
         nickname: 'July',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 760, harass: 680,
-          strategy: 720, macro: 700, defense: 680, scout: 660,
-        ),
+          sense: 380, control: 410, attack: 430, harass: 360,
+          strategy: 400, macro: 380, defense: 360, scout: 340,
+        ), // 합계: 3060 (B)
         levelValue: 8,
         teamId: 'kt_rolster',
       ),
-      // 황병영 - C-, 3레벨, 5050
+      // 황병영 - C, 3레벨
       Player(
         id: 'kt_hwangbyungyoung',
         name: '황병영',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 680, harass: 600,
-          strategy: 640, macro: 620, defense: 600, scout: 580,
-        ),
+          sense: 260, control: 290, attack: 310, harass: 240,
+          strategy: 280, macro: 260, defense: 240, scout: 220,
+        ), // 합계: 2100 (C+)
         levelValue: 3,
         teamId: 'kt_rolster',
       ),
-      // 임정현 - B-, 5레벨, 5500
+      // 임정현 - B-, 5레벨
       Player(
         id: 'kt_imjunghyun',
         name: '임정현',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 740,
-          strategy: 660, macro: 720, defense: 640, scout: 680,
-        ),
+          sense: 340, control: 370, attack: 350, harass: 380,
+          strategy: 320, macro: 370, defense: 300, scout: 330,
+        ), // 합계: 2760 (B-)
         levelValue: 5,
         teamId: 'kt_rolster',
       ),
-      // 고강민 - C+, 5레벨, 5250
+      // 고강민 - C+, 5레벨
       Player(
         id: 'kt_gogangmin',
         name: '고강민',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 640, control: 680, attack: 660, harass: 700,
-          strategy: 620, macro: 680, defense: 620, scout: 640,
-        ),
+          sense: 290, control: 320, attack: 300, harass: 340,
+          strategy: 270, macro: 320, defense: 270, scout: 290,
+        ), // 합계: 2400 (B-)
         levelValue: 5,
         teamId: 'kt_rolster',
       ),
-      // 주성욱 - C, 3레벨, 5100
+      // 주성욱 - C, 3레벨
       Player(
         id: 'kt_joosingwook',
         name: '주성욱',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 640, harass: 600,
-          strategy: 680, macro: 640, defense: 620, scout: 640,
-        ),
+          sense: 260, control: 290, attack: 270, harass: 240,
+          strategy: 310, macro: 280, defense: 260, scout: 280,
+        ), // 합계: 2190 (C+)
         levelValue: 3,
         teamId: 'kt_rolster',
       ),
-      // 원선재 - D+, 2레벨, 4950
+      // 원선재 - C, 2레벨
       Player(
         id: 'kt_wonsunjae',
         name: '원선재',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 600, control: 640, attack: 620, harass: 580,
-          strategy: 660, macro: 620, defense: 600, scout: 620,
-        ),
+          sense: 240, control: 270, attack: 250, harass: 220,
+          strategy: 290, macro: 260, defense: 240, scout: 260,
+        ), // 합계: 2030 (C+)
         levelValue: 2,
         teamId: 'kt_rolster',
       ),
@@ -364,154 +365,154 @@ class InitialData {
 
   static List<Player> _createSamsungKhanPlayers() {
     return [
-      // 허영무 (JangBi) - A+, 8레벨, 6450
+      // 허영무 (JangBi) - A+, 8레벨
       Player(
         id: 'ssg_jangbi',
         name: '허영무',
         nickname: 'JangBi',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 800, control: 840, attack: 820, harass: 780,
-          strategy: 860, macro: 820, defense: 780, scout: 820,
-        ),
+          sense: 560, control: 590, attack: 570, harass: 540,
+          strategy: 600, macro: 570, defense: 540, scout: 570,
+        ), // 합계: 4540 (A+)
         levelValue: 8,
         teamId: 'samsung_khan',
       ),
-      // 송병구 (Stork) - A, 9레벨, 6250
+      // 송병구 (Stork) - A-, 9레벨
       Player(
         id: 'ssg_stork',
         name: '송병구',
         nickname: 'Stork',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 760, control: 800, attack: 780, harass: 760,
-          strategy: 820, macro: 800, defense: 760, scout: 780,
-        ),
+          sense: 480, control: 510, attack: 490, harass: 470,
+          strategy: 530, macro: 510, defense: 470, scout: 490,
+        ), // 합계: 3950 (A-)
         levelValue: 9,
         teamId: 'samsung_khan',
       ),
-      // 이영한 (Shine) - B+, 7레벨, 5850
+      // 이영한 (Shine) - B+, 7레벨
       Player(
         id: 'ssg_shine',
         name: '이영한',
         nickname: 'Shine',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 740, harass: 780,
-          strategy: 700, macro: 760, defense: 700, scout: 720,
-        ),
+          sense: 420, control: 450, attack: 430, harass: 470,
+          strategy: 400, macro: 450, defense: 400, scout: 420,
+        ), // 합계: 3440 (B+)
         levelValue: 7,
         teamId: 'samsung_khan',
       ),
-      // 신노열 (RorO) - B, 5레벨, 5650
+      // 신노열 (RorO) - B, 5레벨
       Player(
         id: 'ssg_roro',
         name: '신노열',
         nickname: 'RorO',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 760,
-          strategy: 680, macro: 740, defense: 680, scout: 700,
-        ),
+          sense: 380, control: 410, attack: 390, harass: 430,
+          strategy: 360, macro: 410, defense: 360, scout: 380,
+        ), // 합계: 3120 (B)
         levelValue: 5,
         teamId: 'samsung_khan',
       ),
-      // 김기현 (Reality) - C+, 3레벨, 5250
+      // 김기현 (Reality) - C+, 3레벨
       Player(
         id: 'ssg_reality',
         name: '김기현',
         nickname: 'Reality',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 640, control: 680, attack: 700, harass: 620,
-          strategy: 660, macro: 640, defense: 660, scout: 620,
-        ),
+          sense: 290, control: 320, attack: 340, harass: 270,
+          strategy: 300, macro: 290, defense: 300, scout: 270,
+        ), // 합계: 2380 (C+)
         levelValue: 3,
         teamId: 'samsung_khan',
       ),
-      // 박대호 (Turn) - C+, 3레벨, 5250
+      // 박대호 (Turn) - C+, 3레벨
       Player(
         id: 'ssg_turn',
         name: '박대호',
         nickname: 'Turn',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 640, control: 680, attack: 720, harass: 600,
-          strategy: 660, macro: 640, defense: 620, scout: 600,
-        ),
+          sense: 290, control: 320, attack: 360, harass: 260,
+          strategy: 300, macro: 290, defense: 270, scout: 260,
+        ), // 합계: 2350 (C+)
         levelValue: 3,
         teamId: 'samsung_khan',
       ),
-      // 유병준 (Brave) - C+, 3레벨, 5350
+      // 유병준 (BravE) - B-, 3레벨
       Player(
         id: 'ssg_brave',
         name: '유병준',
         nickname: 'BravE',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 700, macro: 680, defense: 660, scout: 680,
-        ),
+          sense: 320, control: 350, attack: 330, harass: 300,
+          strategy: 350, macro: 330, defense: 320, scout: 330,
+        ), // 합계: 2630 (B-)
         levelValue: 3,
         teamId: 'samsung_khan',
       ),
-      // 조기석 - E, 1레벨, 4500
+      // 조기석 - D+, 1레벨
       Player(
         id: 'ssg_jokiseok',
         name: '조기석',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 540, control: 580, attack: 600, harass: 520,
-          strategy: 560, macro: 540, defense: 520, scout: 500,
-        ),
+          sense: 180, control: 210, attack: 230, harass: 160,
+          strategy: 200, macro: 180, defense: 160, scout: 140,
+        ), // 합계: 1460 (D+)
         levelValue: 1,
         teamId: 'samsung_khan',
       ),
-      // 주영달 - D+, 6레벨, 4950
+      // 주영달 - C, 6레벨
       Player(
         id: 'ssg_jooyoungdal',
         name: '주영달',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 600, control: 640, attack: 620, harass: 660,
-          strategy: 580, macro: 640, defense: 580, scout: 600,
-        ),
+          sense: 240, control: 270, attack: 250, harass: 290,
+          strategy: 220, macro: 280, defense: 220, scout: 240,
+        ), // 합계: 2010 (C+)
         levelValue: 6,
         teamId: 'samsung_khan',
       ),
-      // 유준희 - D+, 3레벨, 4900
+      // 유준희 - C, 3레벨
       Player(
         id: 'ssg_yoojoonhee',
         name: '유준희',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 600, harass: 640,
-          strategy: 560, macro: 640, defense: 560, scout: 580,
-        ),
+          sense: 220, control: 250, attack: 230, harass: 270,
+          strategy: 200, macro: 270, defense: 200, scout: 220,
+        ), // 합계: 1860 (C)
         levelValue: 3,
         teamId: 'samsung_khan',
       ),
-      // 한지원 - D, 2레벨, 4700
+      // 한지원 - C-, 2레벨
       Player(
         id: 'ssg_hanjiwon',
         name: '한지원',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 580, harass: 620,
-          strategy: 540, macro: 620, defense: 540, scout: 560,
-        ),
+          sense: 200, control: 230, attack: 210, harass: 250,
+          strategy: 180, macro: 250, defense: 180, scout: 200,
+        ), // 합계: 1700 (C)
         levelValue: 2,
         teamId: 'samsung_khan',
       ),
-      // 임태규 - C, 4레벨, 5100
+      // 임태규 - C+, 4레벨
       Player(
         id: 'ssg_imtaegyu',
         name: '임태규',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 640, harass: 600,
-          strategy: 680, macro: 640, defense: 620, scout: 640,
-        ),
+          sense: 270, control: 300, attack: 280, harass: 250,
+          strategy: 320, macro: 290, defense: 270, scout: 290,
+        ), // 합계: 2270 (C+)
         levelValue: 4,
         teamId: 'samsung_khan',
       ),
@@ -537,151 +538,151 @@ class InitialData {
 
   static List<Player> _createStxSoulPlayers() {
     return [
-      // 이신형 (Bogus/INnoVation) - B, 5레벨, 5750
+      // 이신형 (Bogus/INnoVation) - A, 5레벨
       Player(
         id: 'stx_bogus',
         name: '이신형',
         nickname: 'Bogus',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 700, control: 760, attack: 780, harass: 680,
-          strategy: 720, macro: 740, defense: 700, scout: 680,
-        ),
+          sense: 500, control: 540, attack: 560, harass: 480,
+          strategy: 520, macro: 530, defense: 500, scout: 480,
+        ), // 합계: 4110 (A)
         levelValue: 5,
         teamId: 'stx_soul',
       ),
-      // 김윤환 (Calm) - B+, 8레벨, 5900
+      // 김윤환 (Calm) - A-, 8레벨
       Player(
         id: 'stx_calm',
         name: '김윤환',
         nickname: 'Calm',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 740, harass: 780,
-          strategy: 700, macro: 780, defense: 700, scout: 720,
-        ),
+          sense: 470, control: 500, attack: 480, harass: 520,
+          strategy: 450, macro: 520, defense: 450, scout: 470,
+        ), // 합계: 3860 (A-)
         levelValue: 8,
         teamId: 'stx_soul',
       ),
-      // 신대근 - B-, 7레벨, 5550
+      // 신대근 - B, 7레벨
       Player(
         id: 'stx_shindaegeun',
         name: '신대근',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 740,
-          strategy: 660, macro: 720, defense: 660, scout: 680,
-        ),
+          sense: 370, control: 400, attack: 380, harass: 420,
+          strategy: 350, macro: 400, defense: 350, scout: 370,
+        ), // 합계: 3040 (B)
         levelValue: 7,
         teamId: 'stx_soul',
       ),
-      // 김현우 - C+, 3레벨, 5300
+      // 김현우 (Kwanro) - B-, 3레벨
       Player(
         id: 'stx_kimhyunwoo',
         name: '김현우',
         nickname: 'Kwanro',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 720,
-          strategy: 640, macro: 700, defense: 640, scout: 660,
-        ),
+          sense: 320, control: 350, attack: 330, harass: 370,
+          strategy: 300, macro: 350, defense: 300, scout: 320,
+        ), // 합계: 2640 (B-)
         levelValue: 3,
         teamId: 'stx_soul',
       ),
-      // 변현제 (Mini) - C+, 1레벨, 5350
+      // 변현제 (Mini) - B-, 1레벨
       Player(
         id: 'stx_mini',
         name: '변현제',
         nickname: 'Mini',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 720, macro: 680, defense: 660, scout: 680,
-        ),
+          sense: 330, control: 360, attack: 340, harass: 310,
+          strategy: 380, macro: 350, defense: 330, scout: 340,
+        ), // 합계: 2740 (B-)
         levelValue: 1,
         teamId: 'stx_soul',
       ),
-      // 김윤중 - C+, 5레벨, 5300
+      // 김윤중 - B-, 5레벨
       Player(
         id: 'stx_kimyoonjung',
         name: '김윤중',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 700, macro: 680, defense: 660, scout: 660,
-        ),
+          sense: 320, control: 350, attack: 330, harass: 300,
+          strategy: 350, macro: 330, defense: 320, scout: 320,
+        ), // 합계: 2620 (B-)
         levelValue: 5,
         teamId: 'stx_soul',
       ),
-      // 조성호 - C+, 2레벨, 5300
+      // 조성호 - C+, 2레벨
       Player(
         id: 'stx_josungho',
         name: '조성호',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 700, macro: 680, defense: 660, scout: 660,
-        ),
+          sense: 300, control: 330, attack: 310, harass: 280,
+          strategy: 330, macro: 310, defense: 300, scout: 300,
+        ), // 합계: 2460 (B-)
         levelValue: 2,
         teamId: 'stx_soul',
       ),
-      // 김성현 - B-, 4레벨, 5500
+      // 김성현 - B-, 4레벨
       Player(
         id: 'stx_kimsunghyun',
         name: '김성현',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 740, harass: 660,
-          strategy: 700, macro: 700, defense: 680, scout: 660,
-        ),
+          sense: 340, control: 370, attack: 390, harass: 320,
+          strategy: 360, macro: 360, defense: 340, scout: 320,
+        ), // 합계: 2800 (B)
         levelValue: 4,
         teamId: 'stx_soul',
       ),
-      // 김도우 - C+, 4레벨, 5250
+      // 김도우 - C+, 4레벨
       Player(
         id: 'stx_kimdowoo',
         name: '김도우',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 640, control: 680, attack: 700, harass: 620,
-          strategy: 660, macro: 660, defense: 640, scout: 620,
-        ),
+          sense: 280, control: 310, attack: 330, harass: 260,
+          strategy: 300, macro: 300, defense: 280, scout: 260,
+        ), // 합계: 2320 (C+)
         levelValue: 4,
         teamId: 'stx_soul',
       ),
-      // 서지수 - D+, 2레벨, 4900
+      // 서지수 - C, 2레벨
       Player(
         id: 'stx_seojisu',
         name: '서지수',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 640, harass: 560,
-          strategy: 600, macro: 600, defense: 580, scout: 560,
-        ),
+          sense: 220, control: 250, attack: 270, harass: 200,
+          strategy: 240, macro: 240, defense: 220, scout: 200,
+        ), // 합계: 1840 (C)
         levelValue: 2,
         teamId: 'stx_soul',
       ),
-      // 백동준 - D+, 2레벨, 4950
+      // 백동준 - C, 2레벨
       Player(
         id: 'stx_baekdongjun',
         name: '백동준',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 600, control: 640, attack: 620, harass: 580,
-          strategy: 660, macro: 620, defense: 600, scout: 620,
-        ),
+          sense: 240, control: 270, attack: 250, harass: 220,
+          strategy: 290, macro: 260, defense: 240, scout: 260,
+        ), // 합계: 2030 (C+)
         levelValue: 2,
         teamId: 'stx_soul',
       ),
-      // 박종수 - D, 1레벨, 4700
+      // 박종수 - C-, 1레벨
       Player(
         id: 'stx_parkjongsu',
         name: '박종수',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 580, harass: 540,
-          strategy: 620, macro: 580, defense: 560, scout: 580,
-        ),
+          sense: 200, control: 230, attack: 210, harass: 180,
+          strategy: 250, macro: 220, defense: 200, scout: 220,
+        ), // 합계: 1710 (C)
         levelValue: 1,
         teamId: 'stx_soul',
       ),
@@ -708,190 +709,190 @@ class InitialData {
 
   static List<Player> _createSktT1Players() {
     return [
-      // 정명훈 (Fantasy) - A+, 9레벨, 6550
+      // 정명훈 (Fantasy) - A+, 9레벨
       Player(
         id: 'skt_fantasy',
         name: '정명훈',
         nickname: 'Fantasy',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 820, control: 860, attack: 840, harass: 800,
-          strategy: 840, macro: 840, defense: 820, scout: 820,
-        ),
+          sense: 570, control: 600, attack: 580, harass: 550,
+          strategy: 580, macro: 580, defense: 560, scout: 560,
+        ), // 합계: 4580 (A+)
         levelValue: 9,
         teamId: 'skt_t1',
       ),
-      // 김택용 (Bisu) - A, 9레벨, 6250
+      // 김택용 (Bisu) - A, 9레벨
       Player(
         id: 'skt_bisu',
         name: '김택용',
         nickname: 'Bisu',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 760, control: 820, attack: 780, harass: 760,
-          strategy: 840, macro: 800, defense: 760, scout: 780,
-        ),
+          sense: 510, control: 560, attack: 530, harass: 510,
+          strategy: 580, macro: 550, defense: 510, scout: 530,
+        ), // 합계: 4280 (A)
         levelValue: 9,
         teamId: 'skt_t1',
       ),
-      // 도재욱 (Best) - C+, 8레벨, 5350
+      // 도재욱 (Best) - B+, 8레벨
       Player(
         id: 'skt_best',
         name: '도재욱',
         nickname: 'Best',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 720, macro: 680, defense: 660, scout: 680,
-        ),
+          sense: 400, control: 430, attack: 410, harass: 380,
+          strategy: 450, macro: 420, defense: 400, scout: 410,
+        ), // 합계: 3300 (B+)
         levelValue: 8,
         teamId: 'skt_t1',
       ),
-      // 박재혁 (Mind) - B-, 6레벨, 5450
+      // 박재혁 (Mind) - B, 6레벨
       Player(
         id: 'skt_mind',
         name: '박재혁',
         nickname: 'Mind',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 740,
-          strategy: 660, macro: 720, defense: 640, scout: 680,
-        ),
+          sense: 360, control: 390, attack: 370, harass: 400,
+          strategy: 340, macro: 390, defense: 320, scout: 350,
+        ), // 합계: 2920 (B)
         levelValue: 6,
         teamId: 'skt_t1',
       ),
-      // 어윤수 (soO) - C+, 5레벨, 5300
+      // 어윤수 (soO) - B-, 5레벨
       Player(
         id: 'skt_soo',
         name: '어윤수',
         nickname: 'soO',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 720,
-          strategy: 640, macro: 700, defense: 640, scout: 660,
-        ),
+          sense: 330, control: 360, attack: 340, harass: 380,
+          strategy: 310, macro: 360, defense: 310, scout: 330,
+        ), // 합계: 2720 (B-)
         levelValue: 5,
         teamId: 'skt_t1',
       ),
-      // 이승석 (Iris) - C+, 4레벨, 5250
+      // 이승석 (Iris) - B-, 4레벨
       Player(
         id: 'skt_iris',
         name: '이승석',
         nickname: 'Iris',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 640, control: 680, attack: 660, harass: 700,
-          strategy: 620, macro: 680, defense: 620, scout: 640,
-        ),
+          sense: 300, control: 330, attack: 310, harass: 350,
+          strategy: 280, macro: 330, defense: 280, scout: 300,
+        ), // 합계: 2480 (B-)
         levelValue: 4,
         teamId: 'skt_t1',
       ),
-      // 정윤종 (Rain) - C+, 4레벨, 5300
+      // 정윤종 (Rain) - B-, 4레벨
       Player(
         id: 'skt_rain',
         name: '정윤종',
         nickname: 'Rain',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 700, macro: 680, defense: 660, scout: 680,
-        ),
+          sense: 320, control: 350, attack: 330, harass: 300,
+          strategy: 350, macro: 330, defense: 320, scout: 330,
+        ), // 합계: 2630 (B-)
         levelValue: 4,
         teamId: 'skt_t1',
       ),
-      // 최호선 - D+, 3레벨, 5000
+      // 최호선 - C+, 3레벨
       Player(
         id: 'skt_choihosun',
         name: '최호선',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 680, harass: 600,
-          strategy: 640, macro: 620, defense: 600, scout: 580,
-        ),
+          sense: 260, control: 290, attack: 310, harass: 240,
+          strategy: 280, macro: 260, defense: 240, scout: 220,
+        ), // 합계: 2100 (C+)
         levelValue: 3,
         teamId: 'skt_t1',
       ),
-      // 정영재 - E, 1레벨, 4600
+      // 정영재 - D+, 1레벨
       Player(
         id: 'skt_jungyoungjae',
         name: '정영재',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 620, harass: 540,
-          strategy: 580, macro: 560, defense: 540, scout: 520,
-        ),
+          sense: 180, control: 210, attack: 230, harass: 160,
+          strategy: 200, macro: 180, defense: 160, scout: 140,
+        ), // 합계: 1460 (D+)
         levelValue: 1,
         teamId: 'skt_t1',
       ),
-      // 김용효 - D+, 2레벨, 4900
+      // 김용효 - C, 2레벨
       Player(
         id: 'skt_kimyonghyo',
         name: '김용효',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 640, harass: 560,
-          strategy: 600, macro: 600, defense: 580, scout: 560,
-        ),
+          sense: 220, control: 250, attack: 270, harass: 200,
+          strategy: 240, macro: 240, defense: 220, scout: 200,
+        ), // 합계: 1840 (C)
         levelValue: 2,
         teamId: 'skt_t1',
       ),
-      // 이예훈 - D+, 2레벨, 4900
+      // 이예훈 - C, 2레벨
       Player(
         id: 'skt_leeyehoon',
         name: '이예훈',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 600, harass: 640,
-          strategy: 560, macro: 640, defense: 560, scout: 580,
-        ),
+          sense: 220, control: 250, attack: 230, harass: 270,
+          strategy: 200, macro: 270, defense: 200, scout: 220,
+        ), // 합계: 1860 (C)
         levelValue: 2,
         teamId: 'skt_t1',
       ),
-      // 방태수 - D, 1레벨, 4700
+      // 방태수 - C-, 1레벨
       Player(
         id: 'skt_bangtaesu',
         name: '방태수',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 580, harass: 620,
-          strategy: 540, macro: 620, defense: 540, scout: 560,
-        ),
+          sense: 200, control: 230, attack: 210, harass: 250,
+          strategy: 180, macro: 250, defense: 180, scout: 200,
+        ), // 합계: 1700 (C)
         levelValue: 1,
         teamId: 'skt_t1',
       ),
-      // 임홍규 - D, 1레벨, 4700
+      // 임홍규 - C-, 1레벨
       Player(
         id: 'skt_imhonggyu',
         name: '임홍규',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 580, harass: 620,
-          strategy: 540, macro: 620, defense: 540, scout: 560,
-        ),
+          sense: 200, control: 230, attack: 210, harass: 250,
+          strategy: 180, macro: 250, defense: 180, scout: 200,
+        ), // 합계: 1700 (C)
         levelValue: 1,
         teamId: 'skt_t1',
       ),
-      // 정경두 - C, 3레벨, 5050
+      // 정경두 - C+, 3레벨
       Player(
         id: 'skt_jungkyungdoo',
         name: '정경두',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 640, harass: 600,
-          strategy: 680, macro: 640, defense: 620, scout: 640,
-        ),
+          sense: 260, control: 290, attack: 270, harass: 240,
+          strategy: 310, macro: 280, defense: 260, scout: 280,
+        ), // 합계: 2190 (C+)
         levelValue: 3,
         teamId: 'skt_t1',
       ),
-      // 이호성 - D+, 2레벨, 4900
+      // 이호성 - C, 2레벨
       Player(
         id: 'skt_leehoseong',
         name: '이호성',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 600, harass: 560,
-          strategy: 660, macro: 600, defense: 580, scout: 600,
-        ),
+          sense: 220, control: 250, attack: 230, harass: 200,
+          strategy: 290, macro: 240, defense: 220, scout: 240,
+        ), // 합계: 1890 (C)
         levelValue: 2,
         teamId: 'skt_t1',
       ),
@@ -917,116 +918,116 @@ class InitialData {
 
   static List<Player> _createWoongjinStarsPlayers() {
     return [
-      // 김명운 (Zero) - A-, 8레벨, 6150
+      // 김명운 (Zero) - A, 8레벨
       Player(
         id: 'wjs_zero',
         name: '김명운',
         nickname: 'Zero',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 760, control: 800, attack: 780, harass: 820,
-          strategy: 740, macro: 800, defense: 720, scout: 760,
-        ),
+          sense: 510, control: 540, attack: 520, harass: 560,
+          strategy: 490, macro: 540, defense: 470, scout: 510,
+        ), // 합계: 4140 (A)
         levelValue: 8,
         teamId: 'woongjin_stars',
       ),
-      // 김민철 (SoulKey) - B+, 7레벨, 5900
+      // 김민철 (SoulKey) - A-, 7레벨
       Player(
         id: 'wjs_soulkey',
         name: '김민철',
         nickname: 'SoulKey',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 740, harass: 780,
-          strategy: 700, macro: 780, defense: 700, scout: 720,
-        ),
+          sense: 470, control: 500, attack: 480, harass: 520,
+          strategy: 450, macro: 520, defense: 450, scout: 470,
+        ), // 합계: 3860 (A-)
         levelValue: 7,
         teamId: 'woongjin_stars',
       ),
-      // 이재호 (Light) - B+, 8레벨, 5800
+      // 이재호 (Light) - A-, 8레벨
       Player(
         id: 'wjs_light',
         name: '이재호',
         nickname: 'Light',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 780, harass: 700,
-          strategy: 740, macro: 740, defense: 720, scout: 700,
-        ),
+          sense: 470, control: 500, attack: 520, harass: 450,
+          strategy: 490, macro: 490, defense: 470, scout: 450,
+        ), // 합계: 3840 (A-)
         levelValue: 8,
         teamId: 'woongjin_stars',
       ),
-      // 윤용태 (Killer) - B-, 7레벨, 5550
+      // 윤용태 (Killer) - B+, 7레벨
       Player(
         id: 'wjs_killer',
         name: '윤용태',
         nickname: 'Killer',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 660,
-          strategy: 740, macro: 700, defense: 680, scout: 700,
-        ),
+          sense: 400, control: 430, attack: 410, harass: 380,
+          strategy: 450, macro: 420, defense: 400, scout: 410,
+        ), // 합계: 3300 (B+)
         levelValue: 7,
         teamId: 'woongjin_stars',
       ),
-      // 신재욱 - B-, 6레벨, 5450
+      // 신재욱 - B, 6레벨
       Player(
         id: 'wjs_jaewook',
         name: '신재욱',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 660,
-          strategy: 720, macro: 700, defense: 680, scout: 680,
-        ),
+          sense: 370, control: 400, attack: 380, harass: 350,
+          strategy: 410, macro: 390, defense: 370, scout: 370,
+        ), // 합계: 3040 (B)
         levelValue: 6,
         teamId: 'woongjin_stars',
       ),
-      // 노준규 - D+, 3레벨, 4950
+      // 노준규 (BrAvO) - C+, 3레벨
       Player(
         id: 'wjs_nojunggyu',
         name: '노준규',
         nickname: 'BrAvO',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 600, control: 640, attack: 660, harass: 580,
-          strategy: 620, macro: 620, defense: 600, scout: 580,
-        ),
+          sense: 260, control: 290, attack: 310, harass: 240,
+          strategy: 280, macro: 280, defense: 260, scout: 240,
+        ), // 합계: 2160 (C+)
         levelValue: 3,
         teamId: 'woongjin_stars',
       ),
-      // 홍진표 - F, 1레벨, 4400
+      // 홍진표 - D, 1레벨
       Player(
         id: 'wjs_hongjinpyo',
         name: '홍진표',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 520, control: 560, attack: 580, harass: 500,
-          strategy: 540, macro: 520, defense: 500, scout: 480,
-        ),
+          sense: 160, control: 190, attack: 210, harass: 140,
+          strategy: 180, macro: 160, defense: 140, scout: 120,
+        ), // 합계: 1300 (D)
         levelValue: 1,
         teamId: 'woongjin_stars',
       ),
-      // 김유진 - C-, 4레벨, 5000
+      // 김유진 - C, 4레벨
       Player(
         id: 'wjs_kimyoojin',
         name: '김유진',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 640, harass: 600,
-          strategy: 660, macro: 640, defense: 620, scout: 640,
-        ),
+          sense: 250, control: 280, attack: 260, harass: 230,
+          strategy: 290, macro: 270, defense: 250, scout: 270,
+        ), // 합계: 2100 (C+)
         levelValue: 4,
         teamId: 'woongjin_stars',
       ),
-      // 김성운 - F, 1레벨, 4400
+      // 김성운 - D, 1레벨
       Player(
         id: 'wjs_kimseongwoon',
         name: '김성운',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 520, control: 560, attack: 540, harass: 580,
-          strategy: 500, macro: 580, defense: 500, scout: 520,
-        ),
+          sense: 160, control: 190, attack: 170, harass: 210,
+          strategy: 140, macro: 210, defense: 140, scout: 160,
+        ), // 합계: 1380 (D)
         levelValue: 1,
         teamId: 'woongjin_stars',
       ),
@@ -1052,141 +1053,141 @@ class InitialData {
 
   static List<Player> _createCjEntusPlayers() {
     return [
-      // 신상문 (Leta) - B+, 7레벨, 5900
+      // 신상문 (Leta) - A-, 7레벨
       Player(
         id: 'cj_leta',
         name: '신상문',
         nickname: 'Leta',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 780, harass: 700,
-          strategy: 740, macro: 740, defense: 720, scout: 700,
-        ),
+          sense: 470, control: 500, attack: 520, harass: 450,
+          strategy: 490, macro: 490, defense: 470, scout: 450,
+        ), // 합계: 3840 (A-)
         levelValue: 7,
         teamId: 'cj_entus',
       ),
-      // 신동원 (Hydra) - B+, 7레벨, 5900
+      // 신동원 (Hydra) - A-, 7레벨
       Player(
         id: 'cj_hydra',
         name: '신동원',
         nickname: 'Hydra',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 740, harass: 780,
-          strategy: 700, macro: 780, defense: 700, scout: 720,
-        ),
+          sense: 470, control: 500, attack: 480, harass: 520,
+          strategy: 450, macro: 520, defense: 450, scout: 470,
+        ), // 합계: 3860 (A-)
         levelValue: 7,
         teamId: 'cj_entus',
       ),
-      // 장윤철 (SnOw) - B, 5레벨, 5700
+      // 장윤철 (SnOw) - B+, 5레벨
       Player(
         id: 'cj_snow',
         name: '장윤철',
         nickname: 'SnOw',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 680,
-          strategy: 760, macro: 720, defense: 700, scout: 720,
-        ),
+          sense: 410, control: 440, attack: 420, harass: 380,
+          strategy: 460, macro: 430, defense: 400, scout: 420,
+        ), // 합계: 3360 (B+)
         levelValue: 5,
         teamId: 'cj_entus',
       ),
-      // 이경민 - B, 6레벨, 5650
+      // 이경민 - B+, 6레벨
       Player(
         id: 'cj_leekyungmin',
         name: '이경민',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 680,
-          strategy: 740, macro: 720, defense: 700, scout: 700,
-        ),
+          sense: 400, control: 430, attack: 410, harass: 380,
+          strategy: 440, macro: 420, defense: 400, scout: 400,
+        ), // 합계: 3280 (B+)
         levelValue: 6,
         teamId: 'cj_entus',
       ),
-      // 조병세 - B-, 5레벨, 5500
+      // 조병세 (Iris) - B, 5레벨
       Player(
         id: 'cj_jobyungse',
         name: '조병세',
         nickname: 'Iris',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 740, harass: 660,
-          strategy: 700, macro: 700, defense: 680, scout: 660,
-        ),
+          sense: 370, control: 400, attack: 420, harass: 350,
+          strategy: 390, macro: 390, defense: 370, scout: 350,
+        ), // 합계: 3040 (B)
         levelValue: 5,
         teamId: 'cj_entus',
       ),
-      // 정우용 - D+, 4레벨, 4950
+      // 정우용 (sKyHigh) - C+, 4레벨
       Player(
         id: 'cj_jungwoyong',
         name: '정우용',
         nickname: 'sKyHigh',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 600, control: 640, attack: 620, harass: 660,
-          strategy: 580, macro: 660, defense: 580, scout: 600,
-        ),
+          sense: 270, control: 300, attack: 280, harass: 320,
+          strategy: 250, macro: 320, defense: 250, scout: 270,
+        ), // 합계: 2260 (C+)
         levelValue: 4,
         teamId: 'cj_entus',
       ),
-      // 유영진 - C-, 3레벨, 5000
+      // 유영진 - C, 3레벨
       Player(
         id: 'cj_youyoungjin',
         name: '유영진',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 680, harass: 600,
-          strategy: 640, macro: 620, defense: 600, scout: 580,
-        ),
+          sense: 250, control: 280, attack: 300, harass: 230,
+          strategy: 270, macro: 260, defense: 240, scout: 220,
+        ), // 합계: 2050 (C+)
         levelValue: 3,
         teamId: 'cj_entus',
       ),
-      // 김정우 (Effort) - B-, 5레벨, 5500
+      // 김정우 (Effort) - B, 5레벨
       Player(
         id: 'cj_kimjungwoo',
         name: '김정우',
         nickname: 'Effort',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 740,
-          strategy: 660, macro: 720, defense: 660, scout: 680,
-        ),
+          sense: 370, control: 400, attack: 380, harass: 420,
+          strategy: 350, macro: 400, defense: 350, scout: 370,
+        ), // 합계: 3040 (B)
         levelValue: 5,
         teamId: 'cj_entus',
       ),
-      // 김준호 - D-, 3레벨, 4800
+      // 김준호 - C, 3레벨
       Player(
         id: 'cj_kimjunho',
         name: '김준호',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 600, harass: 640,
-          strategy: 560, macro: 640, defense: 560, scout: 580,
-        ),
+          sense: 220, control: 250, attack: 230, harass: 270,
+          strategy: 200, macro: 270, defense: 200, scout: 220,
+        ), // 합계: 1860 (C)
         levelValue: 3,
         teamId: 'cj_entus',
       ),
-      // 송영진 - F, 1레벨, 4400
+      // 송영진 - D, 1레벨
       Player(
         id: 'cj_songyoungjin',
         name: '송영진',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 520, control: 560, attack: 540, harass: 580,
-          strategy: 500, macro: 580, defense: 500, scout: 520,
-        ),
+          sense: 160, control: 190, attack: 170, harass: 210,
+          strategy: 140, macro: 210, defense: 140, scout: 160,
+        ), // 합계: 1380 (D)
         levelValue: 1,
         teamId: 'cj_entus',
       ),
-      // 한두열 - D+, 3레벨, 4900
+      // 한두열 - C, 3레벨
       Player(
         id: 'cj_handooyeol',
         name: '한두열',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 600, harass: 640,
-          strategy: 560, macro: 640, defense: 560, scout: 580,
-        ),
+          sense: 220, control: 250, attack: 230, harass: 270,
+          strategy: 200, macro: 270, defense: 200, scout: 220,
+        ), // 합계: 1860 (C)
         levelValue: 3,
         teamId: 'cj_entus',
       ),
@@ -1212,126 +1213,126 @@ class InitialData {
 
   static List<Player> _createAirforceAcePlayers() {
     return [
-      // 김구현 (Modesty) - B+, 8레벨, 5800
+      // 김구현 (Modesty) - A-, 8레벨
       Player(
         id: 'ace_modesty',
         name: '김구현',
         nickname: 'Modesty',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 740, harass: 700,
-          strategy: 760, macro: 740, defense: 720, scout: 740,
-        ),
+          sense: 470, control: 500, attack: 480, harass: 450,
+          strategy: 500, macro: 490, defense: 470, scout: 480,
+        ), // 합계: 3840 (A-)
         levelValue: 8,
         teamId: 'airforce_ace',
       ),
-      // 차명환 - B, 7레벨, 5600
+      // 차명환 - B+, 7레벨
       Player(
         id: 'ace_cha',
         name: '차명환',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 760,
-          strategy: 680, macro: 740, defense: 680, scout: 700,
-        ),
+          sense: 400, control: 430, attack: 410, harass: 450,
+          strategy: 380, macro: 430, defense: 380, scout: 400,
+        ), // 합계: 3280 (B+)
         levelValue: 7,
         teamId: 'airforce_ace',
       ),
-      // 변형태 (Movie) - B-, 8레벨, 5400
+      // 변형태 (Movie) - B, 8레벨
       Player(
         id: 'ace_byunhyungtae',
         name: '변형태',
         nickname: 'Movie',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 720, harass: 680,
-          strategy: 680, macro: 680, defense: 660, scout: 660,
-        ),
+          sense: 350, control: 380, attack: 400, harass: 360,
+          strategy: 370, macro: 370, defense: 350, scout: 350,
+        ), // 합계: 2930 (B)
         levelValue: 8,
         teamId: 'airforce_ace',
       ),
-      // 이성은 (ZerO) - B-, 8레벨, 5450
+      // 이성은 (ZerO) - B, 8레벨
       Player(
         id: 'ace_leeseungeun',
         name: '이성은',
         nickname: 'ZerO',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 680,
-          strategy: 700, macro: 700, defense: 680, scout: 680,
-        ),
+          sense: 360, control: 390, attack: 370, harass: 360,
+          strategy: 380, macro: 380, defense: 360, scout: 360,
+        ), // 합계: 2960 (B)
         levelValue: 8,
         teamId: 'airforce_ace',
       ),
-      // 고인규 - C+, 7레벨, 5200
+      // 고인규 - B-, 7레벨
       Player(
         id: 'ace_koinggyu',
         name: '고인규',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 640, control: 680, attack: 700, harass: 620,
-          strategy: 660, macro: 660, defense: 640, scout: 620,
-        ),
+          sense: 310, control: 340, attack: 360, harass: 290,
+          strategy: 330, macro: 330, defense: 310, scout: 290,
+        ), // 합계: 2560 (B-)
         levelValue: 7,
         teamId: 'airforce_ace',
       ),
-      // 임진묵 - C+, 6레벨, 5200
+      // 임진묵 - B-, 6레벨
       Player(
         id: 'ace_imjinmook',
         name: '임진묵',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 640, control: 680, attack: 700, harass: 620,
-          strategy: 660, macro: 660, defense: 640, scout: 620,
-        ),
+          sense: 310, control: 340, attack: 360, harass: 290,
+          strategy: 330, macro: 330, defense: 310, scout: 290,
+        ), // 합계: 2560 (B-)
         levelValue: 6,
         teamId: 'airforce_ace',
       ),
-      // 손석희 - C+, 4레벨, 5350
+      // 손석희 - B-, 4레벨
       Player(
         id: 'ace_sonseokhee',
         name: '손석희',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 640,
-          strategy: 700, macro: 680, defense: 660, scout: 680,
-        ),
+          sense: 330, control: 360, attack: 340, harass: 310,
+          strategy: 360, macro: 350, defense: 330, scout: 340,
+        ), // 합계: 2720 (B-)
         levelValue: 4,
         teamId: 'airforce_ace',
       ),
-      // 김승현 - C, 6레벨, 5000
+      // 김승현 - C+, 6레벨
       Player(
         id: 'ace_kimseunghyun',
         name: '김승현',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 640, harass: 600,
-          strategy: 660, macro: 640, defense: 620, scout: 640,
-        ),
+          sense: 270, control: 300, attack: 280, harass: 250,
+          strategy: 300, macro: 290, defense: 270, scout: 290,
+        ), // 합계: 2250 (C+)
         levelValue: 6,
         teamId: 'airforce_ace',
       ),
-      // 이정현 - D, 1레벨, 4600
+      // 이정현 - C-, 1레벨
       Player(
         id: 'ace_leejunghyun',
         name: '이정현',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 560, control: 600, attack: 580, harass: 620,
-          strategy: 540, macro: 600, defense: 540, scout: 560,
-        ),
+          sense: 190, control: 220, attack: 200, harass: 240,
+          strategy: 170, macro: 230, defense: 170, scout: 190,
+        ), // 합계: 1610 (C)
         levelValue: 1,
         teamId: 'airforce_ace',
       ),
-      // 안기효 - C, 4레벨, 5100
+      // 안기효 - C+, 4레벨
       Player(
         id: 'ace_ankihyo',
         name: '안기효',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 620, control: 660, attack: 640, harass: 600,
-          strategy: 680, macro: 640, defense: 620, scout: 640,
-        ),
+          sense: 270, control: 300, attack: 280, harass: 250,
+          strategy: 320, macro: 290, defense: 270, scout: 290,
+        ), // 합계: 2270 (C+)
         levelValue: 4,
         teamId: 'airforce_ace',
       ),
@@ -1357,142 +1358,142 @@ class InitialData {
 
   static List<Player> _createTeam8Players() {
     return [
-      // 이제동 (Jaedong) - A+, 9레벨, 6400
+      // 이제동 (Jaedong) - A+, 9레벨
       Player(
         id: 't8_jaedong',
         name: '이제동',
         nickname: 'Jaedong',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 800, control: 840, attack: 820, harass: 800,
-          strategy: 780, macro: 820, defense: 760, scout: 800,
-        ),
+          sense: 560, control: 590, attack: 570, harass: 560,
+          strategy: 540, macro: 570, defense: 530, scout: 560,
+        ), // 합계: 4480 (A+)
         levelValue: 9,
         teamId: 'team8',
       ),
-      // 염보성 (UpMaGiC) - A-, 8레벨, 6000
+      // 염보성 (UpMaGiC) - A-, 8레벨
       Player(
         id: 't8_upmagic',
         name: '염보성',
         nickname: 'UpMaGiC',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 740, control: 780, attack: 800, harass: 720,
-          strategy: 760, macro: 760, defense: 740, scout: 720,
-        ),
+          sense: 490, control: 520, attack: 540, harass: 470,
+          strategy: 510, macro: 510, defense: 490, scout: 470,
+        ), // 합계: 4000 (A)
         levelValue: 8,
         teamId: 'team8',
       ),
-      // 전태양 (TaeYang) - B+, 6레벨, 5900
+      // 전태양 (TaeYang) - A-, 6레벨
       Player(
         id: 't8_taeyang',
         name: '전태양',
         nickname: 'TaeYang',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 720, control: 760, attack: 780, harass: 700,
-          strategy: 740, macro: 740, defense: 720, scout: 700,
-        ),
+          sense: 470, control: 500, attack: 520, harass: 450,
+          strategy: 490, macro: 490, defense: 470, scout: 450,
+        ), // 합계: 3840 (A-)
         levelValue: 6,
         teamId: 'team8',
       ),
-      // 진영화 (Anytime) - B, 7레벨, 5750
+      // 진영화 (Anytime) - B+, 7레벨
       Player(
         id: 't8_anytime',
         name: '진영화',
         nickname: 'Anytime',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 680,
-          strategy: 760, macro: 720, defense: 700, scout: 720,
-        ),
+          sense: 410, control: 440, attack: 420, harass: 380,
+          strategy: 460, macro: 430, defense: 400, scout: 420,
+        ), // 합계: 3360 (B+)
         levelValue: 7,
         teamId: 'team8',
       ),
-      // 김재훈 - B, 5레벨, 5600
+      // 김재훈 (Kwanro) - B+, 5레벨
       Player(
         id: 't8_jaehoon',
         name: '김재훈',
         nickname: 'Kwanro',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 680,
-          strategy: 740, macro: 720, defense: 680, scout: 700,
-        ),
+          sense: 400, control: 430, attack: 410, harass: 380,
+          strategy: 440, macro: 420, defense: 380, scout: 400,
+        ), // 합계: 3260 (B+)
         levelValue: 5,
         teamId: 'team8',
       ),
-      // 박수범 (GoRush) - B-, 5레벨, 5450
+      // 박수범 (GoRush) - B, 5레벨
       Player(
         id: 't8_gorush',
         name: '박수범',
         nickname: 'GoRush',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 680, control: 720, attack: 700, harass: 660,
-          strategy: 720, macro: 700, defense: 680, scout: 680,
-        ),
+          sense: 370, control: 400, attack: 380, harass: 350,
+          strategy: 400, macro: 390, defense: 370, scout: 370,
+        ), // 합계: 3030 (B)
         levelValue: 5,
         teamId: 'team8',
       ),
-      // 박준오 (Cal) - B, 5레벨, 5600
+      // 박준오 (Cal) - B, 5레벨
       Player(
         id: 't8_cal',
         name: '박준오',
         nickname: 'Cal',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 700, control: 740, attack: 720, harass: 760,
-          strategy: 680, macro: 740, defense: 680, scout: 700,
-        ),
+          sense: 380, control: 410, attack: 390, harass: 430,
+          strategy: 360, macro: 410, defense: 360, scout: 380,
+        ), // 합계: 3120 (B)
         levelValue: 5,
         teamId: 'team8',
       ),
-      // 조일장 - B-, 5레벨, 5400
+      // 조일장 - B-, 5레벨
       Player(
         id: 't8_joiljang',
         name: '조일장',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 660, control: 700, attack: 680, harass: 720,
-          strategy: 640, macro: 700, defense: 640, scout: 660,
-        ),
+          sense: 330, control: 360, attack: 340, harass: 380,
+          strategy: 310, macro: 360, defense: 310, scout: 330,
+        ), // 합계: 2720 (B-)
         levelValue: 5,
         teamId: 'team8',
       ),
-      // 이병렬 - F, 1레벨, 4400
+      // 이병렬 - D, 1레벨
       Player(
         id: 't8_byungryul',
         name: '이병렬',
         raceIndex: Race.zerg.index,
         stats: const PlayerStats(
-          sense: 520, control: 560, attack: 540, harass: 580,
-          strategy: 500, macro: 580, defense: 500, scout: 520,
-        ),
+          sense: 160, control: 190, attack: 170, harass: 210,
+          strategy: 140, macro: 210, defense: 140, scout: 160,
+        ), // 합계: 1380 (D)
         levelValue: 1,
         teamId: 'team8',
       ),
-      // 하재상 - F, 1레벨, 4400
+      // 하재상 - D, 1레벨
       Player(
         id: 't8_hajaesang',
         name: '하재상',
         raceIndex: Race.protoss.index,
         stats: const PlayerStats(
-          sense: 520, control: 560, attack: 540, harass: 500,
-          strategy: 580, macro: 540, defense: 520, scout: 540,
-        ),
+          sense: 160, control: 190, attack: 170, harass: 140,
+          strategy: 210, macro: 180, defense: 160, scout: 180,
+        ), // 합계: 1390 (D)
         levelValue: 1,
         teamId: 'team8',
       ),
-      // 김도욱 - D+, 2레벨, 4900
+      // 김도욱 - C, 2레벨
       Player(
         id: 't8_kimdowook',
         name: '김도욱',
         raceIndex: Race.terran.index,
         stats: const PlayerStats(
-          sense: 580, control: 620, attack: 640, harass: 560,
-          strategy: 600, macro: 600, defense: 580, scout: 560,
-        ),
+          sense: 220, control: 250, attack: 270, harass: 200,
+          strategy: 240, macro: 240, defense: 220, scout: 200,
+        ), // 합계: 1840 (C)
         levelValue: 2,
         teamId: 'team8',
       ),

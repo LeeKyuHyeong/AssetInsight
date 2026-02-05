@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
+import '../../../core/constants/map_data.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../../data/providers/match_provider.dart';
@@ -41,6 +42,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   // 특수 컨디션 (최상/최악) - 선수ID -> SpecialCondition
   Map<String, SpecialCondition> _specialConditions = {};
   bool _specialConditionsRolled = false;
+
+  // 맵 정보 / 아이템 토글 (true: 맵 정보, false: 아이템)
+  bool _showMapInfo = true;
 
   /// 매치용 맵 7개 선정
   List<GameMap> _getMatchMaps(List<String> seasonMapIds) {
@@ -138,10 +142,16 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
       ),
       body: Column(
         children: [
-          // 매치 정보
+          // 매치 정보 헤더
           _buildMatchInfo(playerTeam, opponentTeam, isHome),
 
-          // 메인 영역: 3열 구조
+          // 상단: 맵 정보 / 아이템 영역
+          if (_showMapInfo)
+            _buildMapInfoPanel(matchMaps)
+          else
+            _buildItemPanel(),
+
+          // 하단: 3열 구조 (내팀 | 맵 | 상대팀)
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,9 +162,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                   child: _buildMyTeamSection(teamPlayers),
                 ),
 
-                // 중앙: 7개 맵 세로 배치
+                // 중앙: 7개 맵 세로 배치 (다닥다닥)
                 SizedBox(
-                  width: 110,
+                  width: 100,
                   child: _buildMapColumn(matchMaps, teamPlayers),
                 ),
 
@@ -169,10 +179,10 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
 
           // 제출 버튼
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 40,
               child: ElevatedButton(
                 onPressed: canSubmit
                     ? () => _submitRoster(playerTeam, opponentTeam, teamPlayers)
@@ -184,7 +194,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                 ),
                 child: Text(
                   canSubmit ? '로스터 제출' : '선수 배치 필요 ($selectedCount/6)',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -197,54 +207,90 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   /// 매치 정보 헤더
   Widget _buildMatchInfo(Team playerTeam, Team opponentTeam, bool isHome) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       color: AppTheme.cardBackground,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Column(
-            children: [
-              Text(playerTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text(isHome ? 'HOME' : 'AWAY', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
-            ],
+          // 전환 버튼
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _showMapInfo = !_showMapInfo;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _showMapInfo ? AppTheme.primaryBlue : Colors.orange,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _showMapInfo ? Icons.map : Icons.inventory_2,
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _showMapInfo ? '맵' : '템',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const Text('VS', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.accentGreen)),
-          Column(
-            children: [
-              Text(opponentTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              Text(isHome ? 'AWAY' : 'HOME', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
-            ],
+          // 팀 정보
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(
+                  children: [
+                    Text(playerTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text(isHome ? 'HOME' : 'AWAY', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9)),
+                  ],
+                ),
+                const Text('VS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.accentGreen)),
+                Column(
+                  children: [
+                    Text(opponentTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text(isHome ? 'AWAY' : 'HOME', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// 내 팀 섹션 (그리드 + 상세정보)
+  /// 내 팀 섹션 (선수 그리드만)
   Widget _buildMyTeamSection(List<Player> teamPlayers) {
     return Column(
       children: [
         // 헤더
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
           color: AppTheme.primaryBlue.withOpacity(0.2),
           child: Row(
             children: [
-              const Icon(Icons.person, size: 12, color: AppTheme.primaryBlue),
-              const SizedBox(width: 4),
-              Text('내 팀 (${teamPlayers.length}명)',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+              const Icon(Icons.person, size: 10, color: AppTheme.primaryBlue),
+              const SizedBox(width: 3),
+              Text('내 팀 (${teamPlayers.length})',
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
             ],
           ),
         ),
         // 선수 그리드 (2열)
         Expanded(
-          flex: 2,
           child: GridView.builder(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(2),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 2.8,
+              childAspectRatio: 2.6,
               crossAxisSpacing: 2,
               mainAxisSpacing: 2,
             ),
@@ -279,14 +325,174 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             },
           ),
         ),
-        // 선택된 선수 상세정보 (8각형 + 컨디션)
-        if (_selectedMyPlayerIndex != null && _selectedMyPlayerIndex! < teamPlayers.length)
-          _buildPlayerDetail(teamPlayers[_selectedMyPlayerIndex!], true),
       ],
     );
   }
 
-  /// 상대 팀 섹션 (그리드 + 상세정보)
+  /// 맵 정보 패널 (상단 전체 가로)
+  Widget _buildMapInfoPanel(List<GameMap> matchMaps) {
+    final currentMap = _focusedMapIndex < matchMaps.length ? matchMaps[_focusedMapIndex] : null;
+    if (currentMap == null) {
+      return Container(
+        height: 70,
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Center(child: Text('맵 정보 없음', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10))),
+      );
+    }
+
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBackground,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          // 세트 번호
+          Container(
+            width: 18, height: 18,
+            decoration: BoxDecoration(
+              color: AppTheme.accentGreen,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Center(
+              child: Text('${_focusedMapIndex + 1}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
+            ),
+          ),
+          const SizedBox(width: 4),
+          // 맵 썸네일
+          Builder(
+            builder: (context) {
+              final mapData = getMapByName(currentMap.name);
+              final imageFile = mapData?.imageFile ?? '';
+              return Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: imageFile.isEmpty
+                      ? Container(
+                          color: AppTheme.cardBackground,
+                          child: const Icon(Icons.map, size: 24, color: AppTheme.textSecondary),
+                        )
+                      : Image.asset(
+                          'assets/maps/$imageFile',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: AppTheme.cardBackground,
+                            child: const Icon(Icons.map, size: 24, color: AppTheme.textSecondary),
+                          ),
+                        ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 6),
+          // 러시/자원/복잡 (세로)
+          Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _StatBoxMini(label: '러시', value: currentMap.rushDistance),
+              _StatBoxMini(label: '자원', value: currentMap.resources),
+              _StatBoxMini(label: '복잡', value: currentMap.complexity),
+            ],
+          ),
+          const SizedBox(width: 8),
+          // 맵 이름 + 종족 상성 (가로)
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  currentMap.name,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _MatchupBoxCompact(label: 'T:Z', value: currentMap.matchup.tvzTerranWinRate),
+                    const SizedBox(width: 4),
+                    _MatchupBoxCompact(label: 'Z:P', value: currentMap.matchup.zvpZergWinRate),
+                    const SizedBox(width: 4),
+                    _MatchupBoxCompact(label: 'P:T', value: currentMap.matchup.pvtProtossWinRate),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 아이템 패널 (상단 전체 가로)
+  Widget _buildItemPanel() {
+    final gameState = ref.watch(gameStateProvider);
+    final inventory = gameState?.inventory;
+
+    if (inventory == null) {
+      return Container(
+        height: 70,
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Center(child: Text('인벤토리 없음', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10))),
+      );
+    }
+
+    // 보유 중인 소모품 목록
+    final consumableItems = ConsumableItems.all.where((item) {
+      return inventory.getConsumableCount(item.id) > 0;
+    }).toList();
+
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBackground,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.inventory_2, size: 14, color: Colors.orange),
+          const SizedBox(width: 6),
+          if (consumableItems.isEmpty)
+            const Expanded(child: Text('보유 아이템 없음', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)))
+          else
+            Expanded(
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: consumableItems.length,
+                itemBuilder: (context, index) {
+                  final item = consumableItems[index];
+                  final count = inventory.getConsumableCount(item.id);
+                  return _ItemCardCompact(item: item, count: count);
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 상대 팀 섹션 (선수 그리드만)
   Widget _buildOpponentSection(List<Player> opponentPlayers, String opponentTeamId) {
     // 컨디션 + 등급 기준 정렬
     final sortedPlayers = List<Player>.from(opponentPlayers)
@@ -303,23 +509,23 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
       children: [
         // 헤더 + 스나이핑
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
           color: Colors.red.withOpacity(0.2),
           child: Row(
             children: [
-              const Icon(Icons.groups, size: 12, color: Colors.red),
-              const SizedBox(width: 4),
+              const Icon(Icons.groups, size: 10, color: Colors.red),
+              const SizedBox(width: 3),
               Expanded(
-                child: Text('상대 팀 (${opponentPlayers.length}명)',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
+                child: Text('상대 (${opponentPlayers.length})',
+                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.red)),
               ),
               if (snipingCount > 0 && !_snipingUsed)
                 GestureDetector(
                   onTap: () => _useSniping(opponentTeamId, opponentPlayers),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(3)),
-                    child: Text('스나이핑($snipingCount)', style: const TextStyle(fontSize: 8, color: Colors.white)),
+                    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                    decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(2)),
+                    child: Text('스나이핑($snipingCount)', style: const TextStyle(fontSize: 7, color: Colors.white)),
                   ),
                 ),
             ],
@@ -327,12 +533,11 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         ),
         // 선수 그리드 (2열)
         Expanded(
-          flex: 2,
           child: GridView.builder(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(2),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 2.8,
+              childAspectRatio: 2.6,
               crossAxisSpacing: 2,
               mainAxisSpacing: 2,
             ),
@@ -357,9 +562,6 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             },
           ),
         ),
-        // 선택된 선수 상세정보
-        if (_selectedOpponentPlayerIndex != null && _selectedOpponentPlayerIndex! < sortedPlayers.length)
-          _buildPlayerDetail(sortedPlayers[_selectedOpponentPlayerIndex!], false),
       ],
     );
   }
@@ -475,53 +677,44 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     );
   }
 
-  /// 중앙 맵 컬럼 (7개 세로 배치)
+  /// 중앙 맵 컬럼 (7개 세로 다닥다닥 배치)
   Widget _buildMapColumn(List<GameMap> matchMaps, List<Player> teamPlayers) {
     return Container(
       color: AppTheme.cardBackground.withOpacity(0.5),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: const Text('7전 4선승', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
-          ),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(7, (index) {
-                final map = index < matchMaps.length ? matchMaps[index] : null;
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: List.generate(7, (index) {
+          final map = index < matchMaps.length ? matchMaps[index] : null;
 
-                if (index == 6) {
-                  return _AceMapRow(map: map);
-                }
+          if (index == 6) {
+            return _AceMapRowCompact(map: map);
+          }
 
-                final playerIndex = selectedPlayers[index];
-                final player = playerIndex != null && playerIndex < teamPlayers.length
-                    ? teamPlayers[playerIndex]
-                    : null;
-                final isFocused = _focusedMapIndex == index;
+          final playerIndex = selectedPlayers[index];
+          final player = playerIndex != null && playerIndex < teamPlayers.length
+              ? teamPlayers[playerIndex]
+              : null;
+          final isFocused = _focusedMapIndex == index;
 
-                return _MapRow(
-                  setNumber: index + 1,
-                  map: map,
-                  player: player,
-                  isFocused: isFocused,
-                  onTap: () {
-                    setState(() {
-                      _focusedMapIndex = index;
-                    });
-                  },
-                  onPlayerRemove: () {
-                    setState(() {
-                      selectedPlayers[index] = null;
-                      _focusedMapIndex = index;
-                    });
-                  },
-                );
-              }),
-            ),
-          ),
-        ],
+          return _MapRowCompact(
+            setNumber: index + 1,
+            map: map,
+            player: player,
+            isFocused: isFocused,
+            onTap: () {
+              setState(() {
+                _focusedMapIndex = index;
+              });
+            },
+            onPlayerRemove: () {
+              setState(() {
+                selectedPlayers[index] = null;
+                _focusedMapIndex = index;
+              });
+            },
+          );
+        }),
       ),
     );
   }
@@ -986,6 +1179,406 @@ class _AceMapRow extends StatelessWidget {
               children: [
                 Text(shortMapName, style: TextStyle(fontSize: 8, color: Colors.orange.withOpacity(0.8)), overflow: TextOverflow.ellipsis),
                 Text('ACE (3:3)', style: TextStyle(fontSize: 7, color: Colors.orange.withOpacity(0.6))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 맵 스탯 박스 (러시/자원/복잡)
+class _StatBox extends StatelessWidget {
+  final String label;
+  final int value;
+  final IconData icon;
+
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value >= 7 ? Colors.green : (value >= 4 ? Colors.orange : Colors.red);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 8, color: color)),
+            Text('$value', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 종족 상성 박스 (T:Z, Z:P, P:T)
+class _MatchupBox extends StatelessWidget {
+  final String label;
+  final int value; // 첫 번째 종족의 승률
+
+  const _MatchupBox({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value > 55 ? Colors.green : (value < 45 ? Colors.red : AppTheme.textSecondary);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        decoration: BoxDecoration(
+          color: AppTheme.cardBackground,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+            const SizedBox(height: 2),
+            Text('$value%', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 아이템 카드
+class _ItemCard extends StatelessWidget {
+  final ConsumableItem item;
+  final int count;
+
+  const _ItemCard({
+    required this.item,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    IconData icon;
+    Color color;
+    switch (item.id) {
+      case 'vita_vita':
+        icon = Icons.local_drink;
+        color = Colors.green;
+        break;
+      case 'chewing_gum':
+        icon = Icons.bubble_chart;
+        color = Colors.pink;
+        break;
+      case 'ceremony':
+        icon = Icons.celebration;
+        color = Colors.purple;
+        break;
+      case 'sniping':
+        icon = Icons.visibility;
+        color = Colors.orange;
+        break;
+      case 'cheerful':
+        icon = Icons.favorite;
+        color = Colors.red;
+        break;
+      default:
+        icon = Icons.inventory_2;
+        color = Colors.grey;
+    }
+
+    return Container(
+      width: 50,
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(height: 2),
+          Text(
+            item.name,
+            style: TextStyle(fontSize: 7, color: color, fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            'x$count',
+            style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 컴팩트 스탯 박스 (가로형)
+class _StatBoxCompact extends StatelessWidget {
+  final String label;
+  final int value;
+
+  const _StatBoxCompact({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value >= 7 ? Colors.green : (value >= 4 ? Colors.orange : Colors.red);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 7, color: color)),
+          Text('$value', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 미니 스탯 박스 (세로 배치용)
+class _StatBoxMini extends StatelessWidget {
+  final String label;
+  final int value;
+
+  const _StatBoxMini({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value >= 7 ? Colors.green : (value >= 4 ? Colors.orange : Colors.red);
+    return Container(
+      width: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 7, color: color)),
+          Text('$value', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 컴팩트 상성 박스 (가로형)
+class _MatchupBoxCompact extends StatelessWidget {
+  final String label;
+  final int value;
+
+  const _MatchupBoxCompact({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value > 55 ? Colors.green : (value < 45 ? Colors.red : AppTheme.textSecondary);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBackground,
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 7, color: AppTheme.textSecondary)),
+          Text('$value', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 컴팩트 아이템 카드 (가로 리스트용)
+class _ItemCardCompact extends StatelessWidget {
+  final ConsumableItem item;
+  final int count;
+
+  const _ItemCardCompact({required this.item, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    IconData icon;
+    Color color;
+    switch (item.id) {
+      case 'vita_vita': icon = Icons.local_drink; color = Colors.green; break;
+      case 'chewing_gum': icon = Icons.bubble_chart; color = Colors.pink; break;
+      case 'ceremony': icon = Icons.celebration; color = Colors.purple; break;
+      case 'sniping': icon = Icons.visibility; color = Colors.orange; break;
+      case 'cheerful': icon = Icons.favorite; color = Colors.red; break;
+      default: icon = Icons.inventory_2; color = Colors.grey;
+    }
+
+    return Container(
+      width: 55,
+      margin: const EdgeInsets.only(right: 4),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.name, style: TextStyle(fontSize: 7, color: color, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                Text('x$count', style: TextStyle(fontSize: 8, color: color, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 컴팩트 맵 행 (다닥다닥)
+class _MapRowCompact extends StatelessWidget {
+  final int setNumber;
+  final GameMap? map;
+  final Player? player;
+  final bool isFocused;
+  final VoidCallback onTap;
+  final VoidCallback onPlayerRemove;
+
+  const _MapRowCompact({
+    required this.setNumber,
+    required this.map,
+    required this.player,
+    required this.isFocused,
+    required this.onTap,
+    required this.onPlayerRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final mapName = map?.name ?? '맵 $setNumber';
+    final shortMapName = mapName.length > 4 ? '${mapName.substring(0, 3)}..' : mapName;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 32,
+        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+        decoration: BoxDecoration(
+          color: isFocused
+              ? AppTheme.accentGreen.withOpacity(0.2)
+              : (player != null ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent),
+          borderRadius: BorderRadius.circular(3),
+          border: Border.all(
+            color: isFocused
+                ? AppTheme.accentGreen
+                : (player != null ? AppTheme.primaryBlue : AppTheme.textSecondary.withOpacity(0.3)),
+            width: isFocused ? 1.5 : 0.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 14, height: 14,
+              decoration: BoxDecoration(
+                color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Center(
+                child: Text('$setNumber', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold,
+                    color: isFocused ? Colors.black : AppTheme.textSecondary)),
+              ),
+            ),
+            const SizedBox(width: 2),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(shortMapName, style: TextStyle(fontSize: 7,
+                      color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
+                  if (player != null)
+                    GestureDetector(
+                      onTap: onPlayerRemove,
+                      child: Row(
+                        children: [
+                          CircleAvatar(radius: 4, backgroundColor: AppTheme.getRaceColor(player!.race.code),
+                              child: Text(player!.race.code, style: const TextStyle(fontSize: 4, color: Colors.white))),
+                          const SizedBox(width: 1),
+                          Expanded(child: Text(player!.name, style: const TextStyle(fontSize: 7, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis)),
+                        ],
+                      ),
+                    )
+                  else
+                    Text(isFocused ? '← 선택' : '', style: TextStyle(fontSize: 6,
+                        color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withOpacity(0.5))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 컴팩트 에이스 맵 행
+class _AceMapRowCompact extends StatelessWidget {
+  final GameMap? map;
+
+  const _AceMapRowCompact({required this.map});
+
+  @override
+  Widget build(BuildContext context) {
+    final mapName = map?.name ?? 'ACE';
+    final shortMapName = mapName.length > 4 ? '${mapName.substring(0, 3)}..' : mapName;
+
+    return Container(
+      height: 32,
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: Colors.orange.withOpacity(0.5), width: 0.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 14, height: 14,
+            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.3), borderRadius: BorderRadius.circular(7)),
+            child: const Center(child: Icon(Icons.star, size: 8, color: Colors.orange)),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(shortMapName, style: TextStyle(fontSize: 7, color: Colors.orange.withOpacity(0.8)), overflow: TextOverflow.ellipsis),
+                Text('ACE', style: TextStyle(fontSize: 6, color: Colors.orange.withOpacity(0.6))),
               ],
             ),
           ),

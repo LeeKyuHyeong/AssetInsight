@@ -381,8 +381,8 @@ class _SeasonEndScreenState extends ConsumerState<SeasonEndScreen> {
   Widget _buildLevelUpPage(GameState gameState) {
     final players = gameState.saveData.getTeamPlayers(gameState.playerTeam.id);
 
-    // 레벨업 대상 선수 (임시: 모든 선수 표시)
-    final levelUpPlayers = players.where((p) => p.seasonSinceLastLevelUp >= 1).toList();
+    // 커리어 진행 대상 선수 (임시: 모든 선수 표시)
+    final levelUpPlayers = players.where((p) => p.careerSeasons >= 1).toList();
 
     return Container(
       padding: EdgeInsets.all(24.sp),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../../domain/models/item.dart';
@@ -34,6 +35,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       appBar: AppBar(
         title: const Text('아이템 상점'),
         leading: ResetButton.leading(),
+        actions: [
+          TextButton.icon(
+            onPressed: () => context.go('/main'),
+            icon: const Icon(Icons.exit_to_app, color: Colors.white, size: 18),
+            label: const Text('나가기', style: TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+        ],
       ),
       body: Column(
             children: [

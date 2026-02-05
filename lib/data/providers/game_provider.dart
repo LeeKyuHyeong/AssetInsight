@@ -1011,21 +1011,21 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     var retiredPlayers = <Player>[];
     var newRookies = <Player>[];
 
-    // 1. 모든 선수 레벨업 체크 + 은퇴 체크 + 컨디션 리셋
+    // 1. 모든 선수 커리어 진행 + 은퇴 체크 + 컨디션 리셋
     for (final player in state!.saveData.allPlayers) {
       var updatedPlayer = player;
 
-      // 레벨업 체크 (2시즌마다)
-      updatedPlayer = updatedPlayer.checkLevelUp(currentSeasonNumber);
+      // 커리어 진행 (시즌당 +1)
+      updatedPlayer = updatedPlayer.advanceCareer();
 
       // 컨디션 100% 리셋
       updatedPlayer = updatedPlayer.copyWith(condition: 100);
 
-      // 레벨 10 선수 은퇴 체크 (패배 후 등급 2단계 이상 하락 조건은 간소화)
-      if (updatedPlayer.levelValue >= 10) {
-        // 레벨 10 선수는 50% 확률로 은퇴
-        final shouldRetire = ((random + updatedPlayer.id.hashCode) % 100) < 50;
-        if (shouldRetire && updatedPlayer.teamId != null) {
+      // 노장(twilight) 선수 은퇴 체크 (커리어 기반)
+      if (updatedPlayer.career == Career.twilight) {
+        // 노장 선수는 커리어의 declineChance 확률로 은퇴 (30%)
+        final retireRoll = ((random + updatedPlayer.id.hashCode) % 100) / 100.0;
+        if (retireRoll < updatedPlayer.career.declineChance && updatedPlayer.teamId != null) {
           retiredPlayers.add(updatedPlayer);
           continue; // 은퇴 선수는 업데이트 목록에서 제외
         }

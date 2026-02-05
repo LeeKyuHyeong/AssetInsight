@@ -271,8 +271,8 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
 
   Widget _buildGroupBracket(List<String?> groupPlayers, Map<String, Player> playerMap) {
     // 듀얼 토너먼트 대진표
-    // 1경기: 0 vs 1 (시드 vs 시드)
-    // 2경기: 2 vs 3 (PC방 승자 vs PC방 승자)
+    // 1경기: 0 vs 2 (1시드 vs PC방 승자)
+    // 2경기: 1 vs 3 (3시드 vs PC방 승자)
     // 승자전: 1경기 승자 vs 2경기 승자
     // 패자전: 1경기 패자 vs 2경기 패자
     // 최종전: 승자전 패자 vs 패자전 승자
@@ -288,31 +288,126 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
 
     return Column(
       children: [
-        // 1경기, 2경기
+        // 1경기: 1시드 vs PC방 승자
         Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _buildMatchRow('< 1 경기 >', player0, player1)),
-              SizedBox(width: 8.sp),
-              Expanded(child: _buildMatchRow('< 2 경기 >', player2, player3)),
-            ],
+          child: _buildSeededMatchRow(
+            player0, '1시드',
+            player2, 'PC방',
           ),
         ),
-        // 승자전, 패자전
+        // 2경기: 3시드 vs PC방 승자
         Expanded(
-          child: Row(
-            children: [
-              Expanded(child: _buildMatchRow('< 승자전 >', null, null, placeholder: '???')),
-              SizedBox(width: 8.sp),
-              Expanded(child: _buildMatchRow('< 패자전 >', null, null, placeholder: '???')),
-            ],
+          child: _buildSeededMatchRow(
+            player1, '3시드',
+            player3, 'PC방',
           ),
+        ),
+        // 승자전
+        Expanded(
+          child: _buildMatchRow('< 승자전 >', null, null, placeholder: '???'),
+        ),
+        // 패자전
+        Expanded(
+          child: _buildMatchRow('< 패자전 >', null, null, placeholder: '???'),
         ),
         // 최종전
         Expanded(
           child: _buildMatchRow('< 최종전 >', null, null, placeholder: '???'),
         ),
       ],
+    );
+  }
+
+  /// 시드 정보가 포함된 대진 행
+  Widget _buildSeededMatchRow(Player? player1, String seed1, Player? player2, String seed2) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 1.sp),
+      child: Row(
+        children: [
+          // 왼쪽 선수 (시드)
+          Expanded(
+            child: _buildSeededPlayerSlot(player1, seed1),
+          ),
+          // VS
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 2.sp),
+            child: Text(
+              'vs',
+              style: TextStyle(color: Colors.grey, fontSize: 9.sp),
+            ),
+          ),
+          // 오른쪽 선수 (PC방 승자)
+          Expanded(
+            child: _buildSeededPlayerSlot(player2, seed2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 시드 정보가 포함된 선수 슬롯
+  Widget _buildSeededPlayerSlot(Player? player, String seedLabel) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 3.sp, vertical: 2.sp),
+      decoration: BoxDecoration(
+        color: player != null
+            ? AppColors.primary.withOpacity(0.15)
+            : Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(3.sp),
+        border: Border.all(
+          color: player != null
+              ? AppColors.primary.withOpacity(0.3)
+              : Colors.grey.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 시드 라벨
+          Text(
+            seedLabel,
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 7.sp,
+            ),
+          ),
+          // (종족) 이름
+          if (player != null)
+            Row(
+              children: [
+                Text(
+                  '(${player.race.code})',
+                  style: TextStyle(
+                    color: _getRaceColor(player.race),
+                    fontSize: 9.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(width: 2.sp),
+                Expanded(
+                  child: Text(
+                    player.name,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.sp,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              'empty',
+              style: TextStyle(
+                color: Colors.grey.withOpacity(0.5),
+                fontSize: 9.sp,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -357,22 +452,25 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
       );
     }
 
+    // "(종족) 이름" 형식으로 표시
     return Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        Text(
+          '(${player.race.code})',
+          style: TextStyle(
+            color: _getRaceColor(player.race),
+            fontSize: 9.sp,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        SizedBox(width: 2.sp),
         Flexible(
           child: Text(
             player.name,
             style: TextStyle(color: Colors.white, fontSize: 10.sp),
             overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        Text(
-          ' (${player.race.code})',
-          style: TextStyle(
-            color: _getRaceColor(player.race),
-            fontSize: 9.sp,
           ),
         ),
       ],

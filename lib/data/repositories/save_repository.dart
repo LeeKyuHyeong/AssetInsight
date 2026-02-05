@@ -161,22 +161,26 @@ class SaveRepository {
     );
   }
 
-  /// 프로리그 일정 생성 (각 팀당 20경기 = 10주차 × 2경기)
+  /// 프로리그 일정 생성 (각 팀당 14경기 = 7주차 × 2경기)
   List<ScheduleItem> _createProleagueSchedule(List<Team> teams) {
     final schedule = <ScheduleItem>[];
     final teamIds = teams.map((t) => t.id).toList();
     final random = Random();
+    final teamCount = teams.length; // 8팀
+    final matchesPerRound = teamCount ~/ 2; // 4경기
 
     // 라운드 로빈 방식으로 일정 생성
     int matchId = 1;
     final shuffledTeams = List<String>.from(teamIds)..shuffle(random);
 
-    // 20라운드 진행 (각 팀당 20경기, 10주차 × 2경기)
-    for (int round = 1; round <= 20; round++) {
-      // 매 라운드 6경기 (12팀 / 2)
-      for (int i = 0; i < 6; i++) {
+    // 14라운드 진행 (각 팀당 14경기, 7주차 × 2경기)
+    // 8팀 기준: (n-1)*2 = 14 라운드로 모든 팀이 두 번씩 대결
+    final totalRounds = (teamCount - 1) * 2;
+    for (int round = 1; round <= totalRounds; round++) {
+      // 매 라운드 4경기 (8팀 / 2)
+      for (int i = 0; i < matchesPerRound; i++) {
         final homeIndex = i;
-        final awayIndex = 11 - i;
+        final awayIndex = teamCount - 1 - i;
 
         schedule.add(ScheduleItem(
           matchId: 'match_$matchId',
@@ -240,11 +244,17 @@ class SaveRepository {
       'teamId': player.teamId,
       'isSlump': player.isSlump,
       'injuryGames': player.injuryGames,
-      'seasonSinceLastLevelUp': player.seasonSinceLastLevelUp,
+      'careerSeasons': player.careerSeasons,
+      'experience': player.experience,
     };
   }
 
   Player _deserializePlayer(Map<String, dynamic> data) {
+    // 하위 호환성: 기존 seasonSinceLastLevelUp을 careerSeasons로 마이그레이션
+    final careerSeasons = (data['careerSeasons'] as int?) ??
+        (data['seasonSinceLastLevelUp'] as int?) ??
+        0;
+
     return Player(
       id: data['id'] as String,
       name: data['name'] as String,
@@ -257,7 +267,8 @@ class SaveRepository {
       teamId: data['teamId'] as String?,
       isSlump: (data['isSlump'] as bool?) ?? false,
       injuryGames: (data['injuryGames'] as int?) ?? 0,
-      seasonSinceLastLevelUp: (data['seasonSinceLastLevelUp'] as int?) ?? 0,
+      careerSeasons: careerSeasons,
+      experience: (data['experience'] as int?) ?? 0,
     );
   }
 

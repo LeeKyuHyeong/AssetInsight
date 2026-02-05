@@ -104,6 +104,50 @@ class MatchSimulationService {
     }
   }
 
+  /// 세부 빌드 타입 결정 (매치업 + 능력치 기반)
+  BuildType? _determineBuildType(PlayerStats stats, String matchup, BuildStyle preferredStyle) {
+    final candidates = BuildType.getByMatchupAndStyle(matchup, preferredStyle);
+    if (candidates.isEmpty) {
+      // 해당 스타일 빌드가 없으면 매치업 전체에서 선택
+      final allBuilds = BuildType.getByMatchup(matchup);
+      if (allBuilds.isEmpty) return null;
+      return allBuilds[_random.nextInt(allBuilds.length)];
+    }
+
+    // 핵심 능력치에 맞는 빌드 우선 선택
+    final scoredBuilds = <MapEntry<BuildType, double>>[];
+
+    for (final build in candidates) {
+      double score = 0;
+      for (final stat in build.keyStats) {
+        score += _getStatValueByName(stats, stat);
+      }
+      scoredBuilds.add(MapEntry(build, score));
+    }
+
+    // 점수순 정렬 후 상위 빌드 중 랜덤 선택 (약간의 변동성)
+    scoredBuilds.sort((a, b) => b.value.compareTo(a.value));
+
+    // 상위 50% 중 랜덤 선택
+    final topCount = (scoredBuilds.length / 2).ceil().clamp(1, scoredBuilds.length);
+    return scoredBuilds[_random.nextInt(topCount)].key;
+  }
+
+  /// 능력치 이름으로 값 가져오기
+  int _getStatValueByName(PlayerStats stats, String statName) {
+    switch (statName) {
+      case 'sense': return stats.sense;
+      case 'control': return stats.control;
+      case 'attack': return stats.attack;
+      case 'harass': return stats.harass;
+      case 'strategy': return stats.strategy;
+      case 'macro': return stats.macro;
+      case 'defense': return stats.defense;
+      case 'scout': return stats.scout;
+      default: return 500;
+    }
+  }
+
   /// 두 선수 간 승률 계산 (homePlayer 기준)
   double calculateWinRate({
     required Player homePlayer,
@@ -124,72 +168,89 @@ class MatchSimulationService {
     final homeStats = homePlayer.getEffectiveStatsWithSpecialCondition(homeSpecialCondition);
     final awayStats = awayPlayer.getEffectiveStatsWithSpecialCondition(awaySpecialCondition);
 
+    // 매치업 문자열 생성
+    final homeRace = _getRaceString(homePlayer.race);
+    final awayRace = _getRaceString(awayPlayer.race);
+    final matchup = '$homeRace' 'v$awayRace';
+
+    // 3. 기본 능력치 비교 (경기 초반 기준으로 전체 평가)
     final homeTotal = homeStats.total + homeCheerfulBonus;
     final awayTotal = awayStats.total + awayCheerfulBonus;
 
     // 능력치 차이에 따른 승률 보정 (35당 1%, 최대 ±50%)
-    // SS(6400) vs B(2800) = 3600 / 35 = 102% → 50%로 클램프 → SS 95% 승률
     final statDiff = homeTotal - awayTotal;
-    final statBonus = (statDiff / 35).clamp(-50, 50);
+    final statBonus = (statDiff / 35).clamp(-50.0, 50.0);
 
-    // 3. 빌드 스타일 상성 (동일 종족 매치업에서만)
+    // 4. 빌드 스타일 및 세부 빌드 상성
+    final homeStyle = _determineBuildStyle(homeStats);
+    final awayStyle = _determineBuildStyle(awayStats);
+    final homeBuildType = _determineBuildType(homeStats, matchup, homeStyle);
+    final awayBuildType = _determineBuildType(awayStats, '${awayRace}v$homeRace', awayStyle);
+
     double buildBonus = 0;
-    if (homePlayer.race == awayPlayer.race) {
-      final homeStyle = _determineBuildStyle(homeStats);
-      final awayStyle = _determineBuildStyle(awayStats);
 
-      // 빌드 상성 기본값: aggressive > defensive > balanced > aggressive (가위바위보)
-      // ZvZ: 선풀(aggressive) vs 해처리(defensive) → 선풀 유리 +32%
+    // 세부 빌드 타입 상성 (있는 경우)
+    if (homeBuildType != null && awayBuildType != null) {
+      buildBonus = BuildMatchup.getBuildAdvantage(homeBuildType, awayBuildType);
+
+      // 정찰 성공 보너스 (상대 빌드 읽기)
+      buildBonus += BuildMatchup.getScoutBonus(homeStats.scout, awayBuildType);
+      buildBonus -= BuildMatchup.getScoutBonus(awayStats.scout, homeBuildType);
+    } else {
+      // 세부 빌드가 없으면 상위 스타일로 계산
       if (homeStyle == BuildStyle.aggressive && awayStyle == BuildStyle.defensive) {
-        buildBonus = 32;
+        buildBonus = 15;
       } else if (homeStyle == BuildStyle.defensive && awayStyle == BuildStyle.aggressive) {
-        buildBonus = -32;
-      }
-
-      // 등급 차이가 크면 빌드 상성 효과 감소
-      // 등급 차이 7000당 빌드 상성 효과 50% 감소 (매우 완만하게)
-      // SS vs B (차이 3500) → 32% × 0.75 = 약 24% → 저급이 5~7% 이변 가능
-      final gradeDiff = (homeTotal - awayTotal).abs();
-      final buildEffectMultiplier = (1.0 - gradeDiff / 14000).clamp(0.5, 1.0);
-      buildBonus *= buildEffectMultiplier;
-
-      // 수비력이 높으면 빌드 불리 일부 상쇄 (ZvZ 선링 방어)
-      if (buildBonus < 0) {
-        // 빌드 불리한 쪽의 수비력이 높으면 상쇄
-        final defenseAdvantage = (homeStats.defense - awayStats.defense) / 150;
-        buildBonus += defenseAdvantage.clamp(0, 3); // 최대 3% 상쇄
+        buildBonus = -15;
+      } else if (homeStyle == BuildStyle.cheese && awayStyle == BuildStyle.defensive) {
+        buildBonus = 25;
+      } else if (homeStyle == BuildStyle.defensive && awayStyle == BuildStyle.cheese) {
+        buildBonus = -15;
       }
     }
 
-    // 4. 맵 특성 보너스
-    double mapBonus = 0;
+    // 등급 차이가 크면 빌드 상성 효과 감소
+    final gradeDiff = (homeTotal - awayTotal).abs();
+    final buildEffectMultiplier = (1.0 - gradeDiff / 14000).clamp(0.5, 1.0);
+    buildBonus *= buildEffectMultiplier;
 
-    // 러시거리가 짧으면 공격력 유리
-    if (map.favorsAggressive) {
-      final homeAttack = homeStats.attack + homeStats.harass;
-      final awayAttack = awayStats.attack + awayStats.harass;
-      mapBonus += (homeAttack - awayAttack) / 200;
+    // 수비력이 높으면 빌드 불리 일부 상쇄
+    if (buildBonus < 0) {
+      final defenseAdvantage = (homeStats.defense - awayStats.defense) / 150;
+      buildBonus += defenseAdvantage.clamp(0.0, 5.0);
     }
 
-    // 자원이 많으면 물량 유리
-    if (map.favorsMacro) {
-      final homeMacro = homeStats.macro + homeStats.defense;
-      final awayMacro = awayStats.macro + awayStats.defense;
-      mapBonus += (homeMacro - awayMacro) / 200;
-    }
+    buildBonus = buildBonus.clamp(-40.0, 40.0);
 
-    // 복잡도가 높으면 전략 유리
-    if (map.favorsStrategic) {
-      final homeStrategy = homeStats.strategy + homeStats.sense;
-      final awayStrategy = awayStats.strategy + awayStats.sense;
-      mapBonus += (homeStrategy - awayStrategy) / 200;
-    }
+    // 5. 맵 특성 보너스 (세분화된 시스템)
+    final mapBonusResult = map.calculateMapBonus(
+      homeSense: homeStats.sense,
+      homeControl: homeStats.control,
+      homeAttack: homeStats.attack,
+      homeHarass: homeStats.harass,
+      homeStrategy: homeStats.strategy,
+      homeMacro: homeStats.macro,
+      homeDefense: homeStats.defense,
+      homeScout: homeStats.scout,
+      awaySense: awayStats.sense,
+      awayControl: awayStats.control,
+      awayAttack: awayStats.attack,
+      awayHarass: awayStats.harass,
+      awayStrategy: awayStats.strategy,
+      awayMacro: awayStats.macro,
+      awayDefense: awayStats.defense,
+      awayScout: awayStats.scout,
+    );
 
-    mapBonus = mapBonus.clamp(-10, 10); // 최대 ±10%
+    final mapBonus = mapBonusResult.netHomeAdvantage;
+
+    // 6. 레벨 차이에 따른 경험 보정 (레벨당 +2%, 최대 ±20%)
+    final levelDiff = homePlayer.level.value - awayPlayer.level.value;
+    final levelBonus = (levelDiff * 2).clamp(-20, 20);
 
     // 최종 승률 계산
     final baseWinRate = raceMatchupBonus.toDouble();
-    final finalWinRate = (baseWinRate + statBonus + buildBonus + mapBonus).clamp(3, 97);
+    final finalWinRate = (baseWinRate + statBonus + buildBonus + mapBonus + levelBonus).clamp(3.0, 97.0);
 
     return finalWinRate / 100;
   }
@@ -267,6 +328,11 @@ class MatchSimulationService {
       vsRace: homeRace,
       preferredStyle: awayStyle,
     );
+
+    // 세부 빌드 타입 결정
+    final matchup = '${homeRace}v$awayRace';
+    final homeBuildType = _determineBuildType(homeStats, matchup, homeStyle);
+    final awayBuildType = _determineBuildType(awayStats, '${awayRace}v$homeRace', awayStyle);
 
     // 빌드가 없으면 기본 시뮬레이션
     if (homeBuild == null || awayBuild == null) {
@@ -379,6 +445,9 @@ class MatchSimulationService {
           lineCount: lineCount,
           clashStartLine: clashStartLine,
           currentState: state,
+          map: map,
+          homeBuildType: homeBuildType,
+          awayBuildType: awayBuildType,
         );
 
         text = clashResult.text;
@@ -425,6 +494,9 @@ class MatchSimulationService {
             currentArmy: currentArmy,
             currentResource: currentResource,
             race: raceStr,
+            rushDistance: map.rushDistance,
+            resources: map.resources,
+            terrainComplexity: map.terrainComplexity,
           );
 
           text = midLateStep.text.replaceAll('{player}', player.name);
@@ -566,29 +638,86 @@ class MatchSimulationService {
     required int lineCount,
     required int clashStartLine,
     required SimulationState currentState,
+    GameMap? map,
+    BuildType? homeBuildType,
+    BuildType? awayBuildType,
   }) {
     final clashDuration = lineCount - clashStartLine;
     final isZvZ = homePlayer.race == Race.zerg && awayPlayer.race == Race.zerg;
 
-    // 우세한 쪽 결정 (공격력 높은 쪽이 공격자) - 이벤트 풀 선택 전에 먼저 결정
+    // 현재 경기 단계 결정
+    final gamePhase = GamePhase.fromLineCount(lineCount);
+    final homeRaceStr = _getRaceString(homePlayer.race);
+    final awayRaceStr = _getRaceString(awayPlayer.race);
+    final matchup = '${homeRaceStr}v$awayRaceStr';
+
+    // 단계별 가중치 적용된 능력치 계산
+    final homeWeightedTotal = StatWeights.getWeightedTotal(
+      sense: homeStats.sense,
+      control: homeStats.control,
+      attack: homeStats.attack,
+      harass: homeStats.harass,
+      strategy: homeStats.strategy,
+      macro: homeStats.macro,
+      defense: homeStats.defense,
+      scout: homeStats.scout,
+      phase: gamePhase,
+      matchup: matchup,
+    );
+
+    final awayWeightedTotal = StatWeights.getWeightedTotal(
+      sense: awayStats.sense,
+      control: awayStats.control,
+      attack: awayStats.attack,
+      harass: awayStats.harass,
+      strategy: awayStats.strategy,
+      macro: awayStats.macro,
+      defense: awayStats.defense,
+      scout: awayStats.scout,
+      phase: gamePhase,
+      matchup: '${awayRaceStr}v$homeRaceStr',
+    );
+
+    // 우세한 쪽 결정 (가중치 적용된 능력치 + 공격성향)
     final homeAttackPower = homeStats.attack + homeStats.harass;
     final awayAttackPower = awayStats.attack + awayStats.harass;
     final isHomeAttacker = homeAttackPower >= awayAttackPower ||
                            homeStyle == BuildStyle.aggressive ||
                            homeStyle == BuildStyle.cheese;
 
-    // 충돌 이벤트 풀 (매치업별 종족 정보 전달)
-    final homeRaceStr = _getRaceString(homePlayer.race);
-    final awayRaceStr = _getRaceString(awayPlayer.race);
+    // 충돌 이벤트 풀 (매치업별 종족 정보 + 맵 특성 + 능력치 전달)
+    final attackerStats = isHomeAttacker ? homeStats : awayStats;
+    final defenderStats = isHomeAttacker ? awayStats : homeStats;
     final events = BuildOrderData.getClashEvents(
       homeStyle,
       awayStyle,
       attackerRace: isHomeAttacker ? homeRaceStr : awayRaceStr,
       defenderRace: isHomeAttacker ? awayRaceStr : homeRaceStr,
+      rushDistance: map?.rushDistance,
+      resources: map?.resources,
+      terrainComplexity: map?.terrainComplexity,
+      airAccessibility: map?.airAccessibility,
+      centerImportance: map?.centerImportance,
+      hasIsland: map?.hasIsland,
+      attackerAttack: attackerStats.attack,
+      attackerHarass: attackerStats.harass,
+      attackerControl: attackerStats.control,
+      attackerStrategy: attackerStats.strategy,
+      attackerMacro: attackerStats.macro,
+      attackerSense: attackerStats.sense,
+      defenderDefense: defenderStats.defense,
+      attackerBuildType: isHomeAttacker ? homeBuildType : awayBuildType,
+      defenderBuildType: isHomeAttacker ? awayBuildType : homeBuildType,
     );
 
-    // 랜덤 이벤트 선택
-    final event = events[_random.nextInt(events.length)];
+    // 가중치 기반 이벤트 선택
+    final event = _selectWeightedEvent(
+      events: events,
+      attackerStats: attackerStats,
+      defenderStats: defenderStats,
+      gamePhase: gamePhase,
+      matchup: matchup,
+    );
 
     // 텍스트 변환
     final attacker = isHomeAttacker ? homePlayer : awayPlayer;
@@ -603,10 +732,12 @@ class MatchSimulationService {
     int homeResourceChange = isHomeAttacker ? event.attackerResource : event.defenderResource;
     int awayResourceChange = isHomeAttacker ? event.defenderResource : event.attackerResource;
 
-    // 능력치에 따른 보정 (차이가 클수록 더 큰 보정)
+    // 능력치에 따른 보정 (가중치 적용 + 차이가 클수록 더 큰 보정)
     if (event.favorsStat != null) {
-      final homeStat = _getStatValue(homeStats, event.favorsStat);
-      final awayStat = _getStatValue(awayStats, event.favorsStat);
+      // 해당 능력치의 가중치 적용
+      final statWeight = StatWeights.getCombinedWeight(event.favorsStat!, gamePhase, matchup);
+      final homeStat = (_getStatValue(homeStats, event.favorsStat) * statWeight).round();
+      final awayStat = (_getStatValue(awayStats, event.favorsStat) * statWeight).round();
       final statDiff = (homeStat - awayStat).abs();
       final modifier = 1.0 + (statDiff / 500).clamp(0.0, 0.5); // 최대 1.5배
 
@@ -617,6 +748,19 @@ class MatchSimulationService {
         homeArmyChange = (homeArmyChange * modifier).round();
         awayArmyChange = (awayArmyChange * (2 - modifier)).round();
       }
+    }
+
+    // 경기 단계별 추가 보정 (병력 손실에 반영)
+    final weightedDiff = homeWeightedTotal - awayWeightedTotal;
+    final phaseBonus = (weightedDiff / 1000).clamp(-5.0, 5.0); // 단계별 ±5 보정
+
+    // phaseBonus 적용: 우세한 쪽은 피해 감소, 열세 쪽은 피해 증가
+    if (phaseBonus > 0) {
+      homeArmyChange = (homeArmyChange * (1.0 - phaseBonus / 20)).round(); // 피해 최대 25% 감소
+      awayArmyChange = (awayArmyChange * (1.0 + phaseBonus / 20)).round(); // 피해 최대 25% 증가
+    } else if (phaseBonus < 0) {
+      homeArmyChange = (homeArmyChange * (1.0 - phaseBonus / 20)).round();
+      awayArmyChange = (awayArmyChange * (1.0 + phaseBonus / 20)).round();
     }
 
     // ========== 저그전 특별 규칙 (ZvZ) ==========
@@ -970,6 +1114,62 @@ class MatchSimulationService {
       );
       yield state;
     }
+  }
+
+  /// 가중치 기반 이벤트 선택
+  /// favorsStat이 있는 이벤트는 해당 능력치가 높을수록 발생 확률 증가
+  ClashEvent _selectWeightedEvent({
+    required List<ClashEvent> events,
+    required PlayerStats attackerStats,
+    required PlayerStats defenderStats,
+    required GamePhase gamePhase,
+    required String matchup,
+  }) {
+    if (events.isEmpty) {
+      throw StateError('Events list cannot be empty');
+    }
+
+    final weightedEvents = <MapEntry<ClashEvent, double>>[];
+
+    for (final event in events) {
+      double weight = 1.0;
+
+      // favorsStat 기반 가중치 (해당 능력치 높으면 발생 확률 증가)
+      if (event.favorsStat != null) {
+        final stat = _getStatValue(attackerStats, event.favorsStat);
+        // 능력치 600 기준, 높을수록 가중치 증가 (최대 1.5배)
+        if (stat > 600) {
+          weight *= 1.0 + (stat - 600) / 800; // 800에서 1.5배
+        } else if (stat < 500) {
+          weight *= 0.7 + (stat / 1000); // 낮으면 감소
+        }
+
+        // 경기 단계별 가중치 추가 적용
+        final phaseWeight = StatWeights.getCombinedWeight(event.favorsStat!, gamePhase, matchup);
+        weight *= (0.5 + phaseWeight / 2); // 단계별 가중치 영향 (0.5 ~ 1.0)
+      }
+
+      weightedEvents.add(MapEntry(event, weight.clamp(0.3, 2.0)));
+    }
+
+    // 가중치 기반 랜덤 선택
+    return _weightedRandomSelect(weightedEvents);
+  }
+
+  /// 가중치 기반 랜덤 선택
+  ClashEvent _weightedRandomSelect(List<MapEntry<ClashEvent, double>> weightedEvents) {
+    final totalWeight = weightedEvents.fold<double>(0, (sum, e) => sum + e.value);
+    var randomValue = _random.nextDouble() * totalWeight;
+
+    for (final entry in weightedEvents) {
+      randomValue -= entry.value;
+      if (randomValue <= 0) {
+        return entry.key;
+      }
+    }
+
+    // 폴백 (마지막 이벤트 반환)
+    return weightedEvents.last.key;
   }
 }
 
