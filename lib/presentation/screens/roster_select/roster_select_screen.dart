@@ -267,8 +267,12 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     );
   }
 
-  /// 내 팀 섹션 (선수 그리드만)
+  /// 내 팀 섹션 (선수 그리드 + 선택 시 상세 정보)
   Widget _buildMyTeamSection(List<Player> teamPlayers) {
+    final selectedPlayer = _selectedMyPlayerIndex != null && _selectedMyPlayerIndex! < teamPlayers.length
+        ? teamPlayers[_selectedMyPlayerIndex!]
+        : null;
+
     return Column(
       children: [
         // 헤더
@@ -284,6 +288,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             ],
           ),
         ),
+        // 선택된 선수 상세 정보
+        if (selectedPlayer != null)
+          _buildPlayerDetailCompact(selectedPlayer, true),
         // 선수 그리드 (2열)
         Expanded(
           child: GridView.builder(
@@ -509,7 +516,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     );
   }
 
-  /// 상대 팀 섹션 (선수 그리드만)
+  /// 상대 팀 섹션 (선수 그리드 + 선택 시 상세 정보)
   Widget _buildOpponentSection(List<Player> opponentPlayers, String opponentTeamId) {
     // 컨디션 + 등급 기준 정렬
     final sortedPlayers = List<Player>.from(opponentPlayers)
@@ -521,6 +528,10 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
 
     final gameState = ref.watch(gameStateProvider);
     final snipingCount = gameState?.inventory.getConsumableCount('sniping') ?? 0;
+
+    final selectedPlayer = _selectedOpponentPlayerIndex != null && _selectedOpponentPlayerIndex! < sortedPlayers.length
+        ? sortedPlayers[_selectedOpponentPlayerIndex!]
+        : null;
 
     return Column(
       children: [
@@ -548,6 +559,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             ],
           ),
         ),
+        // 선택된 선수 상세 정보
+        if (selectedPlayer != null)
+          _buildPlayerDetailCompact(selectedPlayer, false),
         // 선수 그리드 (2열)
         Expanded(
           child: GridView.builder(
@@ -583,86 +597,68 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     );
   }
 
-  /// 선수 상세정보 (8각형 레이더 + 컨디션)
-  Widget _buildPlayerDetail(Player player, bool isMyTeam) {
+  /// 선수 상세정보 (컴팩트 - 8각형 레이더 + 컨디션)
+  Widget _buildPlayerDetailCompact(Player player, bool isMyTeam) {
     final specialCondition = _specialConditions[player.id] ?? SpecialCondition.none;
     final condition = player.getDisplayConditionWithSpecial(specialCondition);
 
     return Container(
-      padding: const EdgeInsets.all(6),
-      margin: const EdgeInsets.all(4),
+      height: 90,
+      padding: const EdgeInsets.all(4),
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       decoration: BoxDecoration(
         color: AppTheme.cardBackground,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: isMyTeam ? AppTheme.primaryBlue.withOpacity(0.5) : Colors.red.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isMyTeam ? AppTheme.primaryBlue.withOpacity(0.5) : Colors.red.withOpacity(0.5),
+        ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          // (T)이영호 + 배치 버튼
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '(${player.race.code})',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.getRaceColor(player.race.code),
-                ),
-              ),
-              const SizedBox(width: 2),
-              Text(player.name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-              if (isMyTeam) ...[
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    if (_focusedMapIndex < 6 && selectedPlayers[_focusedMapIndex] == null) {
-                      final playerIndex = ref.read(gameStateProvider)!.playerTeamPlayers.indexOf(player);
-                      if (!selectedPlayers.contains(playerIndex)) {
-                        setState(() {
-                          selectedPlayers[_focusedMapIndex] = playerIndex;
-                        });
-                        _moveToNextEmptySlot();
-                      }
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentGreen,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    child: const Text('배치', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
-                  ),
-                ),
-              ],
-            ],
+          // 8각형 레이더 차트
+          Expanded(
+            flex: 3,
+            child: CustomPaint(
+              painter: _RadarChartPainter(player.stats),
+            ),
           ),
-          const SizedBox(height: 4),
-          // 8각형 레이더 차트 + 컨디션
-          Row(
-            children: [
-              // 8각형 레이더 차트
-              Expanded(
-                child: SizedBox(
-                  height: 80,
-                  child: CustomPaint(
-                    painter: _RadarChartPainter(player.stats),
-                  ),
-                ),
-              ),
-              // 컨디션 + 특수 컨디션
-              Container(
-                width: 50,
-                padding: const EdgeInsets.all(4),
-                child: Column(
+          // 컨디션 + 정보
+          Expanded(
+            flex: 2,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 이름 + 종족
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('컨디션', style: TextStyle(fontSize: 8, color: AppTheme.textSecondary)),
-                    const SizedBox(height: 2),
+                    Text(
+                      '(${player.race.code})',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.getRaceColor(player.race.code),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Flexible(
+                      child: Text(
+                        player.name,
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // 컨디션
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     if (specialCondition != SpecialCondition.none)
                       Icon(
                         Icons.priority_high,
-                        size: 12,
+                        size: 10,
                         color: specialCondition == SpecialCondition.best ? Colors.green : Colors.red,
                       ),
                     Text(
@@ -673,21 +669,39 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                         color: condition >= 80 ? Colors.green : (condition >= 50 ? Colors.orange : Colors.red),
                       ),
                     ),
-                    if (specialCondition != SpecialCondition.none)
-                      Text(
-                        specialCondition == SpecialCondition.best ? '최상' : '최악',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: specialCondition == SpecialCondition.best ? Colors.green : Colors.red,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text('Lv.${player.level}', style: const TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
                   ],
                 ),
-              ),
-            ],
+                if (specialCondition != SpecialCondition.none)
+                  Text(
+                    specialCondition == SpecialCondition.best ? '최상' : '최악',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: specialCondition == SpecialCondition.best ? Colors.green : Colors.red,
+                    ),
+                  ),
+                const SizedBox(height: 2),
+                // 등급 + 레벨
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppTheme.getGradeColor(player.grade.display),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Text(
+                        player.grade.display,
+                        style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text('Lv.${player.level.value}', style: const TextStyle(fontSize: 8, color: AppTheme.textSecondary)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -606,7 +606,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     if (state == null) return;
 
     // 순위 계산
-    final standings = _calculateStandings();
+    final standings = calculateStandings();
     if (standings.length < 4) return;
 
     // 플레이오프 대진표 생성
@@ -625,8 +625,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     state = state!.copyWith(saveData: newSaveData);
   }
 
-  /// 순위 계산
-  List<TeamStanding> _calculateStandings() {
+  /// 순위 계산 (public - 결과 화면에서도 사용)
+  List<TeamStanding> calculateStandings() {
     if (state == null) return [];
 
     final standings = <String, TeamStanding>{};

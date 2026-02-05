@@ -889,7 +889,7 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
       homePlayer: player1,
       awayPlayer: player2,
       map: map,
-      intervalMs: _matchSpeed.intervalMs,
+      getIntervalMs: () => _matchSpeed.intervalMs,
     );
 
     String? winnerId;

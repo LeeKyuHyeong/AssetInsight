@@ -286,11 +286,12 @@ class MatchSimulationService {
   }
 
   /// 경기 시뮬레이션 (텍스트 로그 포함, 스트림) - 빌드오더 기반
+  /// [getIntervalMs] 콜백을 사용하여 배속 변경 시 스트림 재시작 없이 반영 가능
   Stream<SimulationState> simulateMatchWithLog({
     required Player homePlayer,
     required Player awayPlayer,
     required GameMap map,
-    required int intervalMs,
+    required int Function() getIntervalMs,
     int homeCheerfulBonus = 0,
     int awayCheerfulBonus = 0,
     SpecialCondition homeSpecialCondition = SpecialCondition.none,
@@ -340,7 +341,7 @@ class MatchSimulationService {
         homePlayer: homePlayer,
         awayPlayer: awayPlayer,
         map: map,
-        intervalMs: intervalMs,
+        getIntervalMs: getIntervalMs,
         winRate: winRate,
       );
       return;
@@ -356,7 +357,7 @@ class MatchSimulationService {
       ],
     );
     yield state;
-    await Future.delayed(Duration(milliseconds: intervalMs));
+    await Future.delayed(Duration(milliseconds: getIntervalMs()));
 
     // 빌드 진행 인덱스
     int homeIndex = 0;
@@ -536,7 +537,7 @@ class MatchSimulationService {
       );
 
       yield state;
-      await Future.delayed(Duration(milliseconds: intervalMs));
+      await Future.delayed(Duration(milliseconds: getIntervalMs()));
 
       // 결정적 이벤트 체크
       if (decisive) {
@@ -1007,7 +1008,7 @@ class MatchSimulationService {
     required Player homePlayer,
     required Player awayPlayer,
     required GameMap map,
-    required int intervalMs,
+    required int Function() getIntervalMs,
     required double winRate,
   }) async* {
     var state = const SimulationState();
@@ -1020,7 +1021,7 @@ class MatchSimulationService {
       ],
     );
     yield state;
-    await Future.delayed(Duration(milliseconds: intervalMs));
+    await Future.delayed(Duration(milliseconds: getIntervalMs()));
 
     int lineCount = 0;
     const maxLines = 200;
@@ -1075,7 +1076,7 @@ class MatchSimulationService {
       );
 
       yield state;
-      await Future.delayed(Duration(milliseconds: intervalMs));
+      await Future.delayed(Duration(milliseconds: getIntervalMs()));
 
       // 승패 체크
       final result = _checkWinCondition(state, lineCount);
