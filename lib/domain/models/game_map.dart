@@ -265,7 +265,7 @@ class MapBonus {
 class GameMaps {
   static const neoElectricCircuit = GameMap(
     id: 'neo_electric_circuit',
-    name: '네오 일렉트릭써킷',
+    name: '네오일렉트릭써킷',
     rushDistance: 6,
     resources: 6,
     complexity: 5,
@@ -283,7 +283,7 @@ class GameMaps {
 
   static const iccupOutlier = GameMap(
     id: 'iccup_outlier',
-    name: '아웃라이어',
+    name: '네오아웃라이어',
     rushDistance: 5,
     resources: 5,
     complexity: 6,
@@ -301,7 +301,7 @@ class GameMaps {
 
   static const chainReaction = GameMap(
     id: 'chain_reaction',
-    name: '체인리액션',
+    name: '네오체인리액션',
     rushDistance: 7,
     resources: 7,
     complexity: 5,
@@ -373,7 +373,7 @@ class GameMaps {
 
   static const groundZero = GameMap(
     id: 'ground_zero',
-    name: '그라운드제로',
+    name: '네오그라운드제로',
     rushDistance: 8, // 러시거리 김
     resources: 8, // 자원 풍부
     complexity: 4,
@@ -391,7 +391,7 @@ class GameMaps {
 
   static const neoBitway = GameMap(
     id: 'neo_bit_way',
-    name: '네오 비트 웨이',
+    name: '네오벨트웨이',
     rushDistance: 5,
     resources: 6,
     complexity: 5,
