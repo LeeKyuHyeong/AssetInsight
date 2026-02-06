@@ -36,11 +36,68 @@ class PlayoffService {
       );
     }
 
-    // 순위 정렬
+    // 상대 전적 맵 생성 (teamA -> teamB -> (teamA의 승, teamA의 패))
+    final headToHead = _buildHeadToHeadRecord(schedule);
+
+    // 순위 정렬 (승점 → 세트 득실 → 상대 전적)
     final sortedStandings = standings.values.toList()
-      ..sort((a, b) => a.compareTo(b));
+      ..sort((a, b) => _compareStandings(a, b, headToHead));
 
     return sortedStandings;
+  }
+
+  /// 상대 전적 맵 생성
+  /// 반환: {teamA: {teamB: (teamA 승수, teamA 패수)}}
+  Map<String, Map<String, (int, int)>> _buildHeadToHeadRecord(
+    List<ScheduleItem> schedule,
+  ) {
+    final record = <String, Map<String, (int, int)>>{};
+
+    for (final item in schedule) {
+      if (!item.isCompleted || item.result == null) continue;
+
+      final result = item.result!;
+      final home = result.homeTeamId;
+      final away = result.awayTeamId;
+      final homeWin = result.isHomeWin;
+
+      // 홈팀 기록
+      record.putIfAbsent(home, () => {});
+      final (homeWins, homeLosses) = record[home]![away] ?? (0, 0);
+      record[home]![away] = homeWin ? (homeWins + 1, homeLosses) : (homeWins, homeLosses + 1);
+
+      // 어웨이팀 기록
+      record.putIfAbsent(away, () => {});
+      final (awayWins, awayLosses) = record[away]![home] ?? (0, 0);
+      record[away]![home] = homeWin ? (awayWins, awayLosses + 1) : (awayWins + 1, awayLosses);
+    }
+
+    return record;
+  }
+
+  /// 순위 비교 (승점 → 세트 득실 → 상대 전적)
+  int _compareStandings(
+    TeamStanding a,
+    TeamStanding b,
+    Map<String, Map<String, (int, int)>> headToHead,
+  ) {
+    // 1. 승점 비교
+    if (a.points != b.points) return b.points - a.points;
+
+    // 2. 세트 득실 비교
+    if (a.setDiff != b.setDiff) return b.setDiff - a.setDiff;
+
+    // 3. 상대 전적 비교
+    final aVsB = headToHead[a.teamId]?[b.teamId];
+    if (aVsB != null) {
+      final (aWins, aLosses) = aVsB;
+      if (aWins != aLosses) {
+        return aWins > aLosses ? -1 : 1; // A가 이기면 A가 상위
+      }
+    }
+
+    // 4. 동률이면 그대로
+    return 0;
   }
 
   /// 플레이오프 대진표 생성 (정규 시즌 완료 후)

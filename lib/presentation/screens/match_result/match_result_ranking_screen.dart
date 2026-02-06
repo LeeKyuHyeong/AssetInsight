@@ -28,18 +28,11 @@ class MatchResultRankingScreen extends ConsumerWidget {
     final allTeams = gameState.saveData.allTeams;
     final playerTeam = gameState.playerTeam;
 
-    // 팀 순위 정렬 (승점 > 세트 득실)
-    final sortedTeams = List<Team>.from(allTeams)
-      ..sort((a, b) {
-        // 승점 비교 (승: 3점)
-        final aPoints = a.seasonRecord.wins * 3;
-        final bPoints = b.seasonRecord.wins * 3;
-        if (aPoints != bPoints) return bPoints - aPoints;
-        // 세트 득실
-        final aSetDiff = a.seasonRecord.setWins - a.seasonRecord.setLosses;
-        final bSetDiff = b.seasonRecord.setWins - b.seasonRecord.setLosses;
-        return bSetDiff - aSetDiff;
-      });
+    // 팀 순위 정렬 (승점 → 세트 득실 → 상대 전적)
+    final standings = ref.read(gameStateProvider.notifier).calculateStandings();
+    final sortedTeams = standings.map((s) =>
+      allTeams.firstWhere((t) => t.id == s.teamId)
+    ).toList();
 
     final playerRank = sortedTeams.indexWhere((t) => t.id == playerTeam.id) + 1;
 

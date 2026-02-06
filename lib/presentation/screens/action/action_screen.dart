@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../../domain/models/models.dart';
-import '../../widgets/reset_button.dart';
 
 enum ActionType { rest, training, fanMeeting }
 
@@ -34,7 +33,10 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('선수 행동'),
-        leading: ResetButton.leading(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Column(
         children: [
@@ -98,7 +100,7 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
                             ),
                             Row(
                               children: [
-                                _buildSelectAllButton(players),
+                                _buildSelectAllButton(players, actionPoints),
                               ],
                             ),
                           ],
@@ -112,16 +114,19 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
                             final player = players[index];
                             final isSelected = _selectedPlayerIds.contains(player.id);
                             final canDoAction = _canPlayerDoAction(player);
+                            final cost = _getActionCost();
+                            final canAfford = actionPoints >= cost;
+                            final isSelectable = canDoAction && canAfford;
 
                             return Card(
                               color: isSelected
                                   ? AppTheme.primaryBlue
-                                  : canDoAction
+                                  : isSelectable
                                       ? AppTheme.cardBackground
                                       : AppTheme.cardBackground.withOpacity(0.5),
                               margin: const EdgeInsets.only(bottom: 4),
                               child: InkWell(
-                                onTap: canDoAction
+                                onTap: isSelectable
                                     ? () {
                                         setState(() {
                                           if (isSelected) {
@@ -136,42 +141,41 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
                                   padding: const EdgeInsets.all(8),
                                   child: Row(
                                     children: [
-                                      // 체크박스
-                                      SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: Checkbox(
-                                          value: isSelected,
-                                          onChanged: canDoAction
-                                              ? (value) {
-                                                  setState(() {
-                                                    if (value == true) {
-                                                      _selectedPlayerIds.add(player.id);
-                                                    } else {
-                                                      _selectedPlayerIds.remove(player.id);
-                                                    }
-                                                  });
+                                      // 체크박스 (행동력 부족 또는 행동 불가 시 숨김)
+                                      if (isSelectable)
+                                        SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: Checkbox(
+                                            value: isSelected,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                if (value == true) {
+                                                  _selectedPlayerIds.add(player.id);
+                                                } else {
+                                                  _selectedPlayerIds.remove(player.id);
                                                 }
-                                              : null,
-                                          activeColor: AppTheme.accentGreen,
-                                          checkColor: Colors.black,
-                                          side: BorderSide(
-                                            color: canDoAction
-                                                ? AppTheme.textSecondary
-                                                : AppTheme.textSecondary.withOpacity(0.3),
+                                              });
+                                            },
+                                            activeColor: AppTheme.accentGreen,
+                                            checkColor: Colors.black,
+                                            side: const BorderSide(
+                                              color: AppTheme.textSecondary,
+                                            ),
                                           ),
-                                        ),
-                                      ),
+                                        )
+                                      else
+                                        const SizedBox(width: 24, height: 24),
                                       const SizedBox(width: 4),
                                       CircleAvatar(
                                         radius: 12,
-                                        backgroundColor: canDoAction
+                                        backgroundColor: isSelectable
                                             ? AppTheme.getRaceColor(player.race.code)
                                             : AppTheme.getRaceColor(player.race.code).withOpacity(0.4),
                                         child: Text(
                                           player.race.code,
                                           style: TextStyle(
-                                            color: canDoAction ? Colors.white : Colors.white54,
+                                            color: isSelectable ? Colors.white : Colors.white54,
                                             fontSize: 9,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -188,7 +192,7 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
                                                 fontSize: 11,
                                                 color: isSelected
                                                     ? Colors.white
-                                                    : canDoAction
+                                                    : isSelectable
                                                         ? AppTheme.textPrimary
                                                         : AppTheme.textSecondary,
                                               ),
@@ -202,12 +206,25 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
                                                     fontSize: 9,
                                                     color: isSelected
                                                         ? Colors.white70
-                                                        : canDoAction
+                                                        : isSelectable
                                                             ? _getConditionColor(player.condition)
                                                             : AppTheme.textSecondary.withOpacity(0.5),
                                                   ),
                                                 ),
-                                                if (!canDoAction) ...[
+                                                const SizedBox(width: 4),
+                                                // 필요 행동력 표시
+                                                Text(
+                                                  '${cost}AP',
+                                                  style: TextStyle(
+                                                    fontSize: 8,
+                                                    color: isSelected
+                                                        ? Colors.white70
+                                                        : canAfford
+                                                            ? AppTheme.accentGreen
+                                                            : Colors.red.withOpacity(0.7),
+                                                  ),
+                                                ),
+                                                if (!canDoAction && canAfford) ...[
                                                   const SizedBox(width: 4),
                                                   Text(
                                                     _getDisabledReason(player),
@@ -309,8 +326,12 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
     );
   }
 
-  Widget _buildSelectAllButton(List<Player> players) {
-    final availablePlayers = players.where(_canPlayerDoAction).toList();
+  Widget _buildSelectAllButton(List<Player> players, int actionPoints) {
+    final cost = _getActionCost();
+    final canAfford = actionPoints >= cost;
+    final availablePlayers = canAfford
+        ? players.where(_canPlayerDoAction).toList()
+        : <Player>[];
     final allSelected = availablePlayers.isNotEmpty &&
         availablePlayers.every((p) => _selectedPlayerIds.contains(p.id));
 
@@ -345,6 +366,17 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
         ),
       ),
     );
+  }
+
+  int _getActionCost() {
+    switch (_selectedAction) {
+      case ActionType.rest:
+        return 50;
+      case ActionType.training:
+        return 100;
+      case ActionType.fanMeeting:
+        return 200;
+    }
   }
 
   bool _canPlayerDoAction(Player player) {

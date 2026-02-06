@@ -653,10 +653,68 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       );
     }
 
+    // 상대 전적 맵 생성
+    final headToHead = _buildHeadToHeadRecord(
+      state!.saveData.currentSeason.proleagueSchedule,
+    );
+
     final sortedStandings = standings.values.toList()
-      ..sort((a, b) => a.compareTo(b));
+      ..sort((a, b) => _compareStandings(a, b, headToHead));
 
     return sortedStandings;
+  }
+
+  /// 상대 전적 맵 생성
+  Map<String, Map<String, (int, int)>> _buildHeadToHeadRecord(
+    List<ScheduleItem> schedule,
+  ) {
+    final record = <String, Map<String, (int, int)>>{};
+
+    for (final item in schedule) {
+      if (!item.isCompleted || item.result == null) continue;
+
+      final result = item.result!;
+      final home = result.homeTeamId;
+      final away = result.awayTeamId;
+      final homeWin = result.isHomeWin;
+
+      // 홈팀 기록
+      record.putIfAbsent(home, () => {});
+      final (homeWins, homeLosses) = record[home]![away] ?? (0, 0);
+      record[home]![away] = homeWin ? (homeWins + 1, homeLosses) : (homeWins, homeLosses + 1);
+
+      // 어웨이팀 기록
+      record.putIfAbsent(away, () => {});
+      final (awayWins, awayLosses) = record[away]![home] ?? (0, 0);
+      record[away]![home] = homeWin ? (awayWins, awayLosses + 1) : (awayWins + 1, awayLosses);
+    }
+
+    return record;
+  }
+
+  /// 순위 비교 (승점 → 세트 득실 → 상대 전적)
+  int _compareStandings(
+    TeamStanding a,
+    TeamStanding b,
+    Map<String, Map<String, (int, int)>> headToHead,
+  ) {
+    // 1. 승점 비교
+    if (a.points != b.points) return b.points - a.points;
+
+    // 2. 세트 득실 비교
+    if (a.setDiff != b.setDiff) return b.setDiff - a.setDiff;
+
+    // 3. 상대 전적 비교
+    final aVsB = headToHead[a.teamId]?[b.teamId];
+    if (aVsB != null) {
+      final (aWins, aLosses) = aVsB;
+      if (aWins != aLosses) {
+        return aWins > aLosses ? -1 : 1; // A가 이기면 A가 상위
+      }
+    }
+
+    // 4. 동률이면 그대로
+    return 0;
   }
 
   /// 플레이오프 매치 결과 기록
@@ -1143,6 +1201,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   /// 새 시즌 생성
   Season _createNewSeason(int seasonNumber) {
     final random = DateTime.now().millisecondsSinceEpoch;
+    final rng = Random(random);
 
     // 시즌맵 랜덤 선정 (7개) - game_map.dart의 ID와 일치
     final allMapIds = [
@@ -1151,25 +1210,52 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       'ground_zero', 'neo_bit_way', 'destination',
       'fighting_spirit', 'match_point', 'python',
     ];
-    final shuffledMaps = List<String>.from(allMapIds)..shuffle(Random(random));
+    final shuffledMaps = List<String>.from(allMapIds)..shuffle(rng);
     final seasonMaps = shuffledMaps.take(7).toList();
 
-    // 프로리그 일정 생성 (각 팀당 7경기 = 총 28경기)
+    // 프로리그 일정 생성 (각 팀당 14경기 = 풀 라운드 로빈 × 2)
+    // 11행 × 2경기 = 22칸, 14경기 + 8개 NO match
+    // 데칼코마니: 1~11칸 → 12~22칸 역순
     final teams = state!.saveData.allTeams;
     final schedule = <ScheduleItem>[];
     int matchId = 0;
 
-    for (int round = 1; round <= 7; round++) {
-      // 라운드별로 4경기 (8팀 → 4매치)
-      final shuffledTeams = List<Team>.from(teams)..shuffle(Random(random + round));
-      for (int i = 0; i < shuffledTeams.length; i += 2) {
-        schedule.add(ScheduleItem(
-          matchId: 'match_${seasonNumber}_${matchId++}',
-          roundNumber: round,
-          homeTeamId: shuffledTeams[i].id,
-          awayTeamId: shuffledTeams[i + 1].id,
-        ));
-      }
+    // 1차 리그: 풀 라운드 로빈 (7라운드, 각 라운드 4경기)
+    // 서클 메서드로 공정한 대진 생성
+    final firstHalfMatchups = _generateRoundRobinMatchups(teams, rng);
+
+    // 1~11칸 중 7경기 배치할 위치 랜덤 선택 (4개는 NO match)
+    final slots = List.generate(11, (i) => i + 1);
+    slots.shuffle(rng);
+    final matchSlots = slots.take(7).toList()..sort();
+
+    // 1차 리그 경기 배치 (슬롯 1~11)
+    for (int i = 0; i < firstHalfMatchups.length; i++) {
+      final matchup = firstHalfMatchups[i];
+      final slot = matchSlots[i % 7]; // 각 팀당 7경기
+
+      schedule.add(ScheduleItem(
+        matchId: 'match_${seasonNumber}_${matchId++}',
+        roundNumber: slot,
+        homeTeamId: matchup[0],
+        awayTeamId: matchup[1],
+      ));
+    }
+
+    // 2차 리그: 1차 리그의 역순 (데칼코마니)
+    // 슬롯 12~22 = 23 - 슬롯(1~11)
+    for (int i = 0; i < firstHalfMatchups.length; i++) {
+      final matchup = firstHalfMatchups[i];
+      final firstSlot = matchSlots[i % 7];
+      final secondSlot = 23 - firstSlot; // 데칼코마니 위치
+
+      // 홈/어웨이 반전
+      schedule.add(ScheduleItem(
+        matchId: 'match_${seasonNumber}_${matchId++}',
+        roundNumber: secondSlot,
+        homeTeamId: matchup[1],
+        awayTeamId: matchup[0],
+      ));
     }
 
     return Season(
@@ -1180,6 +1266,29 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       matchesSinceLastBonus: 0,
       phaseIndex: SeasonPhase.regularSeason.index,
     );
+  }
+
+  /// 풀 라운드 로빈 대진 생성 (서클 메서드)
+  /// 8팀 → 7라운드 × 4경기 = 28경기
+  List<List<String>> _generateRoundRobinMatchups(List<Team> teams, Random rng) {
+    final matchups = <List<String>>[];
+    final teamIds = teams.map((t) => t.id).toList()..shuffle(rng);
+    final n = teamIds.length;
+
+    // 서클 메서드: 첫 번째 팀 고정, 나머지 회전
+    for (int round = 0; round < n - 1; round++) {
+      for (int i = 0; i < n ~/ 2; i++) {
+        final home = i == 0 ? teamIds[0] : teamIds[(round + i) % (n - 1) + 1];
+        final away = teamIds[(round + n - 1 - i) % (n - 1) + 1];
+        if (i == 0) {
+          matchups.add([teamIds[0], away]);
+        } else {
+          matchups.add([home, away]);
+        }
+      }
+    }
+
+    return matchups;
   }
 }
 

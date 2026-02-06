@@ -10,6 +10,13 @@ import '../../../domain/models/models.dart';
 import '../../../domain/services/match_simulation_service.dart';
 import '../../widgets/reset_button.dart';
 
+/// 경기 진행 단계
+enum MatchPhase {
+  rosterPreview,  // 로스터 확인 화면 (경기 시작 전)
+  matchPlaying,   // 경기 진행 중
+  aceSelection,   // 에이스 선택 (3:3일 때)
+}
+
 class MatchSimulationScreen extends ConsumerStatefulWidget {
   const MatchSimulationScreen({super.key});
 
@@ -38,12 +45,13 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
   bool isRunning = false;
   bool gameEnded = false;
 
+  // 경기 진행 단계 관리
+  MatchPhase _currentPhase = MatchPhase.rosterPreview;
+
   // 에이스 결정전 관련
-  bool showAceSelection = false;
   int? selectedAceIndex;
 
   // 세트 종료 시 결과 표시용
-  bool showSetResult = false;
   bool? lastSetHomeWin;
 
   @override
@@ -65,7 +73,10 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     final gameState = ref.read(gameStateProvider);
     if (gameState == null) return;
 
-    _startGame();
+    // 처음에는 로스터 확인 화면으로 시작
+    setState(() {
+      _currentPhase = MatchPhase.rosterPreview;
+    });
   }
 
   Player? _getPlayerById(String? playerId) {
@@ -286,25 +297,28 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
 
     // 경기가 끝나면 바로 결과 표시 또는 다음 게임으로 진행 (NEXT 한 번으로)
     if (matchState.isMatchEnded) {
-      // 매치 종료
+      // 매치 종료 → 전체 결과 화면
       _showMatchResult();
     } else if (matchState.isAceMatch && matchState.homeAcePlayerId == null) {
-      // 에이스 결정전 진행 필요
+      // 에이스 결정전 진행 필요 → 에이스 선택 화면
       setState(() {
-        showAceSelection = true;
+        _currentPhase = MatchPhase.aceSelection;
       });
     } else {
-      // 다음 게임
-      _prepareNextGame();
+      // 다음 게임 → 로스터 확인 화면
+      ref.read(currentMatchProvider.notifier).advanceToNextSet();
+      setState(() {
+        _currentPhase = MatchPhase.rosterPreview;
+        gameEnded = false;
+        lastSetHomeWin = null;
+      });
     }
   }
 
-  void _prepareNextGame() {
+  /// 로스터 확인 화면에서 경기 시작
+  void _startMatchFromPreview() {
     // 기존 스트림 취소
     _simulationSubscription?.cancel();
-
-    // 다음 세트로 이동
-    ref.read(currentMatchProvider.notifier).advanceToNextSet();
 
     setState(() {
       player1Resource = 100;
@@ -313,8 +327,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
       player2Army = 50;
       battleLogEntries.clear();
       gameEnded = false;
-      showAceSelection = false;
-      showSetResult = false;
+      _currentPhase = MatchPhase.matchPlaying;
       lastSetHomeWin = null;
     });
 
@@ -346,8 +359,13 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
       );
     }
 
-    // 다음 게임 시작
-    _prepareNextGame();
+    // 다음 세트로 이동 후 로스터 확인 화면으로
+    ref.read(currentMatchProvider.notifier).advanceToNextSet();
+    setState(() {
+      _currentPhase = MatchPhase.rosterPreview;
+      gameEnded = false;
+      lastSetHomeWin = null;
+    });
   }
 
   void _showMatchResult() async {
@@ -382,10 +400,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     final rightScore = isPlayerHome ? matchState.awayScore : matchState.homeScore;
     final seasonMapIds = gameState.saveData.currentSeason.seasonMapIds;
 
-    // 결과 화면 표시
-    setState(() {
-      showSetResult = false; // 세트 결과 오버레이 숨김
-    });
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -862,8 +877,13 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     }
 
     // 에이스 선택 화면
-    if (showAceSelection) {
+    if (_currentPhase == MatchPhase.aceSelection) {
       return _buildAceSelectionScreen(gameState, matchState);
+    }
+
+    // 로스터 확인 화면
+    if (_currentPhase == MatchPhase.rosterPreview) {
+      return _buildRosterPreviewScreen(gameState, matchState);
     }
 
     // 플레이어 팀 기준으로 좌우 배치 결정
@@ -1011,7 +1031,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppTheme.primaryBlue),
                   ),
@@ -1079,18 +1099,13 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
               ),
             ],
           ),
-          // 세트 결과 오버레이
-          if (showSetResult && lastSetHomeWin != null)
-            _buildSetResultOverlay(matchState),
         ],
       ),
     );
   }
 
-  Widget _buildSetResultOverlay(CurrentMatchState matchState) {
-    final gameState = ref.read(gameStateProvider);
-    if (gameState == null) return const SizedBox();
-
+  /// 로스터 확인 화면 (경기 시작 전)
+  Widget _buildRosterPreviewScreen(GameState gameState, CurrentMatchState matchState) {
     // 플레이어 팀 기준으로 좌우 배치
     final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
     final leftTeam = isPlayerHome
@@ -1102,13 +1117,27 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     final myScore = isPlayerHome ? matchState.homeScore : matchState.awayScore;
     final opponentScore = isPlayerHome ? matchState.awayScore : matchState.homeScore;
 
-    // 다음 세트 번호 (매치 종료가 아닌 경우)
-    final nextSet = matchState.isMatchEnded ? -1 : matchState.currentSet + 1;
-    final isAceNext = !matchState.isMatchEnded && matchState.homeScore == 3 && matchState.awayScore == 3;
+    // 다음 세트 번호
+    final nextSet = matchState.currentSet;
+    final isAceSet = matchState.isAceMatch;
 
-    return Container(
-      color: Colors.black.withValues(alpha: 0.95),
-      child: SafeArea(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('로스터 확인'),
+        leading: ResetButton.leading(),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _simulationSubscription?.cancel();
+              ref.read(currentMatchProvider.notifier).resetMatch();
+              context.go('/main');
+            },
+            child: const Text('나가기'),
+          ),
+        ],
+      ),
+      body: SafeArea(
         child: Column(
           children: [
             // 상단: 팀 로고 + 스코어 (내 팀 기준)
@@ -1156,43 +1185,42 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
             ),
 
             // 다음 세트 표시
-            if (!matchState.isMatchEnded)
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 12.sp),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.chevron_left, color: AppTheme.textSecondary, size: 24.sp),
-                    SizedBox(width: 8.sp),
-                    Text(
-                      isAceNext ? 'ACE Set' : '${nextSet} Set',
-                      style: TextStyle(
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.bold,
-                        color: isAceNext ? Colors.orange : Colors.white,
-                      ),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 12.sp),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chevron_left, color: AppTheme.textSecondary, size: 24.sp),
+                  SizedBox(width: 8.sp),
+                  Text(
+                    isAceSet ? 'ACE Set' : 'Set ${nextSet + 1}',
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                      color: isAceSet ? Colors.orange : Colors.white,
                     ),
-                    SizedBox(width: 8.sp),
-                    Icon(Icons.chevron_right, color: AppTheme.textSecondary, size: 24.sp),
-                  ],
-                ),
+                  ),
+                  SizedBox(width: 8.sp),
+                  Icon(Icons.chevron_right, color: AppTheme.textSecondary, size: 24.sp),
+                ],
               ),
+            ),
 
             // 중앙: 전체 대진표
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.sp),
-                child: _buildFullBracket(matchState, gameState, nextSet, isAceNext),
+                child: _buildFullBracketForPreview(matchState, gameState, nextSet, isAceSet),
               ),
             ),
 
-            // 하단: Next 버튼
+            // 하단: Next 버튼 (경기 시작)
             Padding(
               padding: EdgeInsets.all(16.sp),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _nextGame,
+                  onPressed: _startMatchFromPreview,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.accentGreen,
                     foregroundColor: Colors.black,
@@ -1202,18 +1230,14 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        matchState.isMatchEnded
-                            ? '결과 확인'
-                            : isAceNext
-                                ? '에이스 선택'
-                                : 'Next',
+                        isAceSet ? 'ACE 결정전 시작' : '${nextSet + 1}세트 시작',
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       SizedBox(width: 8.sp),
-                      Icon(Icons.double_arrow, size: 20.sp),
+                      Icon(Icons.play_arrow, size: 20.sp),
                     ],
                   ),
                 ),
@@ -1222,6 +1246,195 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 로스터 확인용 대진표 (현재 세트 하이라이트)
+  Widget _buildFullBracketForPreview(CurrentMatchState matchState, GameState gameState, int currentSet, bool isAceSet) {
+    // 플레이어 팀 기준으로 좌우 배치
+    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
+
+    return Row(
+      children: [
+        // 내 팀 선수 목록 (왼쪽)
+        Expanded(
+          child: _buildTeamRosterForPreview(
+            matchState: matchState,
+            gameState: gameState,
+            isHome: isPlayerHome,
+            isLeftSide: true,
+            currentSet: currentSet,
+            isAceSet: isAceSet,
+          ),
+        ),
+        // 중앙: 맵 목록
+        SizedBox(
+          width: 100.sp,
+          child: _buildMapListForPreview(matchState, gameState, currentSet, isAceSet),
+        ),
+        // 상대 팀 선수 목록 (오른쪽)
+        Expanded(
+          child: _buildTeamRosterForPreview(
+            matchState: matchState,
+            gameState: gameState,
+            isHome: !isPlayerHome,
+            isLeftSide: false,
+            currentSet: currentSet,
+            isAceSet: isAceSet,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeamRosterForPreview({
+    required CurrentMatchState matchState,
+    required GameState gameState,
+    required bool isHome,
+    required bool isLeftSide,
+    required int currentSet,
+    required bool isAceSet,
+  }) {
+    final roster = isHome ? matchState.homeRoster : matchState.awayRoster;
+    final setResults = matchState.setResults;
+
+    return ListView.builder(
+      itemCount: 7, // 6세트 + ACE
+      itemBuilder: (context, index) {
+        final isAceSlot = index == 6;
+        final playerId = isAceSlot
+            ? (isHome ? matchState.homeAcePlayerId : matchState.awayAcePlayerId)
+            : (index < roster.length ? roster[index] : null);
+        final player = playerId != null ? _getPlayerById(playerId) : null;
+
+        // 이 세트가 완료되었는지
+        final setCompleted = index < setResults.length;
+        // 이 세트를 이겼는지 (isHome 기준으로 판단)
+        final setWon = setCompleted && setResults[index] == isHome;
+        final setLost = setCompleted && setResults[index] != isHome;
+
+        // 현재 세트인지 하이라이트
+        final isCurrentSet = (isAceSet && isAceSlot) || (!isAceSet && index == currentSet);
+
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 4.sp),
+          padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 6.sp),
+          decoration: BoxDecoration(
+            color: isCurrentSet
+                ? AppTheme.accentGreen.withValues(alpha: 0.2)
+                : setCompleted
+                    ? (setWon
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1))
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(4.sp),
+            border: isCurrentSet
+                ? Border.all(color: AppTheme.accentGreen, width: 2)
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: isLeftSide ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (!isLeftSide) ...[
+                if (setCompleted)
+                  SizedBox(
+                    width: 20.sp,
+                    child: Icon(
+                      setWon ? Icons.circle : Icons.close,
+                      size: 14.sp,
+                      color: setWon ? Colors.green : Colors.red,
+                    ),
+                  ),
+                SizedBox(width: 4.sp),
+              ],
+              if (player != null) ...[
+                Text(
+                  player.name,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: isCurrentSet ? FontWeight.bold : FontWeight.normal,
+                    color: setLost
+                        ? AppTheme.textSecondary.withValues(alpha: 0.5)
+                        : Colors.white,
+                    decoration: setLost ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                SizedBox(width: 4.sp),
+                Text(
+                  '(${player.race.code})',
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    color: AppTheme.getRaceColor(player.race.code),
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  isAceSlot ? 'ACE' : '???',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+              if (isLeftSide) ...[
+                SizedBox(width: 4.sp),
+                if (setCompleted)
+                  SizedBox(
+                    width: 20.sp,
+                    child: Icon(
+                      setWon ? Icons.circle : Icons.close,
+                      size: 14.sp,
+                      color: setWon ? Colors.green : Colors.red,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMapListForPreview(CurrentMatchState matchState, GameState gameState, int currentSet, bool isAceSet) {
+    final seasonMapIds = gameState.saveData.currentSeason.seasonMapIds;
+
+    return ListView.builder(
+      itemCount: 7,
+      itemBuilder: (context, index) {
+        final isAceSlot = index == 6;
+        final mapId = index < seasonMapIds.length ? seasonMapIds[index] : null;
+        final map = mapId != null ? GameMaps.getById(mapId) : null;
+
+        final setCompleted = index < matchState.setResults.length;
+        final isCurrentSet = (isAceSet && isAceSlot) || (!isAceSet && index == currentSet);
+
+        return Container(
+          margin: EdgeInsets.symmetric(vertical: 4.sp),
+          padding: EdgeInsets.symmetric(horizontal: 4.sp, vertical: 6.sp),
+          decoration: BoxDecoration(
+            color: isCurrentSet
+                ? AppTheme.primaryBlue.withValues(alpha: 0.3)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4.sp),
+          ),
+          child: Center(
+            child: Text(
+              isAceSlot ? 'ACE' : (map?.name ?? 'Map ${index + 1}'),
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: isCurrentSet ? FontWeight.bold : FontWeight.normal,
+                color: setCompleted
+                    ? AppTheme.textSecondary.withValues(alpha: 0.5)
+                    : isCurrentSet
+                        ? Colors.white
+                        : AppTheme.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1252,202 +1465,8 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     );
   }
 
-  Widget _buildFullBracket(CurrentMatchState matchState, GameState gameState, int nextSet, bool isAceNext) {
-    // 플레이어 팀 기준으로 좌우 배치
-    final isPlayerHome = matchState.homeTeamId == gameState.playerTeam.id;
-
-    return Row(
-      children: [
-        // 내 팀 선수 목록 (왼쪽)
-        Expanded(
-          child: _buildTeamRoster(
-            matchState: matchState,
-            gameState: gameState,
-            isHome: isPlayerHome, // 내 팀이 홈이면 true, 아니면 false
-            isLeftSide: true,
-            nextSet: nextSet,
-            isAceNext: isAceNext,
-          ),
-        ),
-        // 중앙: 맵 목록
-        Container(
-          width: 100.sp,
-          child: _buildMapList(matchState, gameState, nextSet, isAceNext),
-        ),
-        // 상대 팀 선수 목록 (오른쪽)
-        Expanded(
-          child: _buildTeamRoster(
-            matchState: matchState,
-            gameState: gameState,
-            isHome: !isPlayerHome, // 내 팀이 홈이면 상대는 away, 아니면 home
-            isLeftSide: false,
-            nextSet: nextSet,
-            isAceNext: isAceNext,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTeamRoster({
-    required CurrentMatchState matchState,
-    required GameState gameState,
-    required bool isHome,
-    required bool isLeftSide, // 화면상 왼쪽인지 (내 팀)
-    required int nextSet,
-    required bool isAceNext,
-  }) {
-    final roster = isHome ? matchState.homeRoster : matchState.awayRoster;
-    final setResults = matchState.setResults;
-
-    return ListView.builder(
-      itemCount: 7, // 6세트 + ACE
-      itemBuilder: (context, index) {
-        final isAceSlot = index == 6;
-        final playerId = isAceSlot
-            ? (isHome ? matchState.homeAcePlayerId : matchState.awayAcePlayerId)
-            : (index < roster.length ? roster[index] : null);
-        final player = playerId != null ? _getPlayerById(playerId) : null;
-
-        // 이 세트가 완료되었는지
-        final setCompleted = index < setResults.length;
-        // 이 세트를 이겼는지 (isHome 기준으로 판단)
-        final setWon = setCompleted && setResults[index] == isHome;
-        final setLost = setCompleted && setResults[index] != isHome;
-
-        // 다음 세트인지 하이라이트
-        final isNextSet = (isAceNext && isAceSlot) || (!isAceNext && index == nextSet - 1);
-
-        return Container(
-          margin: EdgeInsets.symmetric(vertical: 4.sp),
-          padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 6.sp),
-          decoration: BoxDecoration(
-            color: isNextSet
-                ? AppTheme.accentGreen.withValues(alpha: 0.2)
-                : setCompleted
-                    ? (setWon
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.red.withValues(alpha: 0.1))
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(4.sp),
-            border: isNextSet
-                ? Border.all(color: AppTheme.accentGreen, width: 2)
-                : null,
-          ),
-          child: Row(
-            // 왼쪽 팀은 오른쪽 정렬, 오른쪽 팀은 왼쪽 정렬
-            mainAxisAlignment: isLeftSide ? MainAxisAlignment.end : MainAxisAlignment.start,
-            children: [
-              if (!isLeftSide) ...[
-                // 오른쪽 팀: 승/패 아이콘이 앞에
-                if (setCompleted)
-                  Container(
-                    width: 20.sp,
-                    child: Icon(
-                      setWon ? Icons.circle : Icons.close,
-                      size: 14.sp,
-                      color: setWon ? Colors.green : Colors.red,
-                    ),
-                  ),
-                SizedBox(width: 4.sp),
-              ],
-              // 선수 정보
-              if (player != null) ...[
-                Text(
-                  player.name,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: isNextSet ? FontWeight.bold : FontWeight.normal,
-                    color: setLost
-                        ? AppTheme.textSecondary.withValues(alpha: 0.5)
-                        : Colors.white,
-                    decoration: setLost ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                SizedBox(width: 4.sp),
-                Text(
-                  '(${player.race.code})',
-                  style: TextStyle(
-                    fontSize: 10.sp,
-                    color: AppTheme.getRaceColor(player.race.code),
-                  ),
-                ),
-              ] else ...[
-                Text(
-                  isAceSlot ? 'ACE' : '???',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-              if (isLeftSide) ...[
-                // 왼쪽 팀: 승/패 아이콘이 뒤에
-                SizedBox(width: 4.sp),
-                if (setCompleted)
-                  Container(
-                    width: 20.sp,
-                    child: Icon(
-                      setWon ? Icons.circle : Icons.close,
-                      size: 14.sp,
-                      color: setWon ? Colors.green : Colors.red,
-                    ),
-                  ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMapList(CurrentMatchState matchState, GameState gameState, int nextSet, bool isAceNext) {
-    final seasonMapIds = gameState.saveData.currentSeason.seasonMapIds;
-
-    return ListView.builder(
-      itemCount: 7,
-      itemBuilder: (context, index) {
-        final isAceSlot = index == 6;
-        final mapId = index < seasonMapIds.length ? seasonMapIds[index] : null;
-        final map = mapId != null ? GameMaps.getById(mapId) : null;
-
-        final setCompleted = index < matchState.setResults.length;
-        final isNextSet = (isAceNext && isAceSlot) || (!isAceNext && index == nextSet - 1);
-
-        return Container(
-          margin: EdgeInsets.symmetric(vertical: 4.sp),
-          padding: EdgeInsets.symmetric(horizontal: 4.sp, vertical: 6.sp),
-          decoration: BoxDecoration(
-            color: isNextSet
-                ? AppTheme.primaryBlue.withValues(alpha: 0.3)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(4.sp),
-          ),
-          child: Center(
-            child: Text(
-              isAceSlot ? 'ACE' : (map?.name ?? 'Map ${index + 1}'),
-              style: TextStyle(
-                fontSize: 10.sp,
-                fontWeight: isNextSet ? FontWeight.bold : FontWeight.normal,
-                color: setCompleted
-                    ? AppTheme.textSecondary.withValues(alpha: 0.5)
-                    : isNextSet
-                        ? Colors.white
-                        : AppTheme.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildAceSelectionScreen(GameState gameState, CurrentMatchState matchState) {
     final teamPlayers = gameState.playerTeamPlayers;
-    // 에이스결정전은 전체 선수 중에서 다시 선택 가능 (이전 출전자 제외 없음)
-    final raceCode = teamPlayers.isNotEmpty ? teamPlayers.first.race.code : 'T';
 
     return Scaffold(
       appBar: AppBar(
@@ -1459,7 +1478,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
           // 상단 정보
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.orange.withOpacity(0.2),
+            color: Colors.orange.withValues(alpha: 0.2),
             child: const Column(
               children: [
                 Text(
@@ -1723,7 +1742,7 @@ class _ResourceBar extends StatelessWidget {
                           widthFactor: ratio1,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.8),
+                              color: color.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -1767,7 +1786,7 @@ class _ResourceBar extends StatelessWidget {
                           widthFactor: ratio2,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.8),
+                              color: color.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),

@@ -16,7 +16,6 @@ import '../presentation/screens/individual_league/group_draw_screen.dart';
 import '../presentation/screens/individual_league/main_tournament_screen.dart';
 import '../presentation/screens/player_ranking/player_ranking_screen.dart';
 import '../presentation/screens/match_result/match_result_ranking_screen.dart';
-import '../presentation/screens/season_schedule/season_schedule_screen.dart';
 import '../presentation/screens/player_info/player_info_screen.dart';
 import '../presentation/screens/season_end/season_end_screen.dart';
 import '../presentation/screens/winners_league/winners_league_screen.dart';
@@ -121,11 +120,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/match-result-ranking',
         name: 'matchResultRanking',
         builder: (context, state) => const MatchResultRankingScreen(),
-      ),
-      GoRoute(
-        path: '/season-schedule',
-        name: 'seasonSchedule',
-        builder: (context, state) => const SeasonScheduleScreen(),
       ),
       GoRoute(
         path: '/player-info',
