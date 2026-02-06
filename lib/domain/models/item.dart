@@ -56,7 +56,7 @@ class ConsumableItems {
   static const sniping = ConsumableItem(
     id: 'sniping',
     name: '스나이핑',
-    description: '상대 선수 예측 시 이길 확률 상승',
+    description: '내 선수에게 사용, 상대 선수 예측 성공 시 승률 +20%',
     price: 5,
   );
 

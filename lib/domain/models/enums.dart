@@ -316,25 +316,28 @@ enum BuildType {
   zvz9Pool('zvz_9pool', 'ZvZ', '9풀', BuildStyle.aggressive, ['attack', 'control']),
   zvz12Hatch('zvz_12hatch', 'ZvZ', '12해처리', BuildStyle.defensive, ['macro', 'defense']),
   zvzOverPool('zvz_overpool', 'ZvZ', '오버풀', BuildStyle.balanced, ['macro', 'control']),
-  zvzExtractor('zvz_extractor', 'ZvZ', '익스트랙터 트릭', BuildStyle.cheese, ['sense', 'attack']),
+  zvzExtractor('zvz_extractor', 'ZvZ', '익스트랙터 트릭', BuildStyle.cheese, ['attack', 'control']),
 
   // ==================== PvT 빌드 ====================
   pvt2GateZealot('pvt_2gate_zealot', 'PvT', '투게이트 질럿', BuildStyle.aggressive, ['attack', 'control']),
   pvtDarkSwing('pvt_dark_swing', 'PvT', '다크 스윙', BuildStyle.cheese, ['strategy', 'harass']),
   pvt1GateObserver('pvt_1gate_obs', 'PvT', '원게이트 옵저버', BuildStyle.defensive, ['defense', 'strategy']),
-  pvtProxyDark('pvt_proxy_dark', 'PvT', '프록시 다크', BuildStyle.cheese, ['attack', 'sense']),
+  pvtProxyDark('pvt_proxy_dark', 'PvT', '프록시 다크', BuildStyle.cheese, ['strategy', 'sense']),
+  pvt1GateExpansion('pvt_1gate_expand', 'PvT', '원게이트 확장', BuildStyle.balanced, ['macro', 'defense']),
 
   // ==================== PvZ 빌드 ====================
   pvz2GateZealot('pvz_2gate_zealot', 'PvZ', '투게이트 질럿', BuildStyle.aggressive, ['attack', 'control']),
   pvzForgeCannon('pvz_forge_cannon', 'PvZ', '포지 캐논', BuildStyle.defensive, ['defense', 'macro']),
-  pvzNexusFirst('pvz_nexus_first', 'PvZ', '넥서스 퍼스트', BuildStyle.defensive, ['macro', 'sense']),
+  pvzNexusFirst('pvz_nexus_first', 'PvZ', '넥서스 퍼스트', BuildStyle.defensive, ['macro', 'defense']),
   pvzCorsairReaver('pvz_corsair_reaver', 'PvZ', '커세어 리버', BuildStyle.aggressive, ['harass', 'control']),
+  pvzProxyGateway('pvz_proxy_gate', 'PvZ', '프록시 게이트', BuildStyle.cheese, ['attack', 'sense']),
 
   // ==================== PvP 빌드 ====================
   pvp2GateDragoon('pvp_2gate_dragoon', 'PvP', '투게이트 드라군', BuildStyle.balanced, ['control', 'attack']),
-  pvpDarkAllIn('pvp_dark_allin', 'PvP', '다크 올인', BuildStyle.cheese, ['attack', 'strategy']),
+  pvpDarkAllIn('pvp_dark_allin', 'PvP', '다크 올인', BuildStyle.cheese, ['strategy', 'harass']),
   pvp1GateRobo('pvp_1gate_robo', 'PvP', '원게이트 로보', BuildStyle.defensive, ['defense', 'strategy']),
-  pvpCannonRush('pvp_cannon_rush', 'PvP', '캐논 러시', BuildStyle.cheese, ['attack', 'sense']);
+  pvpCannonRush('pvp_cannon_rush', 'PvP', '캐논 러시', BuildStyle.cheese, ['attack', 'sense']),
+  pvpReaverDrop('pvp_reaver_drop', 'PvP', '리버 드랍', BuildStyle.aggressive, ['harass', 'control']);
 
   final String id;
   final String matchup;
@@ -411,8 +414,8 @@ class BuildMatchup {
     if (attacker == BuildType.zvt3HatchMutal && defender == BuildType.tvz2FactoryVulture) return -10;
 
     // TvP 특수 상성
-    if (attacker == BuildType.tvpFakeDouble && defender == BuildType.pvt1GateObserver) return -15;
-    if (attacker == BuildType.pvtDarkSwing && defender == BuildType.tvpDouble) return 20;
+    if (attacker == BuildType.tvpFakeDouble && defender == BuildType.pvt1GateObserver) return -10; // -15→-10: 테란 페이크 불이익 완화
+    if (attacker == BuildType.pvtDarkSwing && defender == BuildType.tvpDouble) return 12; // 20→12: 다크 스윙 이점 축소
 
     // PvZ 특수 상성
     if (attacker == BuildType.pvzForgeCannon && defender == BuildType.zvp5DroneZergling) return 30;
@@ -572,16 +575,16 @@ class StatWeights {
           'attack': 1.1,
           'harass': 1.2,    // 드랍
           'strategy': 1.3,
-          'macro': 1.1,
-          'defense': 1.2,
+          'macro': 1.2,     // 멀티 운영 (1.1→1.2: 테란 경제력 반영)
+          'defense': 1.3,   // 시즈 탱크 방어 (1.2→1.3: 프로토스 공세 대응)
           'scout': 1.1,
         };
       case 'PvT':
         return {
           'sense': 1.0,
-          'control': 1.4,   // 드라군/리버
+          'control': 1.3,   // 드라군/리버 (1.4→1.3: 테란 마이크로 대응 고려)
           'attack': 1.1,
-          'harass': 1.3,    // 리버 드랍
+          'harass': 1.2,    // 리버 드랍 (1.3→1.2: TvP harass와 균형)
           'strategy': 1.3,  // 스톰 타이밍
           'macro': 1.1,
           'defense': 1.1,
@@ -596,7 +599,7 @@ class StatWeights {
           'attack': 1.0,
           'harass': 1.2,    // 뮤탈 견제
           'strategy': 1.2,
-          'macro': 1.5,     // 물량 압도
+          'macro': 1.3,     // 물량 압도 (1.5→1.3: 맵 영향 비대칭 완화)
           'defense': 1.2,   // 럴커 수비
           'scout': 1.0,
         };
@@ -608,7 +611,7 @@ class StatWeights {
           'harass': 1.3,    // 커세어/리버
           'strategy': 1.4,  // 스톰 타이밍
           'macro': 1.1,
-          'defense': 1.0,
+          'defense': 1.2,   // 캐논/포지 방어 (1.0→1.2: P유리맵 보정 강화)
           'scout': 1.1,
         };
 
@@ -669,7 +672,7 @@ class StatWeights {
     final phaseWeight = phaseWeights[stat] ?? 1.0;
     final matchupWeight = matchupWeights[stat] ?? 1.0;
 
-    // 두 가중치의 기하평균 사용 (극단적 값 방지)
+    // 두 가중치의 곱 사용, 0.5~2.0 범위로 제한 (극단적 값 방지)
     return (phaseWeight * matchupWeight).clamp(0.5, 2.0);
   }
 

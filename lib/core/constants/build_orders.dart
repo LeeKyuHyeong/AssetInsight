@@ -3,6 +3,8 @@
 // 각 빌드는 순서대로 진행되는 이벤트 단계(step)를 가짐
 // 양 선수가 각자의 빌드를 독립적으로 진행하며, 특정 시점에 충돌(clash) 발생
 
+import 'dart:math';
+
 import '../../domain/models/enums.dart' show BuildStyle, BuildType;
 
 export '../../domain/models/enums.dart' show BuildStyle, BuildType;
@@ -51,23 +53,6 @@ class BuildOrder {
   });
 }
 
-/// 충돌 시나리오 (양측 빌드가 만났을 때)
-class ClashScenario {
-  final String id;
-  final int startLine;        // 충돌 시작 라인
-  final BuildStyle attackerStyle;
-  final BuildStyle defenderStyle;
-  final List<ClashEvent> events;
-
-  const ClashScenario({
-    required this.id,
-    required this.startLine,
-    required this.attackerStyle,
-    required this.defenderStyle,
-    required this.events,
-  });
-}
-
 /// 충돌 이벤트
 class ClashEvent {
   final String text;
@@ -91,6 +76,7 @@ class ClashEvent {
 
 /// 빌드오더 데이터 저장소
 class BuildOrderData {
+  static final Random _random = Random();
   // ==================== 테란 빌드 ====================
 
   // TvZ 빌드들 (BuildType: tvzBunkerDefense, tvz2FactoryVulture, tvzSKTerran, tvz3FactoryGoliath, tvzWraithHarass, tvzMechDrop)
@@ -472,7 +458,7 @@ class BuildOrderData {
         BuildStep(line: 34, text: '{player} 선수 앞마당 확장!', stat: 'macro', myResource: -30),
         BuildStep(line: 40, text: '{player}, 상대 탱크 라인 견제!', stat: 'harass', enemyArmy: -5),
         BuildStep(line: 50, text: '{player} 선수 시즈탱크 생산!', myArmy: 6, myResource: -20),
-        BuildStep(line: 60, text: '{player}, 레이스 탱크 조합!', stat: 'strategy', myArmy: 8, myResource: -25),
+        BuildStep(line: 60, text: '{player}, 레이스 탱크 조합!', stat: 'strategy', myArmy: 8, myResource: -25, isClash: true),
       ],
     ),
   ];
@@ -502,7 +488,7 @@ class BuildOrderData {
         BuildStep(line: 48, text: '{player}, 추가 뮤탈 생산!', myArmy: 6, myResource: -15),
         BuildStep(line: 55, text: '{player}, 뮤탈로 드랍십 격추!', stat: 'control', enemyArmy: -8),
         BuildStep(line: 65, text: '{player} 선수 4번째 확장!', stat: 'macro', myResource: -30),
-        BuildStep(line: 80, text: '{player}, 뮤탈 물량 압도!', stat: 'harass', myArmy: 10, myResource: -25),
+        BuildStep(line: 80, text: '{player}, 뮤탈 물량 압도!', stat: 'harass', myArmy: 10, myResource: -25, isClash: true),
       ],
     ),
 
@@ -885,9 +871,32 @@ class BuildOrderData {
         BuildStep(line: 40, text: '{player} 선수 올인!', stat: 'attack', isClash: true, decisive: true),
       ],
     ),
+
+    // 5. 원게이트 확장 (pvt1GateExpansion - Balanced)
+    BuildOrder(
+      id: 'pvt_1gate_expand',
+      name: '원게이트 확장',
+      race: 'P',
+      vsRace: 'T',
+      style: BuildStyle.balanced,
+      steps: [
+        BuildStep(line: 1, text: '{player} 선수 게이트웨이 건설합니다.', myResource: -15),
+        BuildStep(line: 4, text: '{player} 선수 사이버네틱스 코어 올립니다.', stat: 'macro', myResource: -10),
+        BuildStep(line: 7, text: '{player}, 드라군 생산!', stat: 'control', myArmy: 3, myResource: -10),
+        BuildStep(line: 10, text: '{player} 선수 넥서스 확장합니다.', stat: 'macro', myResource: -25),
+        BuildStep(line: 14, text: '{player}, 드라군 추가 생산!', myArmy: 3, myResource: -10),
+        BuildStep(line: 18, text: '{player} 선수 로보틱스 퍼실리티!', stat: 'strategy', myResource: -15),
+        BuildStep(line: 22, text: '{player}, 옵저버 생산 시작!', stat: 'scout', myResource: -5),
+        BuildStep(line: 26, text: '{player} 선수 사거리 업그레이드!', stat: 'strategy', myResource: -10),
+        BuildStep(line: 30, text: '{player}, 리버 생산!', stat: 'harass', myArmy: 2, myResource: -15),
+        BuildStep(line: 35, text: '{player} 선수 리버 드랍 나갑니다!', stat: 'harass', isClash: true),
+        BuildStep(line: 40, text: '{player}, 아비터 테크!', stat: 'strategy', myResource: -20),
+        BuildStep(line: 50, text: '{player} 선수 병력 모아서 푸시!', stat: 'attack', myArmy: 5, isClash: true),
+      ],
+    ),
   ];
 
-  // PvZ 빌드들 (BuildType: pvz2GateZealot, pvzForgeCannon, pvzNexusFirst, pvzCorsairReaver)
+  // PvZ 빌드들 (BuildType: pvz2GateZealot, pvzForgeCannon, pvzNexusFirst, pvzCorsairReaver, pvzProxyGateway)
   static const protossVsZergBuilds = [
     // 1. 투게이트 질럿 (pvz2GateZealot - Aggressive)
     BuildOrder(
@@ -981,9 +990,28 @@ class BuildOrderData {
         BuildStep(line: 60, text: '{player}, 멀티 드랍!', stat: 'harass', enemyResource: -25, isClash: true),
       ],
     ),
+
+    // 5. 프록시 게이트 (pvzProxyGateway - Cheese)
+    BuildOrder(
+      id: 'pvz_proxy_gate',
+      name: '프록시 게이트',
+      race: 'P',
+      vsRace: 'Z',
+      style: BuildStyle.cheese,
+      steps: [
+        BuildStep(line: 1, text: '{player} 선수 프로브 출발합니다.', stat: 'sense'),
+        BuildStep(line: 3, text: '{player}, 프록시 파일런!', stat: 'sense', myResource: -10),
+        BuildStep(line: 6, text: '{player} 선수 프록시 게이트웨이!', stat: 'attack', myResource: -15),
+        BuildStep(line: 10, text: '{player}, 질럿 생산!', stat: 'attack', myArmy: 3, myResource: -8),
+        BuildStep(line: 13, text: '{player} 선수 질럿 투입!', stat: 'attack', isClash: true),
+        BuildStep(line: 16, text: '{player}, 드론 사냥!', stat: 'control', enemyResource: -30),
+        BuildStep(line: 20, text: '{player}, 질럿 추가!', myArmy: 3, myResource: -8),
+        BuildStep(line: 25, text: '{player} 선수 올인!', stat: 'attack', isClash: true, decisive: true),
+      ],
+    ),
   ];
 
-  // PvP 빌드들 (BuildType: pvp2GateDragoon, pvpDarkAllIn, pvp1GateRobo, pvpCannonRush)
+  // PvP 빌드들 (BuildType: pvp2GateDragoon, pvpDarkAllIn, pvp1GateRobo, pvpCannonRush, pvpReaverDrop)
   static const protossVsProtossBuilds = [
     // 1. 투게이트 드라군 (pvp2GateDragoon - Balanced)
     BuildOrder(
@@ -1066,6 +1094,28 @@ class BuildOrderData {
         BuildStep(line: 16, text: '{player}, 캐논 추가!', myResource: -15),
         BuildStep(line: 20, text: '{player} 선수 캐논 포위!', stat: 'attack', enemyArmy: -5, enemyResource: -25),
         BuildStep(line: 26, text: '{player}, 캐논 올인!', stat: 'attack', isClash: true, decisive: true),
+      ],
+    ),
+
+    // 5. 리버 드랍 (pvpReaverDrop - Aggressive)
+    BuildOrder(
+      id: 'pvp_reaver_drop',
+      name: '리버 드랍',
+      race: 'P',
+      vsRace: 'P',
+      style: BuildStyle.aggressive,
+      steps: [
+        BuildStep(line: 1, text: '{player} 선수 게이트웨이 건설합니다.', myResource: -15),
+        BuildStep(line: 5, text: '{player} 선수 사이버네틱스 코어!', myResource: -15),
+        BuildStep(line: 9, text: '{player}, 드라군 생산!', stat: 'control', myArmy: 3, myResource: -10),
+        BuildStep(line: 12, text: '{player} 선수 로보틱스 퍼실리티!', stat: 'strategy', myResource: -20),
+        BuildStep(line: 16, text: '{player}, 리버 생산!', stat: 'harass', myArmy: 2, myResource: -15),
+        BuildStep(line: 20, text: '{player} 선수 셔틀 생산!', myArmy: 1, myResource: -10),
+        BuildStep(line: 24, text: '{player}, 리버 드랍 출발!', stat: 'harass'),
+        BuildStep(line: 28, text: '{player} 선수 리버 드랍 성공!', stat: 'control', enemyArmy: -8, enemyResource: -25, isClash: true),
+        BuildStep(line: 34, text: '{player}, 리버 추가 생산!', myArmy: 2, myResource: -15),
+        BuildStep(line: 40, text: '{player} 선수 멀티 리버 드랍!', stat: 'harass', enemyResource: -20, isClash: true),
+        BuildStep(line: 50, text: '{player}, 병력 모아서 결전!', stat: 'attack', myArmy: 5, isClash: true),
       ],
     ),
   ];
@@ -1418,6 +1468,104 @@ class BuildOrderData {
     ),
   ];
 
+  // ==================== 수비자 고능력치 이벤트 ====================
+  // 수비자의 능력치가 높을 때 발생하는 이벤트 (수비자 유리)
+  // attackerArmy가 큰 피해, defenderArmy가 작은 피해 = 수비자 유리
+
+  /// 수비자 고전략 이벤트 (defender strategy >= 700)
+  static const highDefenderStrategyEvents = [
+    ClashEvent(
+      text: '{defender} 선수, 상대 빌드 완벽 읽기! 카운터 성공!',
+      favorsStat: 'strategy',
+      attackerArmy: -15,
+      defenderArmy: -5,
+      attackerResource: -20,
+    ),
+    ClashEvent(
+      text: '{defender} 선수, 전략적 포지셔닝! 공격군 고립!',
+      favorsStat: 'strategy',
+      attackerArmy: -12,
+      defenderArmy: -3,
+    ),
+    ClashEvent(
+      text: '한 수 앞서는 수비! {defender} 선수 함정 카드!',
+      favorsStat: 'strategy',
+      attackerArmy: -10,
+      defenderArmy: -3,
+      defenderResource: 15,
+    ),
+  ];
+
+  /// 수비자 고물량 이벤트 (defender macro >= 700)
+  static const highDefenderMacroEvents = [
+    ClashEvent(
+      text: '{defender} 선수, 압도적 물량 리플레이스! 공격군 녹습니다!',
+      favorsStat: 'macro',
+      attackerArmy: -12,
+      defenderArmy: 5,
+      defenderResource: -20,
+    ),
+    ClashEvent(
+      text: '{defender} 선수, 끝없는 병력 보충! 공격이 통하지 않습니다!',
+      favorsStat: 'macro',
+      attackerArmy: -8,
+      defenderArmy: 3,
+    ),
+    ClashEvent(
+      text: '경제력 차이! {defender} 선수 물량으로 역전!',
+      favorsStat: 'macro',
+      attackerArmy: -15,
+      defenderArmy: -5,
+      defenderResource: -25,
+    ),
+  ];
+
+  /// 수비자 고컨트롤 이벤트 (defender control >= 700)
+  static const highDefenderControlEvents = [
+    ClashEvent(
+      text: '{defender} 선수, 환상적인 수비 컨트롤! 공격군 포커싱!',
+      favorsStat: 'control',
+      attackerArmy: -18,
+      defenderArmy: -5,
+    ),
+    ClashEvent(
+      text: '{defender} 선수, 완벽한 스플릿! 피해 최소화!',
+      favorsStat: 'control',
+      attackerArmy: -12,
+      defenderArmy: -2,
+    ),
+    ClashEvent(
+      text: '수비 장인! {defender} 선수 적은 병력으로 막아냅니다!',
+      favorsStat: 'control',
+      attackerArmy: -15,
+      defenderArmy: -3,
+    ),
+  ];
+
+  /// 수비자 고센스 이벤트 (defender sense >= 700)
+  static const highDefenderSenseEvents = [
+    ClashEvent(
+      text: '{defender} 선수, 타이밍 읽기 성공! 공격 무력화!',
+      favorsStat: 'sense',
+      attackerArmy: -15,
+      defenderArmy: -5,
+      defenderResource: 10,
+    ),
+    ClashEvent(
+      text: '{defender} 선수, 상대 약점 간파! 역습 성공!',
+      favorsStat: 'sense',
+      attackerArmy: -12,
+      defenderArmy: -3,
+    ),
+    ClashEvent(
+      text: '귀신같은 대비! {defender} 선수 공격 예측!',
+      favorsStat: 'sense',
+      attackerArmy: -10,
+      defenderArmy: -2,
+      attackerResource: -15,
+    ),
+  ];
+
   // ==================== 빌드 타입별 전용 이벤트 ====================
 
   /// 빌드 타입별 전용 이벤트 맵
@@ -1506,6 +1654,121 @@ class BuildOrderData {
     BuildType.pvp2GateDragoon: [
       ClashEvent(text: '투게이트 드라군! 컨트롤 싸움!', favorsStat: 'control', attackerArmy: -8, defenderArmy: -10),
       ClashEvent(text: '드라군 마이크로! 포커싱 성공!', favorsStat: 'control', attackerArmy: -5, defenderArmy: -12),
+    ],
+
+    // 추가 빌드 전용 이벤트
+    BuildType.tvzBunkerDefense: [
+      ClashEvent(text: '벙커 수비 성공! 저글링 러시 막아냅니다!', favorsStat: 'defense', attackerArmy: -2, defenderArmy: -12),
+      ClashEvent(text: '벙커 뒤에서 마린 화력! 상대 물량 녹입니다!', favorsStat: 'defense', attackerArmy: -3, defenderArmy: -10),
+    ],
+    BuildType.tvz3FactoryGoliath: [
+      ClashEvent(text: '3팩 골리앗! 대공 화력 집중!', favorsStat: 'defense', attackerArmy: -4, defenderArmy: -10),
+      ClashEvent(text: '골리앗 물량! 뮤탈 접근 불가!', favorsStat: 'defense', attackerArmy: -3, defenderArmy: -8, defenderResource: -15),
+    ],
+    BuildType.tvzMechDrop: [
+      ClashEvent(text: '메카닉 드랍! 본진 후방 교란!', favorsStat: 'harass', attackerArmy: -5, defenderArmy: -8, defenderResource: -30),
+      ClashEvent(text: '탱크 드랍! 해처리 직접 타격!', favorsStat: 'harass', attackerArmy: -4, defenderArmy: -6, defenderResource: -25),
+    ],
+    BuildType.tvpDouble: [
+      ClashEvent(text: '더블 커맨드! 경제력으로 압도!', favorsStat: 'macro', attackerArmy: 3, defenderArmy: 0, attackerResource: 20),
+      ClashEvent(text: '안정적 확장 완료! 물량 생산 시작!', favorsStat: 'macro', attackerArmy: 5, defenderArmy: -2, attackerResource: 10),
+    ],
+    BuildType.tvp1FactGosu: [
+      ClashEvent(text: '원팩 고수 운영! 정확한 타이밍 공격!', favorsStat: 'strategy', attackerArmy: -6, defenderArmy: -10),
+      ClashEvent(text: '탱크 시즈 모드! 드라군 접근 차단!', favorsStat: 'defense', attackerArmy: -3, defenderArmy: -12),
+    ],
+    BuildType.tvpWraithRush: [
+      ClashEvent(text: '레이스 난사! 프로브 라인 습격!', favorsStat: 'harass', attackerArmy: -3, defenderArmy: -4, defenderResource: -35),
+      ClashEvent(text: '클로킹 레이스! 감지기 없으면 끝!', favorsStat: 'harass', attackerArmy: -2, defenderArmy: -6, defenderResource: -30),
+    ],
+    BuildType.tvtProxy: [
+      ClashEvent(text: '프록시 배럭 들켜버렸습니다!', favorsStat: 'sense', attackerArmy: -8, defenderArmy: -3),
+      ClashEvent(text: '프록시 마린 러시 성공! 앞마당 차단!', favorsStat: 'attack', attackerArmy: -5, defenderArmy: -10, defenderResource: -20),
+    ],
+    BuildType.tvt2Barracks: [
+      ClashEvent(text: '투배럭 마린! 안정적 초반 방어!', favorsStat: 'defense', attackerArmy: -3, defenderArmy: -8),
+      ClashEvent(text: '마린 벙커! 초반 러시 완벽 방어!', favorsStat: 'defense', attackerArmy: -2, defenderArmy: -10),
+    ],
+    BuildType.tvt2Factory: [
+      ClashEvent(text: '투팩 탱크! 화력 집중!', favorsStat: 'strategy', attackerArmy: -5, defenderArmy: -10),
+      ClashEvent(text: '투팩 벌처 탱크 조합! 맵 장악!', favorsStat: 'macro', attackerArmy: -4, defenderArmy: -8, attackerResource: 10),
+    ],
+    BuildType.zvt2HatchMutal: [
+      ClashEvent(text: '투해처리 뮤탈! 빠른 견제!', favorsStat: 'harass', attackerArmy: -3, defenderArmy: -5, defenderResource: -25),
+      ClashEvent(text: '뮤탈 히트앤런! 터렛 전에 피해 줍니다!', favorsStat: 'harass', attackerArmy: -2, defenderArmy: -4, defenderResource: -30),
+    ],
+    BuildType.zvtHatchSpore: [
+      ClashEvent(text: '해처리 스포어! 안정적 수비 확보!', favorsStat: 'defense', attackerArmy: -2, defenderArmy: -8),
+      ClashEvent(text: '스포어로 공중 방어! 경제 확보!', favorsStat: 'macro', attackerArmy: 2, defenderArmy: 0, attackerResource: 15),
+    ],
+    BuildType.zvt1HatchAllIn: [
+      ClashEvent(text: '원해처리 올인! 저글링 물량 돌격!', favorsStat: 'attack', attackerArmy: -10, defenderArmy: -15),
+      ClashEvent(text: '초반 전력 투입! 벙커 전에 들어갑니다!', favorsStat: 'attack', attackerArmy: -8, defenderArmy: -12, defenderResource: -20),
+    ],
+    BuildType.zvp3HatchHydra: [
+      ClashEvent(text: '3해처리 히드라! 물량으로 밀어붙입니다!', favorsStat: 'macro', attackerArmy: 5, defenderArmy: -5, attackerResource: -20),
+      ClashEvent(text: '히드라 물량! 드라군 라인 돌파!', favorsStat: 'attack', attackerArmy: -8, defenderArmy: -12),
+    ],
+    BuildType.zvp2HatchMutal: [
+      ClashEvent(text: '투해처리 뮤탈! 프로브 견제!', favorsStat: 'harass', attackerArmy: -3, defenderArmy: -4, defenderResource: -30),
+      ClashEvent(text: '뮤탈로 맵 장악! 코르세어 없으면 답 없습니다!', favorsStat: 'control', attackerArmy: -2, defenderArmy: -6, defenderResource: -20),
+    ],
+    BuildType.zvpScourgeDefiler: [
+      ClashEvent(text: '스커지로 커세어 격추! 제공권 역전!', favorsStat: 'control', attackerArmy: -4, defenderArmy: -8),
+      ClashEvent(text: '디파일러 플레이그! 드라군 편대 녹습니다!', favorsStat: 'strategy', attackerArmy: -2, defenderArmy: -15),
+    ],
+    BuildType.zvp5DroneZergling: [
+      ClashEvent(text: '5드론 저글링! 캐논 전에 돌진!', favorsStat: 'attack', attackerArmy: -8, defenderArmy: -10, defenderResource: -25),
+      ClashEvent(text: '초반 올인! 프로브 학살!', favorsStat: 'attack', attackerArmy: -5, defenderArmy: -8, defenderResource: -30),
+    ],
+    BuildType.pvt1GateObserver: [
+      ClashEvent(text: '원게이트 옵저버! 다크 완벽 대비!', favorsStat: 'defense', attackerArmy: -3, defenderArmy: -8),
+      ClashEvent(text: '옵저버로 상대 빌드 완전 파악!', favorsStat: 'scout', attackerArmy: 0, defenderArmy: -3, attackerResource: 10),
+    ],
+    BuildType.pvtProxyDark: [
+      ClashEvent(text: '프록시 다크 투입! 감지기 확인!', favorsStat: 'strategy', attackerArmy: -3, defenderArmy: -8, defenderResource: -35),
+      ClashEvent(text: '다크 은밀히 투입! SCV 학살!', favorsStat: 'harass', attackerArmy: -2, defenderArmy: -5, defenderResource: -40),
+    ],
+    BuildType.pvzNexusFirst: [
+      ClashEvent(text: '넥서스 퍼스트! 경제력으로 승부!', favorsStat: 'macro', attackerArmy: 3, defenderArmy: 0, attackerResource: 25),
+      ClashEvent(text: '빠른 확장 성공! 물량 생산 돌입!', favorsStat: 'macro', attackerArmy: 5, defenderArmy: -2, attackerResource: 15),
+    ],
+    BuildType.pvz2GateZealot: [
+      ClashEvent(text: '투게이트 질럿 앞마당 압박!', favorsStat: 'attack', attackerArmy: -8, defenderArmy: -10, defenderResource: -15),
+      ClashEvent(text: '질럿 러시! 선큰 전에 들어갑니다!', favorsStat: 'attack', attackerArmy: -6, defenderArmy: -12),
+    ],
+    BuildType.pvp1GateRobo: [
+      ClashEvent(text: '원게이트 로보! 리버로 전환!', favorsStat: 'strategy', attackerArmy: 2, defenderArmy: 0, attackerResource: -15),
+      ClashEvent(text: '리버 생산! 셔틀 드랍 준비!', favorsStat: 'harass', attackerArmy: 3, defenderArmy: 0, attackerResource: -20),
+    ],
+    BuildType.pvpCannonRush: [
+      ClashEvent(text: '캐논 러시! 상대 미네랄 라인 차단!', favorsStat: 'attack', attackerArmy: -2, defenderArmy: -5, defenderResource: -25),
+      ClashEvent(text: '프록시 캐논 성공! 건물 올라갑니다!', favorsStat: 'attack', attackerArmy: 0, defenderArmy: -8, defenderResource: -20),
+    ],
+    // 새로 추가된 프로토스 빌드
+    BuildType.pvt1GateExpansion: [
+      ClashEvent(text: '원게이트 확장! 안정적 운영!', favorsStat: 'macro', attackerArmy: 3, defenderArmy: 0, attackerResource: 20),
+      ClashEvent(text: '리버 드랍 타이밍! 확장 후 견제!', favorsStat: 'harass', attackerArmy: -3, defenderArmy: -6, defenderResource: -30),
+    ],
+    BuildType.pvzProxyGateway: [
+      ClashEvent(text: '프록시 게이트! 질럿 투입!', favorsStat: 'attack', attackerArmy: -6, defenderArmy: -10, defenderResource: -20),
+      ClashEvent(text: '프록시 질럿 드론 사냥!', favorsStat: 'attack', attackerArmy: -5, defenderArmy: -8, defenderResource: -30),
+    ],
+    BuildType.pvpReaverDrop: [
+      ClashEvent(text: '리버 드랍! 프로브 라인 폭격!', favorsStat: 'harass', attackerArmy: -3, defenderArmy: -8, defenderResource: -35),
+      ClashEvent(text: '셔틀 리버 멀티 드랍! 대응 불가!', favorsStat: 'harass', attackerArmy: -4, defenderArmy: -6, defenderResource: -40),
+    ],
+    BuildType.zvz9Pool: [
+      ClashEvent(text: '9풀 저글링! 빠른 압박!', favorsStat: 'attack', attackerArmy: -5, defenderArmy: -8),
+      ClashEvent(text: '9풀 타이밍 공격! 선큰 전에 들어갑니다!', favorsStat: 'attack', attackerArmy: -6, defenderArmy: -10, defenderResource: -15),
+    ],
+    BuildType.zvzOverPool: [
+      ClashEvent(text: '오버풀! 경제와 병력의 균형!', favorsStat: 'macro', attackerArmy: 3, defenderArmy: -2, attackerResource: 10),
+      ClashEvent(text: '오버풀 타이밍! 적절한 저글링 수!', favorsStat: 'control', attackerArmy: -4, defenderArmy: -6),
+    ],
+    BuildType.zvzExtractor: [
+      ClashEvent(text: '익스트랙터 트릭! 서플라이 이득!', favorsStat: 'sense', attackerArmy: 2, defenderArmy: 0),
+      ClashEvent(text: '빠른 가스! 스피드 저글링 준비!', favorsStat: 'sense', attackerArmy: -3, defenderArmy: -5, attackerResource: -5),
     ],
   };
 
@@ -1694,8 +1957,8 @@ class BuildOrderData {
 
   // ==================== 명장면 이벤트 (특수) ====================
 
-  /// 드랍 이벤트
-  static const dropEvents = [
+  /// 드랍 이벤트 (테란 공격자)
+  static const dropEventsTerran = [
     ClashEvent(
       text: '{attacker} 선수, 드랍십 투입! 일꾼 라인 초토화!',
       favorsStat: 'harass',
@@ -1704,11 +1967,59 @@ class BuildOrderData {
       defenderResource: -40,
     ),
     ClashEvent(
+      text: '{attacker}, 탱크 드랍! 상대 라인 박살!',
+      favorsStat: 'harass',
+      attackerArmy: -2,
+      defenderArmy: -10,
+      defenderResource: -25,
+    ),
+    ClashEvent(
+      text: '{defender}, 드랍 미리 읽었습니다! 완벽한 수비!',
+      favorsStat: 'scout',
+      attackerArmy: -8,
+      defenderArmy: -2,
+    ),
+  ];
+
+  /// 드랍 이벤트 (프로토스 공격자)
+  static const dropEventsProtoss = [
+    ClashEvent(
       text: '{attacker} 선수, 리버 드랍! 스캐럽이 작렬합니다!',
       favorsStat: 'harass',
       attackerArmy: -2,
       defenderArmy: -12,
       defenderResource: -30,
+    ),
+    ClashEvent(
+      text: '{attacker}, 셔틀 드랍! 일꾼 라인 급습!',
+      favorsStat: 'harass',
+      attackerArmy: -3,
+      defenderArmy: -5,
+      defenderResource: -35,
+    ),
+    ClashEvent(
+      text: '{defender}, 드랍 미리 읽었습니다! 완벽한 수비!',
+      favorsStat: 'scout',
+      attackerArmy: -8,
+      defenderArmy: -2,
+    ),
+  ];
+
+  /// 드랍 이벤트 (저그 공격자)
+  static const dropEventsZerg = [
+    ClashEvent(
+      text: '{attacker}, 뮤탈 견제! 일꾼 라인 급습!',
+      favorsStat: 'harass',
+      attackerArmy: -2,
+      defenderArmy: -5,
+      defenderResource: -35,
+    ),
+    ClashEvent(
+      text: '{attacker} 선수, 오버로드 드랍! 저글링 러쉬!',
+      favorsStat: 'harass',
+      attackerArmy: -5,
+      defenderArmy: -8,
+      defenderResource: -25,
     ),
     ClashEvent(
       text: '{defender}, 드랍 미리 읽었습니다! 완벽한 수비!',
@@ -2473,6 +2784,13 @@ class BuildOrderData {
     BuildStep(line: 0, text: '{player}, 탱크 라인 전진! 고지대 점령!', stat: 'strategy', myArmy: -2, enemyArmy: -5),
     BuildStep(line: 0, text: '{player} 선수 발키리 생산!', stat: 'strategy', myArmy: 3, myResource: -18),
     BuildStep(line: 0, text: '{player}, 배틀크루저 생산 시작!', stat: 'macro', myArmy: 4, myResource: -30),
+    BuildStep(line: 0, text: '{player} 선수 벙커 추가 건설!', stat: 'defense', myArmy: 1, myResource: -10),
+    BuildStep(line: 0, text: '{player}, EMP 업그레이드 완료!', stat: 'strategy', myResource: -15),
+    BuildStep(line: 0, text: '{player} 선수 마인 매설 확대!', stat: 'defense', myArmy: 1, myResource: -8),
+    BuildStep(line: 0, text: '{player}, 팩토리 추가 건설! 생산력 증가!', stat: 'macro', myArmy: 3, myResource: -15),
+    BuildStep(line: 0, text: '{player} 선수 아머리 업그레이드 진행!', stat: 'strategy', myArmy: 1, myResource: -12),
+    BuildStep(line: 0, text: '{player}, 벌처 스피드 업그레이드!', stat: 'control', myArmy: 2, myResource: -10),
+    BuildStep(line: 0, text: '{player} 선수 터렛 라인 구축!', stat: 'defense', myArmy: 1, myResource: -10),
   ];
 
   /// 저그 중후반 이벤트
@@ -2485,6 +2803,13 @@ class BuildOrderData {
     BuildStep(line: 0, text: '{player}, 다크스웜 업그레이드 완료!', stat: 'strategy', myResource: -15),
     BuildStep(line: 0, text: '{player} 선수 가디언 변태!', stat: 'strategy', myArmy: 4, myResource: -20),
     BuildStep(line: 0, text: '{player}, 디보러 변태! 적진 잠식!', stat: 'strategy', myArmy: 3, myResource: -18),
+    BuildStep(line: 0, text: '{player} 선수 스커지 생산!', stat: 'attack', myArmy: 3, myResource: -10),
+    BuildStep(line: 0, text: '{player}, 저글링 스피드 업그레이드!', stat: 'control', myArmy: 2, myResource: -10),
+    BuildStep(line: 0, text: '{player} 선수 해처리 추가 건설!', stat: 'macro', myArmy: 2, myResource: -15),
+    BuildStep(line: 0, text: '{player}, 오버로드 스피드 업그레이드!', stat: 'scout', myArmy: 1, myResource: -10),
+    BuildStep(line: 0, text: '{player} 선수 저글링 대량 변태!', stat: 'attack', myArmy: 7, myResource: -15),
+    BuildStep(line: 0, text: '{player}, 퀸 생산! 브루들링 준비!', stat: 'strategy', myArmy: 3, myResource: -20),
+    BuildStep(line: 0, text: '{player} 선수 에볼루션 챔버 업그레이드!', stat: 'strategy', myArmy: 1, myResource: -12),
   ];
 
   /// 프로토스 중후반 이벤트
@@ -2497,6 +2822,13 @@ class BuildOrderData {
     BuildStep(line: 0, text: '{player}, 스톰 준비 완료! 적 병력 초토화!', stat: 'strategy', myArmy: 1, enemyArmy: -8),
     BuildStep(line: 0, text: '{player} 선수 아비터 생산!', stat: 'strategy', myArmy: 3, myResource: -25),
     BuildStep(line: 0, text: '{player}, 드라군 사거리 업그레이드!', stat: 'attack', myArmy: 2, myResource: -15),
+    BuildStep(line: 0, text: '{player} 선수 포지 업그레이드 진행!', stat: 'macro', myArmy: 1, myResource: -10),
+    BuildStep(line: 0, text: '{player}, 다크템플러 생산!', stat: 'harass', myArmy: 3, myResource: -20),
+    BuildStep(line: 0, text: '{player} 선수 셔틀 추가 생산!', stat: 'harass', myArmy: 1, myResource: -10),
+    BuildStep(line: 0, text: '{player}, 질럿 다수 생산!', stat: 'attack', myArmy: 5, myResource: -15),
+    BuildStep(line: 0, text: '{player} 선수 포톤캐논 방어선 구축!', stat: 'defense', myArmy: 1, myResource: -15),
+    BuildStep(line: 0, text: '{player}, 코르세어 추가 생산!', stat: 'control', myArmy: 2, myResource: -15),
+    BuildStep(line: 0, text: '{player} 선수 게이트웨이 추가 건설!', stat: 'macro', myArmy: 2, myResource: -20),
   ];
 
   /// 중후반 이벤트 가져오기 (빌드 스텝이 없을 때 사용)
@@ -2512,10 +2844,9 @@ class BuildOrderData {
     int? rushDistance,
     int? resources,
     int? terrainComplexity,
+    Random? random,
   }) {
-    // 랜덤 시드
-    final now = DateTime.now();
-    final seed = now.millisecond + now.second * 1000;
+    final rng = random ?? Random();
 
     // 상황에 따른 이벤트 가중치
     List<BuildStep> candidates = [];
@@ -2591,7 +2922,7 @@ class BuildOrderData {
     }
 
     // 랜덤 선택
-    return candidates[seed % candidates.length];
+    return candidates[rng.nextInt(candidates.length)];
   }
 
   // ==================== 헬퍼 메서드 ====================
@@ -2641,12 +2972,12 @@ class BuildOrderData {
     // 선호 스타일과 일치하는 빌드 우선
     final preferred = candidates.where((b) => b.style == preferredStyle).toList();
     if (preferred.isNotEmpty) {
-      return preferred[DateTime.now().millisecond % preferred.length];
+      return preferred[_random.nextInt(preferred.length)];
     }
 
     // 없으면 아무거나
     if (candidates.isNotEmpty) {
-      return candidates[DateTime.now().millisecond % candidates.length];
+      return candidates[_random.nextInt(candidates.length)];
     }
 
     return null;
@@ -2673,6 +3004,10 @@ class BuildOrderData {
     int? attackerMacro,
     int? attackerSense,
     int? defenderDefense,
+    int? defenderStrategy,
+    int? defenderMacro,
+    int? defenderControl,
+    int? defenderSense,
     BuildType? attackerBuildType,
     BuildType? defenderBuildType,
   }) {
@@ -2733,6 +3068,19 @@ class BuildOrderData {
     }
     if (defenderDefense != null && defenderDefense >= 700) {
       baseEvents.addAll(highDefenseEvents);
+    }
+    // 수비자의 고능력치 이벤트 추가 (수비자 우위 반영)
+    if (defenderStrategy != null && defenderStrategy >= 700) {
+      baseEvents.addAll(highDefenderStrategyEvents);
+    }
+    if (defenderMacro != null && defenderMacro >= 700) {
+      baseEvents.addAll(highDefenderMacroEvents);
+    }
+    if (defenderControl != null && defenderControl >= 700) {
+      baseEvents.addAll(highDefenderControlEvents);
+    }
+    if (defenderSense != null && defenderSense >= 700) {
+      baseEvents.addAll(highDefenderSenseEvents);
     }
 
     // 빌드 타입별 전용 이벤트 추가 (15% 확률로 발생 가중치 증가)
@@ -2841,9 +3189,15 @@ class BuildOrderData {
       }
     }
 
-    // 견제형이면 드랍 이벤트 추가
+    // 견제형이면 종족별 드랍 이벤트 추가
     if (attackerStyle == BuildStyle.aggressive || attackerStyle == BuildStyle.cheese) {
-      baseEvents.addAll(dropEvents);
+      if (attackerRace == 'T') {
+        baseEvents.addAll(dropEventsTerran);
+      } else if (attackerRace == 'P') {
+        baseEvents.addAll(dropEventsProtoss);
+      } else if (attackerRace == 'Z') {
+        baseEvents.addAll(dropEventsZerg);
+      }
     }
 
     // 수비형이면 역전 이벤트 추가
@@ -2871,15 +3225,15 @@ class BuildOrderData {
     // 병력 열세 역전 가능성
     if (homeArmy < awayArmy * 0.6 || awayArmy < homeArmy * 0.6) {
       // 10% 확률로 역전 이벤트
-      if (DateTime.now().millisecond % 10 == 0) {
-        return comebackEvents[DateTime.now().millisecond % comebackEvents.length];
+      if (_random.nextDouble() < 0.1) {
+        return comebackEvents[_random.nextInt(comebackEvents.length)];
       }
     }
 
     // 중반 이후 스펠 이벤트
     if (lineCount >= 40) {
-      if (DateTime.now().millisecond % 5 == 0) {
-        return spellEventsGeneral[DateTime.now().millisecond % spellEventsGeneral.length];
+      if (_random.nextDouble() < 0.2) {
+        return spellEventsGeneral[_random.nextInt(spellEventsGeneral.length)];
       }
     }
 

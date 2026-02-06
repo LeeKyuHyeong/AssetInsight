@@ -33,11 +33,11 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   // 세트별 맵 (랜덤 선정)
   List<GameMap> _matchMaps = [];
 
-  // 스나이핑 사용 여부
-  bool _snipingUsed = false;
-
-  // 예측된 상대 로스터 (스나이핑 사용 시)
-  List<String?> _predictedOpponentRoster = [];
+  // 스나이핑 관련 상태
+  List<SnipingAssignment> _snipingAssignments = [];
+  // idle: 기본, selectingMyPlayer: 내 선수 선택 중, selectingOpponent: 상대 선수 선택 중
+  String _snipingState = 'idle';
+  int? _snipingTargetSetIndex;
 
   /// 매치용 맵 7개 선정 (시즌맵 순서 유지)
   List<GameMap> _getMatchMaps(List<String> seasonMapIds) {
@@ -148,7 +148,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                 // 오른쪽: 상대 팀
                 Expanded(
                   flex: 3,
-                  child: _buildOpponentSection(opponentPlayers, opponentId),
+                  child: _buildOpponentSection(opponentPlayers, opponentId, teamPlayers),
                 ),
               ],
             ),
@@ -227,7 +227,16 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         runSpacing: 4,
         children: consumableItems.map((item) {
           final count = inventory.getConsumableCount(item.id);
-          return _ItemChip(item: item, count: count);
+          final isSnipingItem = item.id == 'sniping';
+          final isSnipingActive = _snipingState != 'idle';
+          return GestureDetector(
+            onTap: isSnipingItem && !isSnipingActive ? _startSnipingFlow : null,
+            child: _ItemChip(
+              item: item,
+              count: count,
+              isHighlighted: isSnipingItem && isSnipingActive,
+            ),
+          );
         }).toList(),
       ),
     );
@@ -430,7 +439,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   }
 
   /// 상대 팀 섹션 (선수 그리드 + 선택 시 상세 정보)
-  Widget _buildOpponentSection(List<Player> opponentPlayers, String opponentTeamId) {
+  Widget _buildOpponentSection(List<Player> opponentPlayers, String opponentTeamId, List<Player> teamPlayers) {
     // 컨디션 + 등급 기준 정렬
     final sortedPlayers = List<Player>.from(opponentPlayers)
       ..sort((a, b) {
@@ -439,41 +448,48 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         return scoreB - scoreA;
       });
 
-    final gameState = ref.watch(gameStateProvider);
-    final snipingCount = gameState?.inventory.getConsumableCount('sniping') ?? 0;
-
     final selectedPlayer = _selectedOpponentPlayerIndex != null && _selectedOpponentPlayerIndex! < sortedPlayers.length
         ? sortedPlayers[_selectedOpponentPlayerIndex!]
         : null;
 
+    final isSelectingOpponent = _snipingState == 'selectingOpponent';
+
     return Column(
       children: [
-        // 헤더 + 스나이핑
+        // 헤더
         Container(
           padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
-          color: Colors.red.withOpacity(0.2),
+          color: isSelectingOpponent
+              ? Colors.orange.withOpacity(0.3)
+              : Colors.red.withOpacity(0.2),
           child: Row(
             children: [
               const Icon(Icons.groups, size: 10, color: Colors.red),
               const SizedBox(width: 3),
               Expanded(
-                child: Text('상대 (${opponentPlayers.length})',
-                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.red)),
+                child: Text(
+                  isSelectingOpponent ? '상대 선수 예측' : '상대 (${opponentPlayers.length})',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: isSelectingOpponent ? Colors.orange : Colors.red,
+                  ),
+                ),
               ),
-              if (snipingCount > 0 && !_snipingUsed)
+              if (isSelectingOpponent)
                 GestureDetector(
-                  onTap: () => _useSniping(opponentTeamId, opponentPlayers),
+                  onTap: _cancelSnipingFlow,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                    decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(2)),
-                    child: Text('스나이핑($snipingCount)', style: const TextStyle(fontSize: 7, color: Colors.white)),
+                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(2)),
+                    child: const Text('취소', style: TextStyle(fontSize: 7, color: Colors.white)),
                   ),
                 ),
             ],
           ),
         ),
         // 선택된 선수 상세 정보
-        if (selectedPlayer != null)
+        if (selectedPlayer != null && !isSelectingOpponent)
           _buildPlayerDetailCompact(selectedPlayer, false),
         // 선수 그리드 (2열)
         Expanded(
@@ -489,18 +505,20 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             itemBuilder: (context, index) {
               final player = sortedPlayers[index];
               final isSelected = _selectedOpponentPlayerIndex == index;
-              final isPredicted = _snipingUsed && _predictedOpponentRoster.contains(player.id);
-              final predictedSet = isPredicted ? _predictedOpponentRoster.indexOf(player.id) + 1 : null;
 
               return _OpponentGridItem(
                 player: player,
                 isSelected: isSelected,
-                isPredicted: isPredicted,
-                predictedSet: predictedSet,
+                isSnipingTarget: isSelectingOpponent,
                 onTap: () {
-                  setState(() {
-                    _selectedOpponentPlayerIndex = index;
-                  });
+                  if (isSelectingOpponent) {
+                    // 스나이핑 모드: 상대 선수 선택
+                    _onSnipingSelectOpponent(player, teamPlayers);
+                  } else {
+                    setState(() {
+                      _selectedOpponentPlayerIndex = index;
+                    });
+                  }
                 },
               );
             },
@@ -619,18 +637,27 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
               ? teamPlayers[playerIndex]
               : null;
           final isFocused = _focusedMapIndex == index;
+          final snipingAssignment = _getSnipingForSet(index);
+          final isSnipingSelecting = _snipingState == 'selectingMyPlayer';
 
           return _MapRowCompact(
             setNumber: index + 1,
             map: map,
             player: player,
             isFocused: isFocused,
+            hasSniping: snipingAssignment != null,
+            isSnipingSelectable: isSnipingSelecting && player != null,
             onTap: () {
-              setState(() {
-                _focusedMapIndex = index;
-              });
+              if (isSnipingSelecting) {
+                _onSnipingSelectMyPlayer(index, teamPlayers);
+              } else {
+                setState(() {
+                  _focusedMapIndex = index;
+                });
+              }
             },
             onPlayerRemove: () {
+              _cancelSnipingForSet(index);
               setState(() {
                 selectedPlayers[index] = null;
                 _focusedMapIndex = index;
@@ -642,54 +669,112 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     );
   }
 
-  void _useSniping(String opponentTeamId, List<Player> opponentPlayers) {
-    final gameState = ref.read(gameStateProvider);
-    if (gameState == null) return;
-
-    final updatedInventory = gameState.inventory.useConsumable('sniping');
-    ref.read(gameStateProvider.notifier).updateInventory(updatedInventory);
-
-    _predictedOpponentRoster = _generatePredictedRoster(opponentPlayers);
-
+  /// 스나이핑 칩 탭: selectingMyPlayer 상태로 전환
+  void _startSnipingFlow() {
     setState(() {
-      _snipingUsed = true;
+      _snipingState = 'selectingMyPlayer';
     });
-
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('스나이핑 발동!'), backgroundColor: Colors.green, duration: Duration(seconds: 1)),
+      const SnackBar(
+        content: Text('스나이핑할 세트의 내 선수를 선택하세요'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 2),
+      ),
     );
   }
 
-  List<String?> _generatePredictedRoster(List<Player> opponentPlayers) {
-    if (opponentPlayers.isEmpty) return List.filled(6, null);
+  /// 맵 슬롯 탭 (스나이핑 selectingMyPlayer 상태에서)
+  void _onSnipingSelectMyPlayer(int setIndex, List<Player> teamPlayers) {
+    if (selectedPlayers[setIndex] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('선수가 배치된 세트를 선택하세요'), backgroundColor: Colors.red, duration: Duration(seconds: 1)),
+      );
+      return;
+    }
 
-    final sortedPlayers = List<Player>.from(opponentPlayers)
-      ..sort((a, b) {
-        final scoreA = a.condition + a.grade.index * 10;
-        final scoreB = b.condition + b.grade.index * 10;
-        return scoreB - scoreA;
-      });
+    setState(() {
+      _snipingTargetSetIndex = setIndex;
+      _snipingState = 'selectingOpponent';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('상대 선수를 예측하여 선택하세요'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
-    final selectedCount = sortedPlayers.length >= 6 ? 6 : sortedPlayers.length;
-    final roster = <String?>[];
+  /// 상대 선수 탭 (스나이핑 selectingOpponent 상태에서)
+  void _onSnipingSelectOpponent(Player opponent, List<Player> teamPlayers) {
+    final gameState = ref.read(gameStateProvider);
+    if (gameState == null || _snipingTargetSetIndex == null) return;
 
-    for (int i = 0; i < 6; i++) {
-      if (i < selectedCount) {
-        roster.add(sortedPlayers[i].id);
-      } else {
-        roster.add(null);
+    final setIndex = _snipingTargetSetIndex!;
+    final myPlayerIndex = selectedPlayers[setIndex];
+    if (myPlayerIndex == null) return;
+    final myPlayer = teamPlayers[myPlayerIndex];
+
+    // 같은 세트에 기존 스나이핑이 있으면 취소 + 아이템 반환
+    final existingIndex = _snipingAssignments.indexWhere((a) => a.setIndex == setIndex);
+    if (existingIndex >= 0) {
+      _snipingAssignments.removeAt(existingIndex);
+      final returnedInventory = gameState.inventory.addConsumable('sniping');
+      ref.read(gameStateProvider.notifier).updateInventory(returnedInventory);
+    }
+
+    // 아이템 소모
+    final updatedInventory = ref.read(gameStateProvider)!.inventory.useConsumable('sniping');
+    ref.read(gameStateProvider.notifier).updateInventory(updatedInventory);
+
+    // 스나이핑 등록
+    _snipingAssignments.add(SnipingAssignment(
+      setIndex: setIndex,
+      myPlayerId: myPlayer.id,
+      predictedOpponentId: opponent.id,
+    ));
+
+    setState(() {
+      _snipingState = 'idle';
+      _snipingTargetSetIndex = null;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${setIndex + 1}세트 스나이핑 설정: ${myPlayer.name} → ${opponent.name}'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  /// 스나이핑 취소
+  void _cancelSnipingFlow() {
+    setState(() {
+      _snipingState = 'idle';
+      _snipingTargetSetIndex = null;
+    });
+  }
+
+  /// 선수 제거/변경 시 해당 세트 스나이핑 자동 취소 + 아이템 반환
+  void _cancelSnipingForSet(int setIndex) {
+    final existingIndex = _snipingAssignments.indexWhere((a) => a.setIndex == setIndex);
+    if (existingIndex >= 0) {
+      _snipingAssignments.removeAt(existingIndex);
+      final gameState = ref.read(gameStateProvider);
+      if (gameState != null) {
+        final returnedInventory = gameState.inventory.addConsumable('sniping');
+        ref.read(gameStateProvider.notifier).updateInventory(returnedInventory);
       }
     }
+  }
 
-    final random = Random();
-    for (int i = roster.length - 1; i > 0; i--) {
-      final j = random.nextInt(i + 1);
-      final temp = roster[i];
-      roster[i] = roster[j];
-      roster[j] = temp;
+  /// 해당 세트에 스나이핑이 설정되어 있는지 확인
+  SnipingAssignment? _getSnipingForSet(int setIndex) {
+    for (final a in _snipingAssignments) {
+      if (a.setIndex == setIndex) return a;
     }
-
-    return roster;
+    return null;
   }
 
   ScheduleItem? _findNextMatch(dynamic schedule, String playerTeamId) {
@@ -727,13 +812,17 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
       ref.read(currentMatchProvider.notifier).startMatch(
         homeTeamId: playerTeam.id,
         awayTeamId: opponentTeam.id,
+        matchId: nextMatch.matchId,
         homeRoster: roster,
+        homeSnipingAssignments: _snipingAssignments,
       );
     } else {
       ref.read(currentMatchProvider.notifier).startMatch(
         homeTeamId: opponentTeam.id,
         awayTeamId: playerTeam.id,
+        matchId: nextMatch.matchId,
         awayRoster: roster,
+        awaySnipingAssignments: _snipingAssignments,
       );
     }
 
@@ -910,15 +999,13 @@ class _PlayerGridItem extends StatelessWidget {
 class _OpponentGridItem extends StatelessWidget {
   final Player player;
   final bool isSelected;
-  final bool isPredicted;
-  final int? predictedSet;
+  final bool isSnipingTarget;
   final VoidCallback onTap;
 
   const _OpponentGridItem({
     required this.player,
     required this.isSelected,
-    this.isPredicted = false,
-    this.predictedSet,
+    this.isSnipingTarget = false,
     required this.onTap,
   });
 
@@ -931,24 +1018,17 @@ class _OpponentGridItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? Colors.red.withOpacity(0.3)
-              : (isPredicted ? Colors.green.withOpacity(0.2) : AppTheme.cardBackground),
+              : (isSnipingTarget ? Colors.orange.withOpacity(0.15) : AppTheme.cardBackground),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: isSelected ? Colors.red : (isPredicted ? Colors.green : Colors.transparent),
-            width: isSelected ? 2 : 1,
+            color: isSelected
+                ? Colors.red
+                : (isSnipingTarget ? Colors.orange : Colors.transparent),
+            width: isSelected ? 2 : (isSnipingTarget ? 1.5 : 1),
           ),
         ),
         child: Row(
           children: [
-            // 예측 세트
-            if (isPredicted && predictedSet != null) ...[
-              Container(
-                width: 12, height: 12,
-                decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(2)),
-                child: Center(child: Text('$predictedSet', style: const TextStyle(fontSize: 7, color: Colors.white))),
-              ),
-              const SizedBox(width: 2),
-            ],
             // 종족 (T)이영호 형태
             Text(
               '(${player.race.code})',
@@ -978,8 +1058,9 @@ class _OpponentGridItem extends StatelessWidget {
 class _ItemChip extends StatelessWidget {
   final ConsumableItem item;
   final int count;
+  final bool isHighlighted;
 
-  const _ItemChip({required this.item, required this.count});
+  const _ItemChip({required this.item, required this.count, this.isHighlighted = false});
 
   @override
   Widget build(BuildContext context) {
@@ -997,9 +1078,12 @@ class _ItemChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: isHighlighted ? color.withOpacity(0.3) : color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(
+          color: isHighlighted ? color : color.withOpacity(0.3),
+          width: isHighlighted ? 2 : 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1111,6 +1195,8 @@ class _MapRowCompact extends StatelessWidget {
   final GameMap? map;
   final Player? player;
   final bool isFocused;
+  final bool hasSniping;
+  final bool isSnipingSelectable;
   final VoidCallback onTap;
   final VoidCallback onPlayerRemove;
 
@@ -1119,6 +1205,8 @@ class _MapRowCompact extends StatelessWidget {
     required this.map,
     required this.player,
     required this.isFocused,
+    this.hasSniping = false,
+    this.isSnipingSelectable = false,
     required this.onTap,
     required this.onPlayerRemove,
   });
@@ -1135,15 +1223,19 @@ class _MapRowCompact extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         decoration: BoxDecoration(
-          color: isFocused
-              ? AppTheme.accentGreen.withOpacity(0.2)
-              : (player != null ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent),
+          color: isSnipingSelectable
+              ? Colors.orange.withOpacity(0.2)
+              : isFocused
+                  ? AppTheme.accentGreen.withOpacity(0.2)
+                  : (player != null ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent),
           borderRadius: BorderRadius.circular(3),
           border: Border.all(
-            color: isFocused
-                ? AppTheme.accentGreen
-                : (player != null ? AppTheme.primaryBlue : AppTheme.textSecondary.withOpacity(0.3)),
-            width: isFocused ? 1.5 : 0.5,
+            color: isSnipingSelectable
+                ? Colors.orange
+                : isFocused
+                    ? AppTheme.accentGreen
+                    : (player != null ? AppTheme.primaryBlue : AppTheme.textSecondary.withOpacity(0.3)),
+            width: isSnipingSelectable ? 1.5 : (isFocused ? 1.5 : 0.5),
           ),
         ),
         child: Row(
@@ -1155,8 +1247,10 @@ class _MapRowCompact extends StatelessWidget {
                 borderRadius: BorderRadius.circular(7),
               ),
               child: Center(
-                child: Text('$setNumber', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold,
-                    color: isFocused ? Colors.black : AppTheme.textSecondary)),
+                child: hasSniping
+                    ? const Icon(Icons.gps_fixed, size: 8, color: Colors.orange)
+                    : Text('$setNumber', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold,
+                        color: isFocused ? Colors.black : AppTheme.textSecondary)),
               ),
             ),
             const SizedBox(width: 2),

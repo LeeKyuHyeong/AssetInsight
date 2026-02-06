@@ -832,17 +832,24 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     required String awayTeamId,
     required int homeScore,
     required int awayScore,
+    String? matchId,
   }) {
     if (state == null) return;
 
     final season = state!.saveData.currentSeason;
     final schedule = season.proleagueSchedule;
 
-    // 해당 매치 찾기 (완료되지 않은 첫 번째 매치)
-    final matchIndex = schedule.indexWhere((m) =>
-        !m.isCompleted &&
-        ((m.homeTeamId == homeTeamId && m.awayTeamId == awayTeamId) ||
-         (m.homeTeamId == awayTeamId && m.awayTeamId == homeTeamId)));
+    // 해당 매치 찾기 (matchId가 있으면 정확히 찾고, 없으면 기존 방식)
+    int matchIndex;
+    if (matchId != null) {
+      matchIndex = schedule.indexWhere((m) =>
+          !m.isCompleted && m.matchId == matchId);
+    } else {
+      matchIndex = schedule.indexWhere((m) =>
+          !m.isCompleted &&
+          ((m.homeTeamId == homeTeamId && m.awayTeamId == awayTeamId) ||
+           (m.homeTeamId == awayTeamId && m.awayTeamId == homeTeamId)));
+    }
 
     if (matchIndex == -1) return;
 
@@ -1242,7 +1249,9 @@ class GameStateNotifier extends StateNotifier<GameState?> {
 
     // 프로리그 일정 생성 (각 팀당 14경기 = 풀 라운드 로빈 × 2)
     // 11행 × 2경기 = 22칸, 14경기 + 8개 NO match
-    // 데칼코마니: 1~11칸 → 12~22칸 역순
+    // 데칼코마니: 경기1(홀수슬롯) = 1차 리그, 경기2(짝수슬롯) = 2차 리그 역순
+    // 행 r: 경기1=슬롯(2r+1), 경기2=슬롯(2r+2)
+    // 1차 리그 행 r → 2차 리그 행 (10-r) = 데칼코마니
     final teams = state!.saveData.allTeams;
     final schedule = <ScheduleItem>[];
     int matchId = 0;
@@ -1251,17 +1260,17 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     // 서클 메서드로 공정한 대진 생성
     final firstHalfMatchups = _generateRoundRobinMatchups(teams, rng);
 
-    // 1~11칸 중 7경기 배치할 위치 랜덤 선택 (4개는 NO match)
-    final slots = List.generate(11, (i) => i + 1);
-    slots.shuffle(rng);
-    final matchSlots = slots.take(7).toList()..sort();
+    // 11행(0~10) 중 7행에 경기 배치 (4행은 NO match)
+    final rows = List.generate(11, (i) => i);
+    rows.shuffle(rng);
+    final matchRows = rows.take(7).toList()..sort();
 
-    // 1차 리그 경기 배치 (슬롯 1~11 중 7개)
-    // 라운드별로 4경기씩 같은 슬롯에 배치
+    // 1차 리그 경기 배치 (경기1 컬럼 = 홀수 슬롯)
+    // 행 r → 슬롯 2r+1 (1, 3, 5, ..., 21)
     for (int i = 0; i < firstHalfMatchups.length; i++) {
       final matchup = firstHalfMatchups[i];
       final round = i ~/ 4; // 라운드 번호 (0~6)
-      final slot = matchSlots[round]; // 같은 라운드는 같은 슬롯
+      final slot = matchRows[round] * 2 + 1; // 경기1 컬럼 (홀수)
 
       schedule.add(ScheduleItem(
         matchId: 'match_${seasonNumber}_${matchId++}',
@@ -1271,13 +1280,14 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       ));
     }
 
-    // 2차 리그: 1차 리그의 역순 (데칼코마니)
-    // 슬롯 12~22 = 23 - 슬롯(1~11)
+    // 2차 리그: 경기2 컬럼 (짝수 슬롯), 데칼코마니 역순
+    // 행 r의 1차 리그 → 행 (10-r)의 2차 리그
+    // 슬롯 = 23 - firstSlot (홀수→짝수 자연 변환)
     for (int i = 0; i < firstHalfMatchups.length; i++) {
       final matchup = firstHalfMatchups[i];
       final round = i ~/ 4; // 라운드 번호 (0~6)
-      final firstSlot = matchSlots[round];
-      final secondSlot = 23 - firstSlot; // 데칼코마니 위치
+      final firstSlot = matchRows[round] * 2 + 1;
+      final secondSlot = 23 - firstSlot; // 데칼코마니 위치 (짝수)
 
       // 홈/어웨이 반전
       schedule.add(ScheduleItem(

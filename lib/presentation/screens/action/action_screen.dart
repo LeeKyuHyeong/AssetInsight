@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../../domain/models/models.dart';
@@ -35,7 +36,7 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
         title: const Text('선수 행동'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
       ),
       body: Column(

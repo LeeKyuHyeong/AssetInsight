@@ -7,9 +7,14 @@ import '../../../domain/models/models.dart';
 import '../../../data/providers/game_provider.dart';
 
 /// 메인 메뉴 화면 - 일정 및 행동 관리
-class MainMenuScreen extends ConsumerWidget {
+class MainMenuScreen extends ConsumerStatefulWidget {
   const MainMenuScreen({super.key});
 
+  @override
+  ConsumerState<MainMenuScreen> createState() => _MainMenuScreenState();
+}
+
+class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   // 개인리그 일정 이름 (11주차)
   static const List<String> _individualLeagueNames = [
     'PC방',
@@ -21,12 +26,14 @@ class MainMenuScreen extends ConsumerWidget {
     '32강 2R',
     '16강 1R',
     '16강 2R',
-    '8강',
-    '4강~결승',
+    '8강 1R',
+    '8강 2R',
   ];
 
+  String? _selectedTeamId;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     Responsive.init(context);
     final gameState = ref.watch(gameStateProvider);
 
@@ -36,6 +43,13 @@ class MainMenuScreen extends ConsumerWidget {
     final playerTeam = isPreviewMode ? allTeams.first : gameState.playerTeam;
     final seasonNumber = isPreviewMode ? 1 : gameState.saveData.currentSeason.number;
 
+    // 선택된 팀 (기본값: 플레이어 팀)
+    _selectedTeamId ??= playerTeam.id;
+    final selectedTeam = allTeams.firstWhere(
+      (t) => t.id == _selectedTeamId,
+      orElse: () => playerTeam,
+    );
+
     return Scaffold(
       backgroundColor: const Color(0xFF0a0a12),
       body: SafeArea(
@@ -44,13 +58,13 @@ class MainMenuScreen extends ConsumerWidget {
             Column(
               children: [
                 // 상단 헤더
-                _buildHeader(playerTeam, seasonNumber),
+                _buildHeader(selectedTeam, seasonNumber, allTeams, playerTeam),
 
                 // 메인 컨텐츠 - 3열 일정 테이블
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 8.sp),
-                    child: _buildScheduleTable(context, gameState, playerTeam, allTeams, isPreviewMode),
+                    child: _buildScheduleTable(context, gameState, selectedTeam, allTeams, isPreviewMode),
                   ),
                 ),
 
@@ -100,8 +114,8 @@ class MainMenuScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(dynamic playerTeam, int seasonNumber) {
-    final teamColor = Color(playerTeam.colorValue);
+  Widget _buildHeader(Team selectedTeam, int seasonNumber, List<Team> allTeams, Team playerTeam) {
+    final teamColor = Color(selectedTeam.colorValue);
 
     return Container(
       padding: EdgeInsets.symmetric(vertical: 12.sp, horizontal: 16.sp),
@@ -113,52 +127,72 @@ class MainMenuScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          // 팀 로고
-          Container(
-            width: 50.sp,
-            height: 50.sp,
-            decoration: BoxDecoration(
-              color: teamColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8.sp),
-              border: Border.all(color: teamColor, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                playerTeam.shortName,
-                style: TextStyle(
-                  color: teamColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.sp,
+          // 팀 로고 (탭하면 팀 선택 드롭다운)
+          GestureDetector(
+            onTap: () => _showTeamSelector(allTeams, playerTeam),
+            child: Container(
+              width: 50.sp,
+              height: 50.sp,
+              decoration: BoxDecoration(
+                color: teamColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8.sp),
+                border: Border.all(color: teamColor, width: 2),
+              ),
+              child: Center(
+                child: Text(
+                  selectedTeam.shortName,
+                  style: TextStyle(
+                    color: teamColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16.sp,
+                  ),
                 ),
               ),
             ),
           ),
           SizedBox(width: 12.sp),
 
-          // 팀명 + 시즌
+          // 팀명 + 시즌 (탭하면 팀 선택)
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  playerTeam.name,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
+            child: GestureDetector(
+              onTap: () => _showTeamSelector(allTeams, playerTeam),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          selectedTeam.name,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SizedBox(width: 4.sp),
+                      Icon(
+                        Icons.unfold_more,
+                        color: Colors.grey[500],
+                        size: 16.sp,
+                      ),
+                    ],
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 2.sp),
-                Text(
-                  'S$seasonNumber',
-                  style: TextStyle(
-                    color: Colors.amber,
-                    fontSize: 11.sp,
+                  SizedBox(height: 2.sp),
+                  Text(
+                    selectedTeam.id == playerTeam.id
+                        ? 'S$seasonNumber'
+                        : 'S$seasonNumber  (내 팀: ${playerTeam.shortName})',
+                    style: TextStyle(
+                      color: Colors.amber,
+                      fontSize: 11.sp,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -169,9 +203,87 @@ class MainMenuScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildScheduleTable(BuildContext context, dynamic gameState, Team playerTeam, List<Team> allTeams, bool isPreviewMode) {
+  void _showTeamSelector(List<Team> allTeams, Team playerTeam) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1a1a2e),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12.sp)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 12.sp),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 8.sp),
+                child: Text(
+                  '구단 선택',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Divider(color: Colors.grey[700], height: 1),
+              ...allTeams.map((team) {
+                final isSelected = team.id == _selectedTeamId;
+                final isPlayerTeam = team.id == playerTeam.id;
+                final teamColor = Color(team.colorValue);
+                return ListTile(
+                  dense: true,
+                  leading: Container(
+                    width: 32.sp,
+                    height: 32.sp,
+                    decoration: BoxDecoration(
+                      color: teamColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4.sp),
+                      border: Border.all(color: teamColor, width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(
+                        team.shortName.length >= 2
+                            ? team.shortName.substring(0, 2)
+                            : team.shortName,
+                        style: TextStyle(
+                          color: teamColor,
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    isPlayerTeam ? '${team.name} (내 팀)' : team.name,
+                    style: TextStyle(
+                      color: isSelected ? Colors.amber : Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? Icon(Icons.check, color: Colors.amber, size: 18.sp)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedTeamId = team.id;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildScheduleTable(BuildContext context, dynamic gameState, Team selectedTeam, List<Team> allTeams, bool isPreviewMode) {
     // 10행 (각 행 = 경기1 + 경기2 + 개인리그)
-    final rows = _buildScheduleRows(gameState, playerTeam, allTeams, isPreviewMode);
+    final rows = _buildScheduleRows(gameState, selectedTeam, allTeams, isPreviewMode);
 
     return Container(
       decoration: BoxDecoration(
@@ -246,7 +358,7 @@ class MainMenuScreen extends ConsumerWidget {
     );
   }
 
-  List<_ScheduleRowData> _buildScheduleRows(dynamic gameState, Team playerTeam, List<Team> allTeams, bool isPreviewMode) {
+  List<_ScheduleRowData> _buildScheduleRows(dynamic gameState, Team selectedTeam, List<Team> allTeams, bool isPreviewMode) {
     final List<_ScheduleRowData> rows = [];
 
     if (isPreviewMode) {
@@ -273,18 +385,18 @@ class MainMenuScreen extends ConsumerWidget {
           leagueName: _individualLeagueNames[i],
           isLeagueCompleted: i < 2,
           isCurrentWeek: i == 2,
+          weekIndex: i,
         ));
       }
     } else {
       // 실제 데이터
       final schedule = gameState.saveData.currentSeason.proleagueSchedule as List<ScheduleItem>;
-      final playerTeamId = gameState.saveData.playerTeamId;
+      final selectedTeamId = selectedTeam.id;
 
-      // 내 팀 경기를 슬롯(roundNumber)별로 맵핑
-      // 슬롯 1~11 = 경기1, 슬롯 12~22 = 경기2 (대칭: 1↔22, 2↔21, ...)
+      // 선택된 팀 경기를 슬롯(roundNumber)별로 맵핑
       final matchBySlot = <int, ScheduleItem>{};
       for (final match in schedule) {
-        if (match.homeTeamId == playerTeamId || match.awayTeamId == playerTeamId) {
+        if (match.homeTeamId == selectedTeamId || match.awayTeamId == selectedTeamId) {
           matchBySlot[match.roundNumber] = match;
         }
       }
@@ -305,11 +417,8 @@ class MainMenuScreen extends ConsumerWidget {
           : -1;
 
       for (int i = 0; i < 11; i++) {
-        // 행 i: 연속된 칸 (칸 2i+1, 칸 2i+2)
-        // 행0: 칸1,2 / 행1: 칸3,4 / ... / 행10: 칸21,22
-        // 대칭: 행0(칸1,2) ↔ 행10(칸21,22) = 역순 대칭
-        final slot1 = i * 2 + 1;       // 1, 3, 5, ..., 21 (홀수 칸)
-        final slot2 = i * 2 + 2;       // 2, 4, 6, ..., 22 (짝수 칸)
+        final slot1 = i * 2 + 1;
+        final slot2 = i * 2 + 2;
 
         _MatchCellData? match1Data;
         _MatchCellData? match2Data;
@@ -317,7 +426,7 @@ class MainMenuScreen extends ConsumerWidget {
         // 슬롯1의 경기 (경기1)
         final match1 = matchBySlot[slot1];
         if (match1 != null) {
-          final isHome = match1.homeTeamId == playerTeamId;
+          final isHome = match1.homeTeamId == selectedTeamId;
           final opponentId = isHome ? match1.awayTeamId : match1.homeTeamId;
           final opponent = gameState.saveData.getTeamById(opponentId);
 
@@ -341,7 +450,7 @@ class MainMenuScreen extends ConsumerWidget {
         // 슬롯2의 경기 (경기2)
         final match2 = matchBySlot[slot2];
         if (match2 != null) {
-          final isHome = match2.homeTeamId == playerTeamId;
+          final isHome = match2.homeTeamId == selectedTeamId;
           final opponentId = isHome ? match2.awayTeamId : match2.homeTeamId;
           final opponent = gameState.saveData.getTeamById(opponentId);
 
@@ -373,6 +482,7 @@ class MainMenuScreen extends ConsumerWidget {
           leagueName: _individualLeagueNames[i],
           isLeagueCompleted: isLeagueCompleted,
           isCurrentWeek: i == currentWeekIndex,
+          weekIndex: i,
         ));
       }
     }
@@ -419,10 +529,10 @@ class MainMenuScreen extends ConsumerWidget {
             color: Colors.green,
           ),
 
-          // 개인리그
+          // 개인리그 (클릭 가능)
           Expanded(
             flex: 2,
-            child: _buildLeagueCell(row.leagueName, row.isLeagueCompleted),
+            child: _buildLeagueCell(context, row.leagueName, row.isLeagueCompleted, row.weekIndex),
           ),
         ],
       ),
@@ -501,23 +611,66 @@ class MainMenuScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLeagueCell(String leagueName, bool isCompleted) {
-    // 완료된 개인리그 = opacity 줄임
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4.sp),
-      padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 4.sp),
-      child: Center(
-        child: Text(
-          leagueName,
-          style: TextStyle(
-            color: isCompleted ? Colors.amber.withOpacity(0.4) : Colors.amber,
-            fontSize: 10.sp,
-            fontWeight: FontWeight.bold,
+  Widget _buildLeagueCell(BuildContext context, String leagueName, bool isCompleted, int weekIndex) {
+    final gameState = ref.read(gameStateProvider);
+    final hasLeagueData = gameState?.saveData.currentSeason.individualLeague != null;
+
+    return GestureDetector(
+      onTap: hasLeagueData ? () => _navigateToLeague(context, weekIndex) : null,
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 4.sp),
+        padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 4.sp),
+        child: Center(
+          child: Text(
+            leagueName,
+            style: TextStyle(
+              color: isCompleted ? Colors.amber.withOpacity(0.4) : Colors.amber,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.bold,
+              decoration: hasLeagueData ? TextDecoration.underline : null,
+              decorationColor: Colors.amber.withOpacity(0.3),
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
-          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
+  }
+
+  /// 개인리그 주차별 대진표 화면으로 이동
+  void _navigateToLeague(BuildContext context, int weekIndex) {
+    // weekIndex → 개인리그 스테이지 매핑
+    // 0: PC방, 1: 듀얼 1R, 2: 듀얼 2R, 3: 듀얼 3R
+    // 4: 조지명, 5: 32강 1R, 6: 32강 2R, 7: 16강 1R, 8: 16강 2R, 9: 8강 1R, 10: 8강 2R
+    switch (weekIndex) {
+      case 0:
+        context.push('/individual-league/pcbang?viewOnly=true');
+        break;
+      case 1:
+        context.push('/individual-league/dual/1?viewOnly=true');
+        break;
+      case 2:
+        context.push('/individual-league/dual/2?viewOnly=true');
+        break;
+      case 3:
+        context.push('/individual-league/dual/3?viewOnly=true');
+        break;
+      case 4:
+        context.push('/individual-league/group-draw?viewOnly=true');
+        break;
+      case 5:
+      case 6:
+        context.push('/individual-league/main/32?viewOnly=true');
+        break;
+      case 7:
+      case 8:
+        context.push('/individual-league/main/16?viewOnly=true');
+        break;
+      case 9:
+      case 10:
+        context.push('/individual-league/main/8?viewOnly=true');
+        break;
+    }
   }
 
   Widget _buildBottomButtons(BuildContext context) {
@@ -574,28 +727,28 @@ class MainMenuScreen extends ConsumerWidget {
               _BottomButton(
                 icon: Icons.shopping_cart,
                 label: '상점',
-                onPressed: () => context.go('/shop'),
+                onPressed: () => context.push('/shop'),
               ),
 
               // 장비 관리
               _BottomButton(
                 icon: Icons.build,
                 label: '장비',
-                onPressed: () => context.go('/equipment'),
+                onPressed: () => context.push('/equipment'),
               ),
 
               // 정보 관리
               _BottomButton(
                 icon: Icons.info_outline,
                 label: '정보',
-                onPressed: () => context.go('/info'),
+                onPressed: () => context.push('/info'),
               ),
 
               // 행동 관리
               _BottomButton(
                 icon: Icons.fitness_center,
                 label: '행동',
-                onPressed: () => context.go('/action'),
+                onPressed: () => context.push('/action'),
               ),
             ],
           ),
@@ -612,6 +765,7 @@ class _ScheduleRowData {
   final String leagueName;
   final bool isLeagueCompleted;
   final bool isCurrentWeek;
+  final int weekIndex;
 
   _ScheduleRowData({
     this.match1,
@@ -619,6 +773,7 @@ class _ScheduleRowData {
     required this.leagueName,
     required this.isLeagueCompleted,
     required this.isCurrentWeek,
+    required this.weekIndex,
   });
 }
 

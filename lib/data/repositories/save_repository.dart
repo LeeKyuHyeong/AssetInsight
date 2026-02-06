@@ -161,42 +161,74 @@ class SaveRepository {
     );
   }
 
-  /// 프로리그 일정 생성 (각 팀당 14경기 = 7주차 × 2경기)
+  /// 프로리그 일정 생성 (풀 라운드 로빈 × 2, 데칼코마니 대칭)
+  /// 11행 × 2경기 = 22슬롯, 14경기 + 8개 NO match
+  /// 행 r: 경기1=슬롯(2r+1), 경기2=슬롯(2r+2)
+  /// 데칼코마니: 1차 리그 행 r → 2차 리그 행 (10-r)
   List<ScheduleItem> _createProleagueSchedule(List<Team> teams) {
+    final rng = Random();
     final schedule = <ScheduleItem>[];
-    final teamIds = teams.map((t) => t.id).toList();
-    final random = Random();
-    final teamCount = teams.length; // 8팀
-    final matchesPerRound = teamCount ~/ 2; // 4경기
+    int matchId = 0;
 
-    // 라운드 로빈 방식으로 일정 생성
-    int matchId = 1;
-    final shuffledTeams = List<String>.from(teamIds)..shuffle(random);
+    // 서클 메서드로 풀 라운드 로빈 대진 생성 (7라운드 × 4경기 = 28경기)
+    final firstHalfMatchups = _generateRoundRobinMatchups(teams, rng);
 
-    // 14라운드 진행 (각 팀당 14경기, 7주차 × 2경기)
-    // 8팀 기준: (n-1)*2 = 14 라운드로 모든 팀이 두 번씩 대결
-    final totalRounds = (teamCount - 1) * 2;
-    for (int round = 1; round <= totalRounds; round++) {
-      // 매 라운드 4경기 (8팀 / 2)
-      for (int i = 0; i < matchesPerRound; i++) {
-        final homeIndex = i;
-        final awayIndex = teamCount - 1 - i;
+    // 11행(0~10) 중 7행에 경기 배치 (4행은 NO match)
+    final rows = List.generate(11, (i) => i);
+    rows.shuffle(rng);
+    final matchRows = rows.take(7).toList()..sort();
 
-        schedule.add(ScheduleItem(
-          matchId: 'match_$matchId',
-          homeTeamId: shuffledTeams[homeIndex],
-          awayTeamId: shuffledTeams[awayIndex],
-          roundNumber: round,
-        ));
-        matchId++;
-      }
+    // 1차 리그 경기 배치 (경기1 컬럼 = 홀수 슬롯)
+    for (int i = 0; i < firstHalfMatchups.length; i++) {
+      final matchup = firstHalfMatchups[i];
+      final round = i ~/ 4;
+      final slot = matchRows[round] * 2 + 1;
 
-      // 라운드 로빈 회전
-      final last = shuffledTeams.removeLast();
-      shuffledTeams.insert(1, last);
+      schedule.add(ScheduleItem(
+        matchId: 'match_1_${matchId++}',
+        roundNumber: slot,
+        homeTeamId: matchup[0],
+        awayTeamId: matchup[1],
+      ));
+    }
+
+    // 2차 리그: 경기2 컬럼 (짝수 슬롯), 데칼코마니 역순
+    for (int i = 0; i < firstHalfMatchups.length; i++) {
+      final matchup = firstHalfMatchups[i];
+      final round = i ~/ 4;
+      final firstSlot = matchRows[round] * 2 + 1;
+      final secondSlot = 23 - firstSlot;
+
+      schedule.add(ScheduleItem(
+        matchId: 'match_1_${matchId++}',
+        roundNumber: secondSlot,
+        homeTeamId: matchup[1],
+        awayTeamId: matchup[0],
+      ));
     }
 
     return schedule;
+  }
+
+  /// 풀 라운드 로빈 대진 생성 (서클 메서드)
+  List<List<String>> _generateRoundRobinMatchups(List<Team> teams, Random rng) {
+    final matchups = <List<String>>[];
+    final teamIds = teams.map((t) => t.id).toList()..shuffle(rng);
+    final n = teamIds.length;
+
+    for (int round = 0; round < n - 1; round++) {
+      for (int i = 0; i < n ~/ 2; i++) {
+        final home = i == 0 ? teamIds[0] : teamIds[(round + i) % (n - 1) + 1];
+        final away = teamIds[(round + n - 1 - i) % (n - 1) + 1];
+        if (i == 0) {
+          matchups.add([teamIds[0], away]);
+        } else {
+          matchups.add([home, away]);
+        }
+      }
+    }
+
+    return matchups;
   }
 
   // ===== 직렬화/역직렬화 =====

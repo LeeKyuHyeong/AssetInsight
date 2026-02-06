@@ -130,12 +130,42 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
       player2Resource = 100;
     });
 
+    // 스나이핑 보너스 계산 (ACE전에는 미적용)
+    double homeSnipingBonus = 0;
+    double awaySnipingBonus = 0;
+    String? homeSnipingPlayerName;
+    String? awaySnipingPlayerName;
+
+    if (matchState.currentSet < 6) {
+      final homeSniping = matchState.getSuccessfulSniping(
+        isHome: true,
+        setIndex: matchState.currentSet,
+      );
+      if (homeSniping != null) {
+        homeSnipingBonus = 20;
+        homeSnipingPlayerName = homePlayer.name;
+      }
+
+      final awaySniping = matchState.getSuccessfulSniping(
+        isHome: false,
+        setIndex: matchState.currentSet,
+      );
+      if (awaySniping != null) {
+        awaySnipingBonus = 20;
+        awaySnipingPlayerName = awayPlayer.name;
+      }
+    }
+
     // 시뮬레이션 스트림 시작 (배속 콜백으로 전달하여 중간 변경 가능)
     final stream = _simulationService.simulateMatchWithLog(
       homePlayer: homePlayer,
       awayPlayer: awayPlayer,
       map: map,
       getIntervalMs: _getIntervalMs,
+      homeSnipingBonus: homeSnipingBonus,
+      awaySnipingBonus: awaySnipingBonus,
+      homeSnipingPlayerName: homeSnipingPlayerName,
+      awaySnipingPlayerName: awaySnipingPlayerName,
     );
 
     _simulationSubscription?.cancel();
@@ -374,12 +404,13 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     final opponentScore = isPlayerHome ? matchState.awayScore : matchState.homeScore;
     final isWin = playerScore > opponentScore;
 
-    // 매치 결과를 게임 상태에 저장
+    // 매치 결과를 게임 상태에 저장 (matchId로 정확한 매치 식별)
     ref.read(gameStateProvider.notifier).recordMatchResult(
       homeTeamId: matchState.homeTeamId,
       awayTeamId: matchState.awayTeamId,
       homeScore: matchState.homeScore,
       awayScore: matchState.awayScore,
+      matchId: matchState.matchId,
     );
 
     // 게임 저장

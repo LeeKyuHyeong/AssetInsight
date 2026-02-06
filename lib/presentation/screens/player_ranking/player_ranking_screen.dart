@@ -30,6 +30,13 @@ class PlayerRankingScreen extends ConsumerStatefulWidget {
 
 class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
   PlayerRankingTab _currentTab = PlayerRankingTab.all;
+  final ScrollController _horizontalScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +48,6 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
     }
 
     final allPlayers = gameState.saveData.allPlayers;
-    final allTeams = gameState.saveData.allTeams;
 
     // 종족 필터 적용
     final filteredPlayers = _currentTab.raceFilter != null
@@ -79,12 +85,23 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
                 // 탭 이미지 + 타이틀
                 _buildTabHeader(),
 
-                // 테이블 헤더
-                _buildTableHeader(),
-
-                // 선수 목록
+                // 테이블 (가로 스크롤)
                 Expanded(
-                  child: _buildPlayerList(filteredPlayers, allTeams),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    controller: _horizontalScrollController,
+                    child: SizedBox(
+                      width: _totalTableWidth(),
+                      child: Column(
+                        children: [
+                          _buildTableHeader(),
+                          Expanded(
+                            child: _buildPlayerList(filteredPlayers),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
 
                 // 하단 버튼
@@ -97,6 +114,11 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
         ),
       ),
     );
+  }
+
+  double _totalTableWidth() {
+    // 순위(35) + 선수명(90) + 우승(35) + 준우승(40) + 전체(85) + vsT(75) + vsZ(75) + vsP(75) + padding(16*2)
+    return (35 + 90 + 35 + 40 + 85 + 75 + 75 + 75 + 32).sp;
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -226,8 +248,7 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
 
   Widget _buildTableHeader() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16.sp),
-      padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 8.sp),
+      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 8.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -236,17 +257,14 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
       ),
       child: Row(
         children: [
-          _headerCell('순위', 40),
-          _headerCell('팀', 50),
-          _headerCell('선수명', 80),
-          _headerCell('종족', 40),
-          _headerCell('우승', 40),
-          _headerCell('준우승', 50),
-          _headerCell('전적', 70),
-          _headerCell('승률', 50),
-          _headerCell('vs T', 60),
-          _headerCell('vs Z', 60),
-          _headerCell('vs P', 60),
+          _headerCell('순위', 35),
+          _headerCell('선수명', 90),
+          _headerCell('우승', 35),
+          _headerCell('준우승', 40),
+          _headerCell('전체', 85),
+          _headerCell('vs T', 75),
+          _headerCell('vs Z', 75),
+          _headerCell('vs P', 75),
         ],
       ),
     );
@@ -266,9 +284,8 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
     );
   }
 
-  Widget _buildPlayerList(List<Player> players, List<Team> teams) {
+  Widget _buildPlayerList(List<Player> players) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground.withOpacity(0.5),
       ),
@@ -276,19 +293,19 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
         itemCount: players.length,
         itemBuilder: (context, index) {
           final player = players[index];
-          final team = teams.where((t) => t.id == player.teamId).firstOrNull;
-          return _buildPlayerRow(index + 1, player, team);
+          return _buildPlayerRow(index + 1, player);
         },
       ),
     );
   }
 
-  Widget _buildPlayerRow(int rank, Player player, Team? team) {
+  Widget _buildPlayerRow(int rank, Player player) {
     final record = player.record;
     final isHighlighted = rank <= 3;
+    final raceCode = player.race.code;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 6.sp),
+      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 6.sp),
       decoration: BoxDecoration(
         color: isHighlighted ? AppColors.primary.withOpacity(0.1) : null,
         border: Border(
@@ -299,7 +316,7 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
         children: [
           // 순위
           SizedBox(
-            width: 40.sp,
+            width: 35.sp,
             child: Text(
               '$rank',
               style: TextStyle(
@@ -311,65 +328,36 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
             ),
           ),
 
-          // 팀 로고
+          // (종족) 선수명
           SizedBox(
-            width: 50.sp,
-            child: team != null
-                ? Container(
-                    width: 30.sp,
-                    height: 20.sp,
-                    decoration: BoxDecoration(
-                      color: Color(team.colorValue).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(2.sp),
+            width: 90.sp,
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '($raceCode) ',
+                    style: TextStyle(
+                      color: _getRaceColor(player.race),
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.bold,
                     ),
-                    child: Center(
-                      child: Text(
-                        team.shortName,
-                        style: TextStyle(
-                          color: Color(team.colorValue),
-                          fontSize: 8.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  )
-                : Text(
-                    'FA',
-                    style: TextStyle(color: Colors.grey, fontSize: 9.sp),
-                    textAlign: TextAlign.center,
                   ),
-          ),
-
-          // 선수명
-          SizedBox(
-            width: 80.sp,
-            child: Text(
-              player.name,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11.sp,
+                  TextSpan(
+                    text: player.name,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.sp,
+                    ),
+                  ),
+                ],
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
 
-          // 종족
-          SizedBox(
-            width: 40.sp,
-            child: Text(
-              player.race.code,
-              style: TextStyle(
-                color: _getRaceColor(player.race),
-                fontSize: 11.sp,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-
           // 우승
           SizedBox(
-            width: 40.sp,
+            width: 35.sp,
             child: Text(
               '${record.championships}',
               style: TextStyle(
@@ -382,7 +370,7 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
 
           // 준우승
           SizedBox(
-            width: 50.sp,
+            width: 40.sp,
             child: Text(
               '${record.runnerUps}',
               style: TextStyle(
@@ -393,11 +381,11 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
             ),
           ),
 
-          // 전적
+          // 전체 전적: "15W 5L (75%)"
           SizedBox(
-            width: 70.sp,
+            width: 85.sp,
             child: Text(
-              '${record.wins}W ${record.losses}L',
+              _formatRecord(record.wins, record.losses, record.winRate),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 10.sp,
@@ -406,46 +394,42 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
             ),
           ),
 
-          // 승률
+          // vs Terran
           SizedBox(
-            width: 50.sp,
+            width: 75.sp,
             child: Text(
-              '${(record.winRate * 100).toStringAsFixed(0)}%',
+              _formatRecord(record.vsTerranWins, record.vsTerranLosses, record.vsTerranWinRate),
               style: TextStyle(
-                color: _getWinRateColor(record.winRate),
+                color: Colors.white,
                 fontSize: 10.sp,
               ),
               textAlign: TextAlign.center,
             ),
           ),
 
-          // vs Terran
-          SizedBox(
-            width: 60.sp,
-            child: _buildVsRecord(
-              record.vsTerranWins,
-              record.vsTerranLosses,
-              record.vsTerranWinRate,
-            ),
-          ),
-
           // vs Zerg
           SizedBox(
-            width: 60.sp,
-            child: _buildVsRecord(
-              record.vsZergWins,
-              record.vsZergLosses,
-              record.vsZergWinRate,
+            width: 75.sp,
+            child: Text(
+              _formatRecord(record.vsZergWins, record.vsZergLosses, record.vsZergWinRate),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10.sp,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
 
           // vs Protoss
           SizedBox(
-            width: 60.sp,
-            child: _buildVsRecord(
-              record.vsProtossWins,
-              record.vsProtossLosses,
-              record.vsProtossWinRate,
+            width: 75.sp,
+            child: Text(
+              _formatRecord(record.vsProtossWins, record.vsProtossLosses, record.vsProtossWinRate),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10.sp,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -453,28 +437,10 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
     );
   }
 
-  Widget _buildVsRecord(int wins, int losses, double winRate) {
+  String _formatRecord(int wins, int losses, double winRate) {
     final total = wins + losses;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '$wins:$losses',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 9.sp,
-          ),
-        ),
-        if (total > 0)
-          Text(
-            '${(winRate * 100).toStringAsFixed(0)}%',
-            style: TextStyle(
-              color: _getWinRateColor(winRate),
-              fontSize: 8.sp,
-            ),
-          ),
-      ],
-    );
+    if (total == 0) return '-';
+    return '${wins}W ${losses}L (${(winRate * 100).toStringAsFixed(0)}%)';
   }
 
   Color _getRaceColor(Race race) {
@@ -486,13 +452,6 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
       case Race.protoss:
         return AppColors.protoss;
     }
-  }
-
-  Color _getWinRateColor(double winRate) {
-    if (winRate >= 0.6) return Colors.green;
-    if (winRate >= 0.5) return Colors.white;
-    if (winRate >= 0.4) return Colors.orange;
-    return Colors.red;
   }
 
   Widget _buildBottomButtons(BuildContext context) {

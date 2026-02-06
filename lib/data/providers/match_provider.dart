@@ -3,10 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/models.dart';
 import 'game_provider.dart';
 
+/// 스나이핑 배정 정보
+class SnipingAssignment {
+  final int setIndex;              // 세트 (0-5)
+  final String myPlayerId;         // 스나이핑 사용 선수
+  final String predictedOpponentId; // 예측 상대 선수
+
+  const SnipingAssignment({
+    required this.setIndex,
+    required this.myPlayerId,
+    required this.predictedOpponentId,
+  });
+}
+
 /// 현재 매치 상태
 class CurrentMatchState {
   final String homeTeamId;
   final String awayTeamId;
+  final String? matchId; // 스케줄 상의 매치 ID (정확한 매치 식별용)
   final List<String?> homeRoster; // 인덱스 = 세트 번호 (0-5), 값 = 선수 ID
   final List<String?> awayRoster;
   final String? homeAcePlayerId; // 7세트 에이스 (3:3일 때)
@@ -15,9 +29,12 @@ class CurrentMatchState {
   final int awayScore;
   final int currentSet; // 현재 진행 중인 세트 (0-6)
   final List<bool> setResults; // 각 세트 결과 (true = 홈 승리, false = 어웨이 승리)
+  final List<SnipingAssignment> homeSnipingAssignments;
+  final List<SnipingAssignment> awaySnipingAssignments;
   const CurrentMatchState({
     required this.homeTeamId,
     required this.awayTeamId,
+    this.matchId,
     this.homeRoster = const [null, null, null, null, null, null],
     this.awayRoster = const [null, null, null, null, null, null],
     this.homeAcePlayerId,
@@ -26,6 +43,8 @@ class CurrentMatchState {
     this.awayScore = 0,
     this.currentSet = 0,
     this.setResults = const [],
+    this.homeSnipingAssignments = const [],
+    this.awaySnipingAssignments = const [],
   });
 
   /// 현재 세트의 홈 선수 ID
@@ -52,9 +71,28 @@ class CurrentMatchState {
   /// 매치 종료 여부
   bool get isMatchEnded => homeScore >= 4 || awayScore >= 4;
 
+  /// 특정 세트에서 성공한 스나이핑 확인 (예측이 실제 상대와 일치)
+  /// 반환: 성공한 스나이핑의 선수 이름 (실패 시 null)
+  SnipingAssignment? getSuccessfulSniping({required bool isHome, required int setIndex}) {
+    final assignments = isHome ? homeSnipingAssignments : awaySnipingAssignments;
+    final opponentRoster = isHome ? awayRoster : homeRoster;
+
+    for (final assignment in assignments) {
+      if (assignment.setIndex == setIndex) {
+        // 실제 상대 선수와 예측이 일치하는지 확인
+        if (setIndex < opponentRoster.length &&
+            opponentRoster[setIndex] == assignment.predictedOpponentId) {
+          return assignment;
+        }
+      }
+    }
+    return null;
+  }
+
   CurrentMatchState copyWith({
     String? homeTeamId,
     String? awayTeamId,
+    String? matchId,
     List<String?>? homeRoster,
     List<String?>? awayRoster,
     String? homeAcePlayerId,
@@ -63,10 +101,13 @@ class CurrentMatchState {
     int? awayScore,
     int? currentSet,
     List<bool>? setResults,
+    List<SnipingAssignment>? homeSnipingAssignments,
+    List<SnipingAssignment>? awaySnipingAssignments,
   }) {
     return CurrentMatchState(
       homeTeamId: homeTeamId ?? this.homeTeamId,
       awayTeamId: awayTeamId ?? this.awayTeamId,
+      matchId: matchId ?? this.matchId,
       homeRoster: homeRoster ?? this.homeRoster,
       awayRoster: awayRoster ?? this.awayRoster,
       homeAcePlayerId: homeAcePlayerId ?? this.homeAcePlayerId,
@@ -75,6 +116,8 @@ class CurrentMatchState {
       awayScore: awayScore ?? this.awayScore,
       currentSet: currentSet ?? this.currentSet,
       setResults: setResults ?? this.setResults,
+      homeSnipingAssignments: homeSnipingAssignments ?? this.homeSnipingAssignments,
+      awaySnipingAssignments: awaySnipingAssignments ?? this.awaySnipingAssignments,
     );
   }
 }
@@ -89,20 +132,116 @@ class CurrentMatchNotifier extends StateNotifier<CurrentMatchState?> {
   void startMatch({
     required String homeTeamId,
     required String awayTeamId,
+    String? matchId,
     List<String?>? homeRoster,
     List<String?>? awayRoster,
+    List<SnipingAssignment>? homeSnipingAssignments,
+    List<SnipingAssignment>? awaySnipingAssignments,
   }) {
+    final gameState = _ref.read(gameStateProvider);
+    final playerTeamId = gameState?.playerTeam.id;
+    final isPlayerHome = homeTeamId == playerTeamId;
+
     // 플레이어가 홈일 때: homeRoster 지정, awayRoster 자동 생성
     // 플레이어가 어웨이일 때: awayRoster 지정, homeRoster 자동 생성
     final finalHomeRoster = homeRoster ?? _generateOpponentRoster(homeTeamId);
     final finalAwayRoster = awayRoster ?? _generateOpponentRoster(awayTeamId);
 
+    // AI 스나이핑 생성 (상대팀이 AI인 경우)
+    List<SnipingAssignment> finalHomeSniping = homeSnipingAssignments ?? const [];
+    List<SnipingAssignment> finalAwaySniping = awaySnipingAssignments ?? const [];
+
+    if (isPlayerHome) {
+      // 플레이어가 홈이면 AI는 어웨이
+      finalAwaySniping = _generateAISniping(
+        aiRoster: finalAwayRoster,
+        opponentRoster: finalHomeRoster,
+        gameState: gameState,
+      );
+    } else {
+      // 플레이어가 어웨이면 AI는 홈
+      finalHomeSniping = _generateAISniping(
+        aiRoster: finalHomeRoster,
+        opponentRoster: finalAwayRoster,
+        gameState: gameState,
+      );
+    }
+
     state = CurrentMatchState(
       homeTeamId: homeTeamId,
       awayTeamId: awayTeamId,
+      matchId: matchId,
       homeRoster: finalHomeRoster,
       awayRoster: finalAwayRoster,
+      homeSnipingAssignments: finalHomeSniping,
+      awaySnipingAssignments: finalAwaySniping,
     );
+  }
+
+  /// AI 스나이핑 생성 (경기당 0~2개)
+  List<SnipingAssignment> _generateAISniping({
+    required List<String?> aiRoster,
+    required List<String?> opponentRoster,
+    GameState? gameState,
+  }) {
+    final random = Random();
+    final assignments = <SnipingAssignment>[];
+
+    // 50%: 0개, 30%: 1개, 20%: 2개
+    final roll = random.nextDouble();
+    int snipingCount;
+    if (roll < 0.5) {
+      snipingCount = 0;
+    } else if (roll < 0.8) {
+      snipingCount = 1;
+    } else {
+      snipingCount = 2;
+    }
+
+    if (snipingCount == 0) return assignments;
+
+    // 유효한 세트 (AI 선수가 배치된 세트) 중 랜덤 선택
+    final validSets = <int>[];
+    for (int i = 0; i < 6; i++) {
+      if (aiRoster.length > i && aiRoster[i] != null) {
+        validSets.add(i);
+      }
+    }
+    if (validSets.isEmpty) return assignments;
+
+    validSets.shuffle(random);
+
+    for (int i = 0; i < snipingCount && i < validSets.length; i++) {
+      final setIndex = validSets[i];
+      final myPlayerId = aiRoster[setIndex]!;
+
+      // 40% 확률로 정확 예측, 60% 랜덤 예측
+      String? predictedOpponentId;
+      if (random.nextDouble() < 0.4) {
+        // 정확 예측: 실제 상대 선수
+        if (setIndex < opponentRoster.length && opponentRoster[setIndex] != null) {
+          predictedOpponentId = opponentRoster[setIndex];
+        }
+      }
+
+      if (predictedOpponentId == null) {
+        // 랜덤 예측: 상대 로스터에서 랜덤
+        final validOpponents = opponentRoster.where((id) => id != null).toList();
+        if (validOpponents.isNotEmpty) {
+          predictedOpponentId = validOpponents[random.nextInt(validOpponents.length)];
+        }
+      }
+
+      if (predictedOpponentId != null) {
+        assignments.add(SnipingAssignment(
+          setIndex: setIndex,
+          myPlayerId: myPlayerId,
+          predictedOpponentId: predictedOpponentId,
+        ));
+      }
+    }
+
+    return assignments;
   }
 
   /// 상대팀 로스터 자동 생성
