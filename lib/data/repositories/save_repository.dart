@@ -136,7 +136,7 @@ class SaveRepository {
     required List<Player> players,
     required String playerTeamId,
   }) {
-    // 시즌맵 랜덤 선정 (12개 중 7개)
+    // 시즌맵 랜덤 선정 (전체 맵풀에서 7개)
     final allMaps = GameMaps.all;
     final shuffledMaps = List<GameMap>.from(allMaps)..shuffle(Random());
     final seasonMaps = shuffledMaps.take(7).map((m) => m.id).toList();
@@ -242,8 +242,6 @@ class SaveRepository {
       'condition': player.condition,
       'record': _serializeRecord(player.record),
       'teamId': player.teamId,
-      'isSlump': player.isSlump,
-      'injuryGames': player.injuryGames,
       'careerSeasons': player.careerSeasons,
       'experience': player.experience,
     };
@@ -265,8 +263,6 @@ class SaveRepository {
       condition: data['condition'] as int,
       record: _deserializeRecord(Map<String, dynamic>.from(data['record'] as Map)),
       teamId: data['teamId'] as String?,
-      isSlump: (data['isSlump'] as bool?) ?? false,
-      injuryGames: (data['injuryGames'] as int?) ?? 0,
       careerSeasons: careerSeasons,
       experience: (data['experience'] as int?) ?? 0,
     );

@@ -280,24 +280,43 @@ class MainMenuScreen extends ConsumerWidget {
       final schedule = gameState.saveData.currentSeason.proleagueSchedule as List<ScheduleItem>;
       final playerTeamId = gameState.saveData.playerTeamId;
 
-      // 내 팀 경기만 필터링
-      final myMatches = schedule.where((s) =>
-        s.homeTeamId == playerTeamId || s.awayTeamId == playerTeamId
-      ).toList()..sort((a, b) => a.roundNumber.compareTo(b.roundNumber));
+      // 내 팀 경기를 슬롯(roundNumber)별로 맵핑
+      // 슬롯 1~11 = 경기1, 슬롯 12~22 = 경기2 (대칭: 1↔22, 2↔21, ...)
+      final matchBySlot = <int, ScheduleItem>{};
+      for (final match in schedule) {
+        if (match.homeTeamId == playerTeamId || match.awayTeamId == playerTeamId) {
+          matchBySlot[match.roundNumber] = match;
+        }
+      }
 
-      // 첫 번째 미완료 매치 인덱스 찾기
-      final firstIncompleteIndex = myMatches.indexWhere((m) => !m.isCompleted);
-      final currentWeekIndex = firstIncompleteIndex >= 0 ? firstIncompleteIndex ~/ 2 : -1;
+      // 첫 번째 미완료 슬롯 찾기
+      int? firstIncompleteSlot;
+      for (int slot = 1; slot <= 22; slot++) {
+        final match = matchBySlot[slot];
+        if (match != null && !match.isCompleted) {
+          firstIncompleteSlot = slot;
+          break;
+        }
+      }
+      // 현재 주차 계산 (칸 k의 행 = (k-1) ~/ 2)
+      // 칸 1,2 → 행0 / 칸 3,4 → 행1 / ... / 칸 21,22 → 행10
+      final currentWeekIndex = firstIncompleteSlot != null
+          ? (firstIncompleteSlot - 1) ~/ 2
+          : -1;
 
       for (int i = 0; i < 11; i++) {
-        final match1Index = i * 2;
-        final match2Index = i * 2 + 1;
+        // 행 i: 연속된 칸 (칸 2i+1, 칸 2i+2)
+        // 행0: 칸1,2 / 행1: 칸3,4 / ... / 행10: 칸21,22
+        // 대칭: 행0(칸1,2) ↔ 행10(칸21,22) = 역순 대칭
+        final slot1 = i * 2 + 1;       // 1, 3, 5, ..., 21 (홀수 칸)
+        final slot2 = i * 2 + 2;       // 2, 4, 6, ..., 22 (짝수 칸)
 
         _MatchCellData? match1Data;
         _MatchCellData? match2Data;
 
-        if (match1Index < myMatches.length) {
-          final match1 = myMatches[match1Index];
+        // 슬롯1의 경기 (경기1)
+        final match1 = matchBySlot[slot1];
+        if (match1 != null) {
           final isHome = match1.homeTeamId == playerTeamId;
           final opponentId = isHome ? match1.awayTeamId : match1.homeTeamId;
           final opponent = gameState.saveData.getTeamById(opponentId);
@@ -319,8 +338,9 @@ class MainMenuScreen extends ConsumerWidget {
           );
         }
 
-        if (match2Index < myMatches.length) {
-          final match2 = myMatches[match2Index];
+        // 슬롯2의 경기 (경기2)
+        final match2 = matchBySlot[slot2];
+        if (match2 != null) {
           final isHome = match2.homeTeamId == playerTeamId;
           final opponentId = isHome ? match2.awayTeamId : match2.homeTeamId;
           final opponent = gameState.saveData.getTeamById(opponentId);
@@ -342,8 +362,10 @@ class MainMenuScreen extends ConsumerWidget {
           );
         }
 
-        // 개인리그 완료 여부 체크 (해당 주 2경기 모두 완료)
-        final isLeagueCompleted = match1Data?.isCompleted == true && match2Data?.isCompleted == true;
+        // 개인리그 완료 여부 체크 (해당 주 2경기 모두 완료 또는 No Match)
+        final slot1Done = match1Data?.isCompleted == true || match1Data == null;
+        final slot2Done = match2Data?.isCompleted == true || match2Data == null;
+        final isLeagueCompleted = slot1Done && slot2Done && (match1Data != null || match2Data != null);
 
         rows.add(_ScheduleRowData(
           match1: match1Data,

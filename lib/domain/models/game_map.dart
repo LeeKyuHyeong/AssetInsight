@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'enums.dart';
+import '../../core/constants/map_data.dart';
 
 part 'game_map.g.dart';
 
@@ -261,243 +262,43 @@ class MapBonus {
   double get netHomeAdvantage => homeBonus - awayBonus;
 }
 
-/// 기본 맵 목록 (2010 프로리그 시즌맵 기반)
+/// 전체 맵 목록 (MapData에서 동적 생성)
 class GameMaps {
-  static const neoElectricCircuit = GameMap(
-    id: 'neo_electric_circuit',
-    name: '네오일렉트릭써킷',
-    rushDistance: 6,
-    resources: 6,
-    complexity: 5,
-    expansionCount: 4,
-    terrainComplexity: 5,
-    airAccessibility: 6,
-    centerImportance: 6,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 55,
-      zvpZergWinRate: 50,
-      pvtProtossWinRate: 50,
-    ),
-  );
+  /// 레거시 ID → 맵 이름 매핑 (기존 세이브 호환)
+  static const _legacyIdMap = {
+    'neo_electric_circuit': '네오일렉트릭써킷',
+    'iccup_outlier': '네오아웃라이어',
+    'chain_reaction': '네오체인리액션',
+    'neo_jade': '네오제이드',
+    'circuit_breaker': '써킷브레이커',
+    'new_sniper_ridge': '신저격능선',
+    'ground_zero': '네오그라운드제로',
+    'neo_bit_way': '네오벨트웨이',
+    'destination': '데스티네이션',
+    'fighting_spirit': '투혼',
+    'match_point': '매치포인트',
+    'python': '파이썬',
+  };
 
-  static const iccupOutlier = GameMap(
-    id: 'iccup_outlier',
-    name: '네오아웃라이어',
-    rushDistance: 5,
-    resources: 5,
-    complexity: 6,
-    expansionCount: 4,
-    terrainComplexity: 7, // 언덕 많음
-    airAccessibility: 5,
-    centerImportance: 7,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 50,
-      zvpZergWinRate: 55,
-      pvtProtossWinRate: 45,
-    ),
-  );
+  static List<GameMap>? _cachedAll;
 
-  static const chainReaction = GameMap(
-    id: 'chain_reaction',
-    name: '네오체인리액션',
-    rushDistance: 7,
-    resources: 7,
-    complexity: 5,
-    expansionCount: 5, // 멀티 많음
-    terrainComplexity: 4,
-    airAccessibility: 6,
-    centerImportance: 5,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 45,
-      zvpZergWinRate: 50,
-      pvtProtossWinRate: 55,
-    ),
-  );
-
-  static const neoJade = GameMap(
-    id: 'neo_jade',
-    name: '네오제이드',
-    rushDistance: 4, // 러시거리 짧음
-    resources: 5,
-    complexity: 4,
-    expansionCount: 3,
-    terrainComplexity: 4,
-    airAccessibility: 5,
-    centerImportance: 8, // 중앙 중요
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 60,
-      zvpZergWinRate: 45,
-      pvtProtossWinRate: 50,
-    ),
-  );
-
-  static const circuitBreaker = GameMap(
-    id: 'circuit_breaker',
-    name: '써킷브레이커',
-    rushDistance: 6,
-    resources: 6,
-    complexity: 6,
-    expansionCount: 4,
-    terrainComplexity: 6,
-    airAccessibility: 6,
-    centerImportance: 6,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 50,
-      zvpZergWinRate: 50,
-      pvtProtossWinRate: 50,
-    ),
-  );
-
-  static const newSniperRidge = GameMap(
-    id: 'new_sniper_ridge',
-    name: '신저격능선',
-    rushDistance: 5,
-    resources: 5,
-    complexity: 7, // 전략 맵
-    expansionCount: 4,
-    terrainComplexity: 8, // 언덕/좁은길 많음
-    airAccessibility: 4,
-    centerImportance: 7,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 55,
-      zvpZergWinRate: 45,
-      pvtProtossWinRate: 55,
-    ),
-  );
-
-  static const groundZero = GameMap(
-    id: 'ground_zero',
-    name: '네오그라운드제로',
-    rushDistance: 8, // 러시거리 김
-    resources: 8, // 자원 풍부
-    complexity: 4,
-    expansionCount: 5, // 멀티 많음
-    terrainComplexity: 3,
-    airAccessibility: 7, // 공중 유리
-    centerImportance: 4,
-    hasIsland: true, // 섬 멀티 있음
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 40,
-      zvpZergWinRate: 60,
-      pvtProtossWinRate: 50,
-    ),
-  );
-
-  static const neoBitway = GameMap(
-    id: 'neo_bit_way',
-    name: '네오벨트웨이',
-    rushDistance: 5,
-    resources: 6,
-    complexity: 5,
-    expansionCount: 4,
-    terrainComplexity: 5,
-    airAccessibility: 7, // 드랍 유리
-    centerImportance: 5,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 55,
-      zvpZergWinRate: 50,
-      pvtProtossWinRate: 45,
-    ),
-  );
-
-  static const destination = GameMap(
-    id: 'destination',
-    name: '데스티네이션',
-    rushDistance: 7,
-    resources: 7,
-    complexity: 6,
-    expansionCount: 5,
-    terrainComplexity: 5,
-    airAccessibility: 6,
-    centerImportance: 6,
-    hasIsland: true, // 섬 멀티
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 45,
-      zvpZergWinRate: 55,
-      pvtProtossWinRate: 50,
-    ),
-  );
-
-  static const fightingSpirit = GameMap(
-    id: 'fighting_spirit',
-    name: '투혼',
-    rushDistance: 5,
-    resources: 5,
-    complexity: 5,
-    expansionCount: 4,
-    terrainComplexity: 5,
-    airAccessibility: 5,
-    centerImportance: 6,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 50,
-      zvpZergWinRate: 50,
-      pvtProtossWinRate: 50,
-    ),
-  );
-
-  static const matchPoint = GameMap(
-    id: 'match_point',
-    name: '매치포인트',
-    rushDistance: 4, // 러시 맵
-    resources: 4,
-    complexity: 5,
-    expansionCount: 3, // 멀티 적음
-    terrainComplexity: 6,
-    airAccessibility: 5,
-    centerImportance: 8, // 중앙 싸움
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 60,
-      zvpZergWinRate: 40,
-      pvtProtossWinRate: 55,
-    ),
-  );
-
-  static const python = GameMap(
-    id: 'python',
-    name: '파이썬',
-    rushDistance: 6,
-    resources: 6,
-    complexity: 5,
-    expansionCount: 4,
-    terrainComplexity: 5,
-    airAccessibility: 6,
-    centerImportance: 5,
-    hasIsland: false,
-    matchup: RaceMatchup(
-      tvzTerranWinRate: 50,
-      zvpZergWinRate: 55,
-      pvtProtossWinRate: 50,
-    ),
-  );
-
-  static List<GameMap> get all => [
-    neoElectricCircuit,
-    iccupOutlier,
-    chainReaction,
-    neoJade,
-    circuitBreaker,
-    newSniperRidge,
-    groundZero,
-    neoBitway,
-    destination,
-    fightingSpirit,
-    matchPoint,
-    python,
-  ];
-
-  static GameMap? getById(String id) {
-    return all.cast<GameMap?>().firstWhere(
-      (m) => m?.id == id,
-      orElse: () => null,
-    );
+  /// allMaps(MapData)에서 GameMap 동적 생성 (캐시)
+  static List<GameMap> get all {
+    _cachedAll ??= allMaps.map((m) => m.toGameMap()).toList();
+    return _cachedAll!;
   }
+
+  /// ID로 맵 검색 (레거시 ID 호환)
+  static GameMap? getById(String id) {
+    final resolvedId = _legacyIdMap[id] ?? id;
+    try {
+      return all.firstWhere((m) => m.id == resolvedId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 기본 맵 (투혼) - 폴백용
+  static GameMap get fightingSpirit =>
+      getById('투혼') ?? all.first;
 }

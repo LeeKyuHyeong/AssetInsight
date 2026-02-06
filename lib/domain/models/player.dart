@@ -432,12 +432,6 @@ class Player {
   @HiveField(8)
   final String? teamId; // 소속팀 ID (null이면 무소속)
 
-  @HiveField(9)
-  final bool isSlump; // 슬럼프 상태
-
-  @HiveField(10)
-  final int injuryGames; // 부상으로 쉬어야 할 경기 수
-
   @HiveField(11)
   final int careerSeasons; // 경력 시즌 수 (커리어 단계 결정)
 
@@ -457,8 +451,6 @@ class Player {
     this.condition = 100,
     this.record = const PlayerRecord(),
     this.teamId,
-    this.isSlump = false,
-    this.injuryGames = 0,
     int? careerSeasons,
     this.imagePath,
     int? experience,
@@ -537,7 +529,6 @@ class Player {
 
   Grade get grade => stats.grade;
   int get displayCondition => min(condition, 100);
-  bool get isInjured => injuryGames > 0;
   bool get isFreeAgent => teamId == null;
 
   /// 능력치 합계 (시드 배정 시 동등 등급 비교용)
@@ -571,58 +562,6 @@ class Player {
 
   /// 전투 보정값 (레벨 기반, 0.0 ~ 0.38)
   double get battleBonus => level.battleBonus;
-
-  /// 특수 컨디션을 적용한 실제 능력치 (경기 시뮬레이션용)
-  PlayerStats getEffectiveStatsWithSpecialCondition(SpecialCondition specialCondition) {
-    int effectiveCondition = condition;
-    double statMultiplier = 1.0;
-
-    switch (specialCondition) {
-      case SpecialCondition.best:
-        // 컨디션 +10% (최대 110)
-        effectiveCondition = (condition + 10).clamp(0, 110);
-        // 추가 능력치 +10%
-        statMultiplier = 1.1;
-        break;
-      case SpecialCondition.worst:
-        // 컨디션 80%로 고정
-        effectiveCondition = 80;
-        break;
-      case SpecialCondition.none:
-        break;
-    }
-
-    // 컨디션 먼저 적용
-    final conditionApplied = stats.applyCondition(effectiveCondition);
-
-    // 최상일 때 추가 10% 보너스
-    if (statMultiplier != 1.0) {
-      return PlayerStats(
-        sense: (conditionApplied.sense * statMultiplier).round(),
-        control: (conditionApplied.control * statMultiplier).round(),
-        attack: (conditionApplied.attack * statMultiplier).round(),
-        harass: (conditionApplied.harass * statMultiplier).round(),
-        strategy: (conditionApplied.strategy * statMultiplier).round(),
-        macro: (conditionApplied.macro * statMultiplier).round(),
-        defense: (conditionApplied.defense * statMultiplier).round(),
-        scout: (conditionApplied.scout * statMultiplier).round(),
-      );
-    }
-
-    return conditionApplied;
-  }
-
-  /// 특수 컨디션을 적용한 표시용 컨디션
-  int getDisplayConditionWithSpecial(SpecialCondition specialCondition) {
-    switch (specialCondition) {
-      case SpecialCondition.best:
-        return min(condition + 10, 100);
-      case SpecialCondition.worst:
-        return 80;
-      case SpecialCondition.none:
-        return displayCondition;
-    }
-  }
 
   /// 경기 후 결과 적용
   Player applyMatchResult({
@@ -775,46 +714,6 @@ class Player {
     return advanceCareer();
   }
 
-  /// 슬럼프 체크 (3연패 이상 시 30% 확률)
-  Player checkSlump() {
-    if (record.currentWinStreak < 0 && record.currentWinStreak <= -3) {
-      final random = Random();
-      if (random.nextDouble() < 0.3) {
-        return copyWith(
-          isSlump: true,
-          condition: (condition - 15).clamp(0, 110),
-        );
-      }
-    }
-    return this;
-  }
-
-  /// 슬럼프 해제 (2승 시)
-  Player checkSlumpRecovery() {
-    if (isSlump && record.currentWinStreak >= 2) {
-      return copyWith(isSlump: false);
-    }
-    return this;
-  }
-
-  /// 부상 체크 (경기당 3%)
-  Player checkInjury() {
-    if (isInjured) return this;
-
-    final random = Random();
-    if (random.nextDouble() < 0.03) {
-      final injuryDuration = 1 + random.nextInt(3); // 1~3 경기
-      return copyWith(injuryGames: injuryDuration);
-    }
-    return this;
-  }
-
-  /// 부상 회복 (경기 후)
-  Player recoverInjury() {
-    if (!isInjured) return this;
-    return copyWith(injuryGames: injuryGames - 1);
-  }
-
   Player copyWith({
     String? id,
     String? name,
@@ -825,8 +724,6 @@ class Player {
     int? condition,
     PlayerRecord? record,
     String? teamId,
-    bool? isSlump,
-    int? injuryGames,
     int? careerSeasons,
     String? imagePath,
     bool clearImagePath = false,
@@ -842,8 +739,6 @@ class Player {
       condition: condition ?? this.condition,
       record: record ?? this.record,
       teamId: teamId ?? this.teamId,
-      isSlump: isSlump ?? this.isSlump,
-      injuryGames: injuryGames ?? this.injuryGames,
       careerSeasons: careerSeasons ?? this.careerSeasons,
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
       experience: experience ?? this.experience,

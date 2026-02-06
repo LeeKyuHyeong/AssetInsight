@@ -934,7 +934,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
 
     final schedule = state!.saveData.currentSeason.proleagueSchedule;
     final playerTeamId = state!.saveData.playerTeamId;
-    final random = DateTime.now().millisecondsSinceEpoch;
+    final rand = Random();
 
     // 같은 라운드의 미완료 경기 찾기 (플레이어 팀 제외)
     for (int i = 0; i < schedule.length; i++) {
@@ -949,68 +949,93 @@ class GameStateNotifier extends StateNotifier<GameState?> {
 
       if (homeTeam == null || awayTeam == null) continue;
 
-      // 팀 능력치 기반 승패 결정
-      final homePlayers = state!.saveData.getTeamPlayers(match.homeTeamId);
-      final awayPlayers = state!.saveData.getTeamPlayers(match.awayTeamId);
+      // 팀 선수 목록 (능력치 높은 순 정렬)
+      final homePlayers = List<Player>.from(
+        state!.saveData.getTeamPlayers(match.homeTeamId),
+      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
 
-      final homeStrength = _calculateTeamStrength(homePlayers);
-      final awayStrength = _calculateTeamStrength(awayPlayers);
-      final totalStrength = homeStrength + awayStrength;
+      final awayPlayers = List<Player>.from(
+        state!.saveData.getTeamPlayers(match.awayTeamId),
+      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
 
-      // 승패 확률 계산
-      final homeWinProb = totalStrength > 0 ? homeStrength / totalStrength : 0.5;
+      if (homePlayers.isEmpty || awayPlayers.isEmpty) continue;
 
-      // 세트 점수 시뮬레이션 (4승 먼저)
+      // 세트별 선수 배정 및 시뮬레이션 (7전 4선승)
+      final List<SetResult> sets = [];
+      final List<Player> updatedPlayersList = [];
       int homeScore = 0;
       int awayScore = 0;
-      final rand = random + i * 1000;
+      int setIndex = 0;
 
       while (homeScore < 4 && awayScore < 4) {
-        final setRandom = ((rand + homeScore + awayScore) % 100) / 100.0;
-        if (setRandom < homeWinProb) {
+        // 선수 배정 (순환, 최대 7세트이므로 상위 7명 사용)
+        final homePlayer = homePlayers[setIndex % homePlayers.length];
+        final awayPlayer = awayPlayers[setIndex % awayPlayers.length];
+
+        // 개별 선수 능력치 기반 승패 확률 계산
+        final homeStrength = homePlayer.stats.applyCondition(homePlayer.displayCondition).total.toDouble();
+        final awayStrength = awayPlayer.stats.applyCondition(awayPlayer.displayCondition).total.toDouble();
+        final totalStrength = homeStrength + awayStrength;
+        final homeWinProb = totalStrength > 0 ? homeStrength / totalStrength : 0.5;
+
+        final homeWin = rand.nextDouble() < homeWinProb;
+
+        if (homeWin) {
           homeScore++;
         } else {
           awayScore++;
         }
+
+        sets.add(SetResult(
+          mapId: 'map_$setIndex',
+          homePlayerId: homePlayer.id,
+          awayPlayerId: awayPlayer.id,
+          homeWin: homeWin,
+        ));
+
+        // 개별 선수 전적 업데이트
+        final updatedHome = homePlayer.applyMatchResult(
+          isWin: homeWin,
+          opponentGrade: awayPlayer.grade,
+          opponentRace: awayPlayer.race,
+          opponentId: awayPlayer.id,
+        );
+        final updatedAway = awayPlayer.applyMatchResult(
+          isWin: !homeWin,
+          opponentGrade: homePlayer.grade,
+          opponentRace: homePlayer.race,
+          opponentId: homePlayer.id,
+        );
+
+        updatedPlayersList.add(updatedHome);
+        updatedPlayersList.add(updatedAway);
+
+        // 다음 세트에서 업데이트된 선수 반영
+        final homeIdx = homePlayers.indexWhere((p) => p.id == homePlayer.id);
+        if (homeIdx >= 0) homePlayers[homeIdx] = updatedHome;
+        final awayIdx = awayPlayers.indexWhere((p) => p.id == awayPlayer.id);
+        if (awayIdx >= 0) awayPlayers[awayIdx] = updatedAway;
+
+        setIndex++;
       }
 
-      // 결과 기록
-      _recordOtherMatchResult(i, match, homeScore, awayScore);
+      // 결과 기록 (팀 전적 + 시즌 업데이트)
+      _recordOtherMatchResult(i, match, homeScore, awayScore, sets, updatedPlayersList);
     }
-  }
-
-  /// 팀 평균 능력치 계산
-  int _calculateTeamStrength(List<Player> players) {
-    if (players.isEmpty) return 1000;
-    final topPlayers = players.take(6).toList();
-    final totalStats = topPlayers.fold<int>(0, (sum, p) => sum + p.stats.total);
-    return totalStats ~/ topPlayers.length;
   }
 
   /// 다른 팀 경기 결과 기록
-  void _recordOtherMatchResult(int matchIndex, ScheduleItem match, int homeScore, int awayScore) {
+  void _recordOtherMatchResult(
+    int matchIndex,
+    ScheduleItem match,
+    int homeScore,
+    int awayScore,
+    List<SetResult> sets,
+    List<Player> updatedPlayers,
+  ) {
     if (state == null) return;
 
     final season = state!.saveData.currentSeason;
-
-    // SetResult 생성
-    final List<SetResult> sets = [];
-    for (int i = 0; i < homeScore; i++) {
-      sets.add(SetResult(
-        mapId: 'map_$i',
-        homePlayerId: 'ai_home_$i',
-        awayPlayerId: 'ai_away_$i',
-        homeWin: true,
-      ));
-    }
-    for (int i = 0; i < awayScore; i++) {
-      sets.add(SetResult(
-        mapId: 'map_${homeScore + i}',
-        homePlayerId: 'ai_home_${homeScore + i}',
-        awayPlayerId: 'ai_away_${homeScore + i}',
-        homeWin: false,
-      ));
-    }
 
     // 매치 결과 생성
     final matchResult = MatchResult(
@@ -1045,10 +1070,17 @@ class GameStateNotifier extends StateNotifier<GameState?> {
         opponentSets: homeScore,
       );
 
+      // 선수 전적 중복 제거 (같은 선수가 여러 세트 출전 시 마지막 상태 사용)
+      final playerMap = <String, Player>{};
+      for (final p in updatedPlayers) {
+        playerMap[p.id] = p;
+      }
+
       var newSaveData = state!.saveData
           .updateSeason(updatedSeason)
           .updateTeam(updatedHomeTeam)
-          .updateTeam(updatedAwayTeam);
+          .updateTeam(updatedAwayTeam)
+          .updatePlayers(playerMap.values.toList());
 
       state = state!.copyWith(saveData: newSaveData);
     } else {
@@ -1203,13 +1235,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     final random = DateTime.now().millisecondsSinceEpoch;
     final rng = Random(random);
 
-    // 시즌맵 랜덤 선정 (7개) - game_map.dart의 ID와 일치
-    final allMapIds = [
-      'neo_electric_circuit', 'iccup_outlier', 'chain_reaction',
-      'neo_jade', 'circuit_breaker', 'new_sniper_ridge',
-      'ground_zero', 'neo_bit_way', 'destination',
-      'fighting_spirit', 'match_point', 'python',
-    ];
+    // 시즌맵 랜덤 선정 (7개) - allMaps에서 동적 생성
+    final allMapIds = GameMaps.all.map((m) => m.id).toList();
     final shuffledMaps = List<String>.from(allMapIds)..shuffle(rng);
     final seasonMaps = shuffledMaps.take(7).toList();
 
@@ -1229,10 +1256,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     slots.shuffle(rng);
     final matchSlots = slots.take(7).toList()..sort();
 
-    // 1차 리그 경기 배치 (슬롯 1~11)
+    // 1차 리그 경기 배치 (슬롯 1~11 중 7개)
+    // 라운드별로 4경기씩 같은 슬롯에 배치
     for (int i = 0; i < firstHalfMatchups.length; i++) {
       final matchup = firstHalfMatchups[i];
-      final slot = matchSlots[i % 7]; // 각 팀당 7경기
+      final round = i ~/ 4; // 라운드 번호 (0~6)
+      final slot = matchSlots[round]; // 같은 라운드는 같은 슬롯
 
       schedule.add(ScheduleItem(
         matchId: 'match_${seasonNumber}_${matchId++}',
@@ -1246,7 +1275,8 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     // 슬롯 12~22 = 23 - 슬롯(1~11)
     for (int i = 0; i < firstHalfMatchups.length; i++) {
       final matchup = firstHalfMatchups[i];
-      final firstSlot = matchSlots[i % 7];
+      final round = i ~/ 4; // 라운드 번호 (0~6)
+      final firstSlot = matchSlots[round];
       final secondSlot = 23 - firstSlot; // 데칼코마니 위치
 
       // 홈/어웨이 반전

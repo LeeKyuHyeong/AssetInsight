@@ -39,13 +39,6 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   // 예측된 상대 로스터 (스나이핑 사용 시)
   List<String?> _predictedOpponentRoster = [];
 
-  // 특수 컨디션 (최상/최악) - 선수ID -> SpecialCondition
-  Map<String, SpecialCondition> _specialConditions = {};
-  bool _specialConditionsRolled = false;
-
-  // 맵 정보 / 아이템 토글 (true: 맵 정보, false: 아이템)
-  bool _showMapInfo = true;
-
   /// 매치용 맵 7개 선정 (시즌맵 순서 유지)
   List<GameMap> _getMatchMaps(List<String> seasonMapIds) {
     if (_matchMaps.isNotEmpty) return _matchMaps;
@@ -94,22 +87,6 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     final playerTeam = gameState.playerTeam;
     final teamPlayers = gameState.playerTeamPlayers;
 
-    final scheduleForRoll = gameState.saveData.currentSeason.proleagueSchedule;
-    final nextMatchForRoll = _findNextMatch(scheduleForRoll, playerTeam.id);
-    if (nextMatchForRoll != null && !_specialConditionsRolled) {
-      final isHomeForRoll = nextMatchForRoll.homeTeamId == playerTeam.id;
-      final opponentIdForRoll = isHomeForRoll ? nextMatchForRoll.awayTeamId : nextMatchForRoll.homeTeamId;
-      final opponentPlayersForRoll = gameState.saveData.getTeamPlayers(opponentIdForRoll);
-
-      _specialConditions = {};
-      for (final player in teamPlayers) {
-        _specialConditions[player.id] = SpecialCondition.roll();
-      }
-      for (final player in opponentPlayersForRoll) {
-        _specialConditions[player.id] = SpecialCondition.roll();
-      }
-      _specialConditionsRolled = true;
-    }
     final schedule = gameState.saveData.currentSeason.proleagueSchedule;
     final nextMatch = _findNextMatch(schedule, playerTeam.id);
 
@@ -142,16 +119,16 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
       ),
       body: Column(
         children: [
-          // 매치 정보 헤더
-          _buildMatchInfo(playerTeam, opponentTeam, isHome),
+          // 1. 우리팀 vs 상대팀
+          _buildMatchHeader(playerTeam, opponentTeam, isHome),
 
-          // 상단: 맵 정보 / 아이템 영역
-          if (_showMapInfo)
-            _buildMapInfoPanel(matchMaps)
-          else
-            _buildItemPanel(),
+          // 2. 아이템 목록 (가로 중앙정렬)
+          _buildItemRow(),
 
-          // 하단: 3열 구조 (내팀 | 맵 | 상대팀)
+          // 3. 맵 정보 패널 (썸네일 크게)
+          _buildMapInfoPanel(matchMaps),
+
+          // 4. 3열 구조 (내팀 | 맵순서 | 상대팀)
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +139,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                   child: _buildMyTeamSection(teamPlayers),
                 ),
 
-                // 중앙: 7개 맵 세로 배치 (다닥다닥)
+                // 중앙: 7개 맵 세로 배치
                 SizedBox(
                   width: 100,
                   child: _buildMapColumn(matchMaps, teamPlayers),
@@ -204,65 +181,54 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     );
   }
 
-  /// 매치 정보 헤더
-  Widget _buildMatchInfo(Team playerTeam, Team opponentTeam, bool isHome) {
+  /// 매치 헤더 (우리팀 vs 상대팀)
+  Widget _buildMatchHeader(Team playerTeam, Team opponentTeam, bool isHome) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       color: AppTheme.cardBackground,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // 전환 버튼
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _showMapInfo = !_showMapInfo;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _showMapInfo ? AppTheme.primaryBlue : Colors.orange,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _showMapInfo ? Icons.map : Icons.inventory_2,
-                    size: 12,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _showMapInfo ? '맵' : '템',
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
+          Column(
+            children: [
+              Text(playerTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Text(isHome ? 'HOME' : 'AWAY', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9)),
+            ],
           ),
-          // 팀 정보
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Column(
-                  children: [
-                    Text(playerTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                    Text(isHome ? 'HOME' : 'AWAY', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9)),
-                  ],
-                ),
-                const Text('VS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.accentGreen)),
-                Column(
-                  children: [
-                    Text(opponentTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                    Text(isHome ? 'AWAY' : 'HOME', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9)),
-                  ],
-                ),
-              ],
-            ),
+          const Text('VS', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.accentGreen)),
+          Column(
+            children: [
+              Text(opponentTeam.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Text(isHome ? 'AWAY' : 'HOME', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 9)),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// 아이템 목록 (가로 중앙정렬, 넘치지 않게)
+  Widget _buildItemRow() {
+    final gameState = ref.watch(gameStateProvider);
+    final inventory = gameState?.inventory;
+    if (inventory == null) return const SizedBox.shrink();
+
+    final consumableItems = ConsumableItems.all.where((item) {
+      return inventory.getConsumableCount(item.id) > 0;
+    }).toList();
+
+    if (consumableItems.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 6,
+        runSpacing: 4,
+        children: consumableItems.map((item) {
+          final count = inventory.getConsumableCount(item.id);
+          return _ItemChip(item: item, count: count);
+        }).toList(),
       ),
     );
   }
@@ -333,12 +299,12 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     );
   }
 
-  /// 맵 정보 패널 (상단 전체 가로)
+  /// 맵 정보 패널 (상단 전체 가로, 썸네일 크게)
   Widget _buildMapInfoPanel(List<GameMap> matchMaps) {
     final currentMap = _focusedMapIndex < matchMaps.length ? matchMaps[_focusedMapIndex] : null;
     if (currentMap == null) {
       return Container(
-        height: 70,
+        height: 130,
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
           color: AppTheme.cardBackground,
@@ -352,7 +318,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     final imageFile = mapData?.imageFile ?? '';
 
     return Container(
-      height: 70,
+      height: 130,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
@@ -360,157 +326,104 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          // 왼쪽: 종족 상성 (세로)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF252540),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _MatchupRowMini('T', 'Z', currentMap.matchup.tvzTerranWinRate),
-                _MatchupRowMini('Z', 'P', currentMap.matchup.zvpZergWinRate),
-                _MatchupRowMini('P', 'T', currentMap.matchup.pvtProtossWinRate),
-              ],
-            ),
+          // 맵 번호 + 이름
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 16, height: 16,
+                decoration: BoxDecoration(
+                  color: AppTheme.accentGreen,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text('${_focusedMapIndex + 1}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  currentMap.name,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          // 중앙: 맵 번호 + 이름 + 썸네일
+          const SizedBox(height: 4),
+          // 맵 썸네일 (크게)
           Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 세트 번호 + 맵 이름
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 16, height: 16,
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentGreen,
-                        borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: imageFile.isEmpty
+                    ? Container(
+                        color: AppTheme.cardBackground,
+                        child: const Icon(Icons.map, size: 30, color: AppTheme.textSecondary),
+                      )
+                    : Image.asset(
+                        'assets/maps/$imageFile',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: AppTheme.cardBackground,
+                          child: const Icon(Icons.map, size: 30, color: AppTheme.textSecondary),
+                        ),
                       ),
-                      child: Center(
-                        child: Text('${_focusedMapIndex + 1}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        currentMap.name,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                // 맵 썸네일
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: imageFile.isEmpty
-                          ? Container(
-                              color: AppTheme.cardBackground,
-                              child: const Icon(Icons.map, size: 20, color: AppTheme.textSecondary),
-                            )
-                          : Image.asset(
-                              'assets/maps/$imageFile',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                color: AppTheme.cardBackground,
-                                child: const Icon(Icons.map, size: 20, color: AppTheme.textSecondary),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          // 오른쪽: 러시/자원/복잡 (세로)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFF252540),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _StatBoxMini(label: '러시', value: currentMap.rushDistance),
-                _StatBoxMini(label: '자원', value: currentMap.resources),
-                _StatBoxMini(label: '복잡', value: currentMap.complexity),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 아이템 패널 (상단 전체 가로)
-  Widget _buildItemPanel() {
-    final gameState = ref.watch(gameStateProvider);
-    final inventory = gameState?.inventory;
-
-    if (inventory == null) {
-      return Container(
-        height: 70,
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        decoration: BoxDecoration(
-          color: AppTheme.cardBackground,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: const Center(child: Text('인벤토리 없음', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10))),
-      );
-    }
-
-    // 보유 중인 소모품 목록
-    final consumableItems = ConsumableItems.all.where((item) {
-      return inventory.getConsumableCount(item.id) > 0;
-    }).toList();
-
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppTheme.cardBackground,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.inventory_2, size: 14, color: Colors.orange),
-          const SizedBox(width: 6),
-          if (consumableItems.isEmpty)
-            const Expanded(child: Text('보유 아이템 없음', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)))
-          else
-            Expanded(
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: consumableItems.length,
-                itemBuilder: (context, index) {
-                  final item = consumableItems[index];
-                  final count = inventory.getConsumableCount(item.id);
-                  return _ItemCardCompact(item: item, count: count);
-                },
               ),
             ),
+          ),
+          const SizedBox(height: 4),
+          // 하단: 맵 정보 + 상성 나란히
+          Row(
+            children: [
+              // 왼쪽: 러시/자원/복잡
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF252540),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _StatBoxMini(label: '러시', value: currentMap.rushDistance),
+                      _StatBoxMini(label: '자원', value: currentMap.resources),
+                      _StatBoxMini(label: '복잡', value: currentMap.complexity),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              // 오른쪽: 종족 상성
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF252540),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _MatchupRowMini('T', 'Z', currentMap.matchup.tvzTerranWinRate),
+                      _MatchupRowMini('Z', 'P', currentMap.matchup.zvpZergWinRate),
+                      _MatchupRowMini('P', 'T', currentMap.matchup.pvtProtossWinRate),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -599,8 +512,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
 
   /// 선수 상세정보 (컴팩트 - 8각형 레이더 + 컨디션)
   Widget _buildPlayerDetailCompact(Player player, bool isMyTeam) {
-    final specialCondition = _specialConditions[player.id] ?? SpecialCondition.none;
-    final condition = player.getDisplayConditionWithSpecial(specialCondition);
+    final condition = player.displayCondition;
 
     return Container(
       height: 90,
@@ -652,34 +564,14 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                 ),
                 const SizedBox(height: 4),
                 // 컨디션
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (specialCondition != SpecialCondition.none)
-                      Icon(
-                        Icons.priority_high,
-                        size: 10,
-                        color: specialCondition == SpecialCondition.best ? Colors.green : Colors.red,
-                      ),
-                    Text(
-                      '$condition%',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: condition >= 80 ? Colors.green : (condition >= 50 ? Colors.orange : Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
-                if (specialCondition != SpecialCondition.none)
-                  Text(
-                    specialCondition == SpecialCondition.best ? '최상' : '최악',
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: specialCondition == SpecialCondition.best ? Colors.green : Colors.red,
-                    ),
+                Text(
+                  '$condition%',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: condition >= 80 ? Colors.green : (condition >= 50 ? Colors.orange : Colors.red),
                   ),
+                ),
                 const SizedBox(height: 2),
                 // 등급 + 레벨
                 Row(
@@ -844,8 +736,6 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         awayRoster: roster,
       );
     }
-
-    ref.read(currentMatchProvider.notifier).setSpecialConditions(_specialConditions);
 
     context.go('/match');
   }
@@ -1084,296 +974,41 @@ class _OpponentGridItem extends StatelessWidget {
   }
 }
 
-/// 맵 행
-class _MapRow extends StatelessWidget {
-  final int setNumber;
-  final GameMap? map;
-  final Player? player;
-  final bool isFocused;
-  final VoidCallback onTap;
-  final VoidCallback onPlayerRemove;
-
-  const _MapRow({
-    required this.setNumber,
-    required this.map,
-    required this.player,
-    required this.isFocused,
-    required this.onTap,
-    required this.onPlayerRemove,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final mapName = map?.name ?? '맵 $setNumber';
-    final shortMapName = mapName.length > 5 ? '${mapName.substring(0, 4)}..' : mapName;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        decoration: BoxDecoration(
-          color: isFocused
-              ? AppTheme.accentGreen.withOpacity(0.2)
-              : (player != null ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: isFocused
-                ? AppTheme.accentGreen
-                : (player != null ? AppTheme.primaryBlue : AppTheme.textSecondary.withOpacity(0.3)),
-            width: isFocused ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 16, height: 16,
-              decoration: BoxDecoration(
-                color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text('$setNumber', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold,
-                    color: isFocused ? Colors.black : AppTheme.textSecondary)),
-              ),
-            ),
-            const SizedBox(width: 3),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(shortMapName, style: TextStyle(fontSize: 8,
-                      color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
-                  if (player != null)
-                    GestureDetector(
-                      onTap: onPlayerRemove,
-                      child: Row(
-                        children: [
-                          CircleAvatar(radius: 5, backgroundColor: AppTheme.getRaceColor(player!.race.code),
-                              child: Text(player!.race.code, style: const TextStyle(fontSize: 5, color: Colors.white))),
-                          const SizedBox(width: 2),
-                          Expanded(child: Text(player!.name, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis)),
-                        ],
-                      ),
-                    )
-                  else
-                    Text(isFocused ? '← 선택' : '', style: TextStyle(fontSize: 7,
-                        color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withOpacity(0.5))),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 에이스 맵 행
-class _AceMapRow extends StatelessWidget {
-  final GameMap? map;
-
-  const _AceMapRow({required this.map});
-
-  @override
-  Widget build(BuildContext context) {
-    final mapName = map?.name ?? 'ACE';
-    final shortMapName = mapName.length > 5 ? '${mapName.substring(0, 4)}..' : mapName;
-
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.orange.withOpacity(0.5)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 16, height: 16,
-            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.3), borderRadius: BorderRadius.circular(8)),
-            child: const Center(child: Icon(Icons.star, size: 10, color: Colors.orange)),
-          ),
-          const SizedBox(width: 3),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(shortMapName, style: TextStyle(fontSize: 8, color: Colors.orange.withOpacity(0.8)), overflow: TextOverflow.ellipsis),
-                Text('ACE (3:3)', style: TextStyle(fontSize: 7, color: Colors.orange.withOpacity(0.6))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 맵 스탯 박스 (러시/자원/복잡)
-class _StatBox extends StatelessWidget {
-  final String label;
-  final int value;
-  final IconData icon;
-
-  const _StatBox({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = value >= 7 ? Colors.green : (value >= 4 ? Colors.orange : Colors.red);
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 8, color: color)),
-            Text('$value', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 종족 상성 박스 (T:Z, Z:P, P:T)
-class _MatchupBox extends StatelessWidget {
-  final String label;
-  final int value; // 첫 번째 종족의 승률
-
-  const _MatchupBox({
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = value > 55 ? Colors.green : (value < 45 ? Colors.red : AppTheme.textSecondary);
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-        decoration: BoxDecoration(
-          color: AppTheme.cardBackground,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
-            const SizedBox(height: 2),
-            Text('$value%', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 아이템 카드
-class _ItemCard extends StatelessWidget {
+/// 아이템 칩 (Wrap용 컴팩트 표시)
+class _ItemChip extends StatelessWidget {
   final ConsumableItem item;
   final int count;
 
-  const _ItemCard({
-    required this.item,
-    required this.count,
-  });
+  const _ItemChip({required this.item, required this.count});
 
   @override
   Widget build(BuildContext context) {
     IconData icon;
     Color color;
     switch (item.id) {
-      case 'vita_vita':
-        icon = Icons.local_drink;
-        color = Colors.green;
-        break;
-      case 'chewing_gum':
-        icon = Icons.bubble_chart;
-        color = Colors.pink;
-        break;
-      case 'ceremony':
-        icon = Icons.celebration;
-        color = Colors.purple;
-        break;
-      case 'sniping':
-        icon = Icons.visibility;
-        color = Colors.orange;
-        break;
-      case 'cheerful':
-        icon = Icons.favorite;
-        color = Colors.red;
-        break;
-      default:
-        icon = Icons.inventory_2;
-        color = Colors.grey;
+      case 'vita_vita': icon = Icons.local_drink; color = Colors.green; break;
+      case 'chewing_gum': icon = Icons.bubble_chart; color = Colors.pink; break;
+      case 'ceremony': icon = Icons.celebration; color = Colors.purple; break;
+      case 'sniping': icon = Icons.visibility; color = Colors.orange; break;
+      case 'cheerful': icon = Icons.favorite; color = Colors.red; break;
+      default: icon = Icons.inventory_2; color = Colors.grey;
     }
 
     return Container(
-      width: 50,
-      margin: const EdgeInsets.only(right: 6),
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: 2),
-          Text(
-            item.name,
-            style: TextStyle(fontSize: 7, color: color, fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            'x$count',
-            style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 컴팩트 스탯 박스 (가로형)
-class _StatBoxCompact extends StatelessWidget {
-  final String label;
-  final int value;
-
-  const _StatBoxCompact({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = value >= 7 ? Colors.green : (value >= 4 ? Colors.orange : Colors.red);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: TextStyle(fontSize: 7, color: color)),
-          Text('$value', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color)),
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 3),
+          Text(item.name, style: TextStyle(fontSize: 8, color: color, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 2),
+          Text('x$count', style: TextStyle(fontSize: 8, color: color)),
         ],
       ),
     );
@@ -1466,55 +1101,6 @@ class _MatchupRowMini extends StatelessWidget {
         const SizedBox(width: 2),
         Text(race2, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: _getRaceColor(race2))),
       ],
-    );
-  }
-}
-
-/// 컴팩트 아이템 카드 (가로 리스트용)
-class _ItemCardCompact extends StatelessWidget {
-  final ConsumableItem item;
-  final int count;
-
-  const _ItemCardCompact({required this.item, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    IconData icon;
-    Color color;
-    switch (item.id) {
-      case 'vita_vita': icon = Icons.local_drink; color = Colors.green; break;
-      case 'chewing_gum': icon = Icons.bubble_chart; color = Colors.pink; break;
-      case 'ceremony': icon = Icons.celebration; color = Colors.purple; break;
-      case 'sniping': icon = Icons.visibility; color = Colors.orange; break;
-      case 'cheerful': icon = Icons.favorite; color = Colors.red; break;
-      default: icon = Icons.inventory_2; color = Colors.grey;
-    }
-
-    return Container(
-      width: 55,
-      margin: const EdgeInsets.only(right: 4),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 2),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.name, style: TextStyle(fontSize: 7, color: color, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                Text('x$count', style: TextStyle(fontSize: 8, color: color, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
