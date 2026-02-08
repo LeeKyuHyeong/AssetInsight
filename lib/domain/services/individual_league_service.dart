@@ -136,9 +136,10 @@ class IndividualLeagueService {
     final groups = List.generate(totalGroups, (_) => <String>[]);
     final playerTeamMap = {for (var p in allPlayers) p.id: p.teamId};
 
-    // 우리팀 선수 배정 (상위 등급일수록 낮은 조 번호)
-    for (var i = 0; i < myTeamPcBangPlayers.length && i < totalGroups; i++) {
-      groups[i].add(myTeamPcBangPlayers[i].id);
+    // 우리팀 선수를 랜덤 조에 분산 배치 (같은 조 중복 방지)
+    final availableGroups = List.generate(totalGroups, (i) => i)..shuffle(_random);
+    for (var i = 0; i < myTeamPcBangPlayers.length && i < availableGroups.length; i++) {
+      groups[availableGroups[i]].add(myTeamPcBangPlayers[i].id);
     }
 
     // 남은 선수들 같은 팀 회피하며 배정
@@ -148,24 +149,28 @@ class IndividualLeagueService {
       final playerId = player.id;
       final playerTeam = playerTeamMap[playerId];
 
-      // 같은 팀 없고, 자리 있는 조 찾기
+      // 인원 적은 조 우선 배정 (아마추어 분산을 위해)
+      // 같은 팀 없고, 자리 있는 조 찾기 (인원 적은 순)
       int? bestGroup;
+      int bestGroupSize = playersPerGroup;
       for (var groupIndex = 0; groupIndex < totalGroups; groupIndex++) {
         if (groups[groupIndex].length >= playersPerGroup) continue;
+        if (groups[groupIndex].length >= bestGroupSize) continue;
 
         final hasTeammate = groups[groupIndex].any((id) => playerTeamMap[id] == playerTeam);
         if (!hasTeammate) {
           bestGroup = groupIndex;
-          break;
+          bestGroupSize = groups[groupIndex].length;
         }
       }
 
-      // 회피 불가능하면 빈 자리 있는 조에 배정
+      // 회피 불가능하면 인원 적은 조에 배정
       if (bestGroup == null) {
+        int fallbackSize = playersPerGroup;
         for (var groupIndex = 0; groupIndex < totalGroups; groupIndex++) {
-          if (groups[groupIndex].length < playersPerGroup) {
+          if (groups[groupIndex].length < fallbackSize) {
             bestGroup = groupIndex;
-            break;
+            fallbackSize = groups[groupIndex].length;
           }
         }
       }
@@ -475,7 +480,7 @@ class IndividualLeagueService {
     final seededPlayers = _assignDualTournamentSeedsWithPrevSeason(
       pcBangWinners: dualTournamentWinners,
       prevSeasonSeeds: bracket.dualTournamentSeeds,
-      playerMap: playerMap,
+      playerMap: extendedPlayerMap,
     );
 
     // PC방 우승자를 듀얼토너먼트 그룹 슬롯 2, 3에 배정

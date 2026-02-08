@@ -277,7 +277,7 @@ void main() {
   });
 
   group('2경기 보너스: applyTwoMatchBonus()', () {
-    test('Team.applyTwoMatchBonus()는 행동력 +100을 적용한다', () {
+    test('Team.applyTwoMatchBonus()는 deprecated되어 행동력 변경 없음 (Player로 이동)', () {
       final team = Team(
         id: 'test_team',
         name: '테스트팀',
@@ -286,8 +286,9 @@ void main() {
         actionPoints: 50,
       );
 
+      // ignore: deprecated_member_use_from_same_package
       final bonusTeam = team.applyTwoMatchBonus();
-      expect(bonusTeam.actionPoints, 150, reason: '50 + 100 = 150');
+      expect(bonusTeam.actionPoints, 50, reason: '행동력은 Player 모델에서 관리, Team은 변경 없음');
     });
 
     test('Season.shouldGiveBonus는 matchesSinceLastBonus >= 2일 때 true', () {
