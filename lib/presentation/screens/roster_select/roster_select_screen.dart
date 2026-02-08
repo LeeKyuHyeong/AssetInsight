@@ -263,9 +263,6 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             ],
           ),
         ),
-        // 선택된 선수 상세 정보
-        if (selectedPlayer != null)
-          _buildPlayerDetailCompact(selectedPlayer, true),
         // 선수 그리드 (2열)
         Expanded(
           child: GridView.builder(
@@ -304,6 +301,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             },
           ),
         ),
+        // 선택된 선수 상세 정보 (목록 아래)
+        if (selectedPlayer != null)
+          _buildPlayerDetailCompact(selectedPlayer, true),
       ],
     );
   }
@@ -488,9 +488,6 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             ],
           ),
         ),
-        // 선택된 선수 상세 정보
-        if (selectedPlayer != null && !isSelectingOpponent)
-          _buildPlayerDetailCompact(selectedPlayer, false),
         // 선수 그리드 (2열)
         Expanded(
           child: GridView.builder(
@@ -524,6 +521,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             },
           ),
         ),
+        // 선택된 선수 상세 정보 (목록 아래)
+        if (selectedPlayer != null && !isSelectingOpponent)
+          _buildPlayerDetailCompact(selectedPlayer, false),
       ],
     );
   }
@@ -531,9 +531,14 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   /// 선수 상세정보 (컴팩트 - 8각형 레이더 + 컨디션)
   Widget _buildPlayerDetailCompact(Player player, bool isMyTeam) {
     final condition = player.displayCondition;
+    final stats = player.stats;
+    final statLabels = ['센스', '컨트롤', '공격', '견제', '전략', '물량', '수비', '정찰'];
+    final statValues = [
+      stats.sense, stats.control, stats.attack, stats.harass,
+      stats.strategy, stats.macro, stats.defense, stats.scout,
+    ];
 
     return Container(
-      height: 90,
       padding: const EdgeInsets.all(4),
       margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       decoration: BoxDecoration(
@@ -543,75 +548,72 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
           color: isMyTeam ? AppTheme.primaryBlue.withOpacity(0.5) : Colors.red.withOpacity(0.5),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // 8각형 레이더 차트
-          Expanded(
-            flex: 3,
+          // 상단: 이름 + 종족 + 등급 + 레벨 + 컨디션
+          Row(
+            children: [
+              Text(
+                '(${player.race.code})',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.getRaceColor(player.race.code),
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  player.name,
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppTheme.getGradeColor(player.grade.display),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: Text(
+                  player.grade.display,
+                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black),
+                ),
+              ),
+              const SizedBox(width: 3),
+              Text('Lv.${player.level.value}', style: const TextStyle(fontSize: 8, color: AppTheme.textSecondary)),
+              const SizedBox(width: 3),
+              Text(
+                '$condition%',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: condition >= 80 ? Colors.green : (condition >= 50 ? Colors.orange : Colors.red),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // 8각형 레이더 차트 (정사각형 크기 보장)
+          SizedBox(
+            width: 110,
+            height: 110,
             child: CustomPaint(
-              painter: _RadarChartPainter(player.stats),
+              size: const Size(110, 110),
+              painter: _RadarChartPainter(stats),
             ),
           ),
-          // 컨디션 + 정보
-          Expanded(
-            flex: 2,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 이름 + 종족
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '(${player.race.code})',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.getRaceColor(player.race.code),
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    Flexible(
-                      child: Text(
-                        player.name,
-                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                // 컨디션
-                Text(
-                  '$condition%',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: condition >= 80 ? Colors.green : (condition >= 50 ? Colors.orange : Colors.red),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                // 등급 + 레벨
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppTheme.getGradeColor(player.grade.display),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                      child: Text(
-                        player.grade.display,
-                        style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text('Lv.${player.level.value}', style: const TextStyle(fontSize: 8, color: AppTheme.textSecondary)),
-                  ],
-                ),
-              ],
-            ),
+          const SizedBox(height: 2),
+          // 능력치 수치 2행 4열
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(4, (i) => _StatLabel(label: statLabels[i], value: statValues[i])),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(4, (i) => _StatLabel(label: statLabels[i + 4], value: statValues[i + 4])),
           ),
         ],
       ),
@@ -827,6 +829,29 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     }
 
     context.go('/match');
+  }
+}
+
+/// 능력치 라벨 (이름 + 수치)
+class _StatLabel extends StatelessWidget {
+  final String label;
+  final int value;
+
+  const _StatLabel({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 32,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 7, color: AppTheme.textSecondary)),
+          const SizedBox(width: 2),
+          Text('$value', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
   }
 }
 

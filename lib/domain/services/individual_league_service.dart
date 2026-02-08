@@ -478,9 +478,25 @@ class IndividualLeagueService {
       playerMap: playerMap,
     );
 
+    // PC방 우승자를 듀얼토너먼트 그룹 슬롯 2, 3에 배정
+    // PC방 그룹 2i → 듀얼 그룹 i 슬롯 2
+    // PC방 그룹 2i+1 → 듀얼 그룹 i 슬롯 3
+    final updatedDualGroups = List<List<String?>>.from(
+      bracket.dualTournamentGroups.map((g) => List<String?>.from(g)),
+    );
+    for (var i = 0; i < dualTournamentWinners.length; i++) {
+      final groupIndex = i ~/ 2;
+      final slotIndex = 2 + (i % 2);
+      if (groupIndex < updatedDualGroups.length &&
+          slotIndex < updatedDualGroups[groupIndex].length) {
+        updatedDualGroups[groupIndex][slotIndex] = dualTournamentWinners[i];
+      }
+    }
+
     return bracket.copyWith(
       pcBangResults: allResults,
       dualTournamentPlayers: seededPlayers,
+      dualTournamentGroups: updatedDualGroups,
     );
   }
 

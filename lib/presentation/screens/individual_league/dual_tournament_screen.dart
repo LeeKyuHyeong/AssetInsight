@@ -678,8 +678,17 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
     }
 
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
 
-    // TODO: 실제 시뮬레이션 로직 구현
+    // 마지막 라운드(3R)에서 듀얼토너먼트 전체 시뮬레이션 실행
+    if (widget.round == 3) {
+      final updatedBracket = _leagueService.simulateDualTournament(
+        bracket: bracket,
+        playerMap: playerMap,
+      );
+      ref.read(gameStateProvider.notifier).updateIndividualLeague(updatedBracket);
+      ref.read(gameStateProvider.notifier).save();
+    }
 
     setState(() {
       _isSimulating = false;

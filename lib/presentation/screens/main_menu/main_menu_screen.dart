@@ -390,7 +390,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
       }
     } else {
       // 실제 데이터
-      final schedule = gameState.saveData.currentSeason.proleagueSchedule as List<ScheduleItem>;
+      final season = gameState.saveData.currentSeason as Season;
+      final schedule = season.proleagueSchedule;
       final selectedTeamId = selectedTeam.id;
 
       // 선택된 팀 경기를 슬롯(roundNumber)별로 맵핑
@@ -401,20 +402,9 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
         }
       }
 
-      // 첫 번째 미완료 슬롯 찾기
-      int? firstIncompleteSlot;
-      for (int slot = 1; slot <= 22; slot++) {
-        final match = matchBySlot[slot];
-        if (match != null && !match.isCompleted) {
-          firstIncompleteSlot = slot;
-          break;
-        }
-      }
-      // 현재 주차 계산 (칸 k의 행 = (k-1) ~/ 2)
-      // 칸 1,2 → 행0 / 칸 3,4 → 행1 / ... / 칸 21,22 → 행10
-      final currentWeekIndex = firstIncompleteSlot != null
-          ? (firstIncompleteSlot - 1) ~/ 2
-          : -1;
+      // weekProgress 기반 현재 주차/스텝
+      final currentWeekIndex = season.currentWeek;
+      final currentStepValue = season.currentStep;
 
       for (int i = 0; i < 11; i++) {
         final slot1 = i * 2 + 1;
@@ -471,18 +461,19 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
           );
         }
 
-        // 개인리그 완료 여부 체크 (해당 주 2경기 모두 완료 또는 No Match)
-        final slot1Done = match1Data?.isCompleted == true || match1Data == null;
-        final slot2Done = match2Data?.isCompleted == true || match2Data == null;
-        final isLeagueCompleted = slot1Done && slot2Done && (match1Data != null || match2Data != null);
+        // 개인리그 완료: 현재 주보다 이전 주차면 완료
+        final isLeagueCompleted = i < currentWeekIndex || season.isWeekProgressComplete;
+
+        final isThisCurrentWeek = i == currentWeekIndex && !season.isWeekProgressComplete;
 
         rows.add(_ScheduleRowData(
           match1: match1Data,
           match2: match2Data,
           leagueName: _individualLeagueNames[i],
           isLeagueCompleted: isLeagueCompleted,
-          isCurrentWeek: i == currentWeekIndex,
+          isCurrentWeek: isThisCurrentWeek,
           weekIndex: i,
+          currentStep: isThisCurrentWeek ? currentStepValue : null,
         ));
       }
     }
@@ -492,21 +483,31 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
 
   Widget _buildScheduleRow(BuildContext context, _ScheduleRowData row, int index) {
     final isCurrentWeek = row.isCurrentWeek;
+    final currentStep = row.currentStep;
 
     return Container(
       margin: EdgeInsets.only(bottom: 4.sp),
       padding: EdgeInsets.symmetric(horizontal: 4.sp, vertical: 6.sp),
       decoration: BoxDecoration(
-        color: isCurrentWeek ? Colors.amber.withOpacity(0.1) : const Color(0xFF1a1a2e),
+        color: isCurrentWeek ? Colors.amber.withOpacity(0.05) : const Color(0xFF1a1a2e),
         borderRadius: BorderRadius.circular(4.sp),
-        border: isCurrentWeek ? Border.all(color: Colors.amber, width: 1.5) : null,
+        border: isCurrentWeek ? Border.all(color: Colors.amber.withOpacity(0.3), width: 1) : null,
       ),
       child: Row(
         children: [
-          // 경기 1
+          // 경기 1 (step 0 하이라이트)
           Expanded(
             flex: 3,
-            child: _buildMatchCell(row.match1),
+            child: Container(
+              decoration: currentStep == 0
+                  ? BoxDecoration(
+                      color: Colors.amber.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4.sp),
+                      border: Border.all(color: Colors.amber, width: 1.5),
+                    )
+                  : null,
+              child: _buildMatchCell(row.match1),
+            ),
           ),
 
           // 구분선 (회색)
@@ -516,10 +517,19 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
             color: Colors.grey[700],
           ),
 
-          // 경기 2
+          // 경기 2 (step 1 하이라이트)
           Expanded(
             flex: 3,
-            child: _buildMatchCell(row.match2),
+            child: Container(
+              decoration: currentStep == 1
+                  ? BoxDecoration(
+                      color: Colors.amber.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4.sp),
+                      border: Border.all(color: Colors.amber, width: 1.5),
+                    )
+                  : null,
+              child: _buildMatchCell(row.match2),
+            ),
           ),
 
           // 구분선 (녹색) - 컨디션 회복 안내
@@ -529,10 +539,19 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
             color: Colors.green,
           ),
 
-          // 개인리그 (클릭 가능)
+          // 개인리그 (step 2 하이라이트)
           Expanded(
             flex: 2,
-            child: _buildLeagueCell(context, row.leagueName, row.isLeagueCompleted, row.weekIndex),
+            child: Container(
+              decoration: currentStep == 2
+                  ? BoxDecoration(
+                      color: Colors.amber.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4.sp),
+                      border: Border.all(color: Colors.amber, width: 1.5),
+                    )
+                  : null,
+              child: _buildLeagueCell(context, row.leagueName, row.isLeagueCompleted, row.weekIndex),
+            ),
           ),
         ],
       ),
@@ -563,24 +582,27 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // 팀 로고
-          Container(
-            width: 24.sp,
-            height: 24.sp,
-            decoration: BoxDecoration(
-              color: teamColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(4.sp),
-              border: Border.all(color: teamColor, width: 1),
-            ),
-            child: Center(
-              child: Text(
-                opponent.shortName.length >= 2
-                    ? opponent.shortName.substring(0, 2)
-                    : opponent.shortName,
-                style: TextStyle(
-                  color: teamColor,
-                  fontSize: 8.sp,
-                  fontWeight: FontWeight.bold,
+          // 팀 로고 (탭하면 구단정보로 이동)
+          GestureDetector(
+            onTap: () => context.push('/info?teamId=${opponent.id}&tab=1'),
+            child: Container(
+              width: 24.sp,
+              height: 24.sp,
+              decoration: BoxDecoration(
+                color: teamColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4.sp),
+                border: Border.all(color: teamColor, width: 1),
+              ),
+              child: Center(
+                child: Text(
+                  opponent.shortName.length >= 2
+                      ? opponent.shortName.substring(0, 2)
+                      : opponent.shortName,
+                  style: TextStyle(
+                    color: teamColor,
+                    fontSize: 8.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -616,7 +638,7 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
     final hasLeagueData = gameState?.saveData.currentSeason.individualLeague != null;
 
     return GestureDetector(
-      onTap: hasLeagueData ? () => _navigateToLeague(context, weekIndex) : null,
+      onTap: hasLeagueData ? () => _navigateToLeague(context, weekIndex, viewOnly: true) : null,
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 4.sp),
         padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 4.sp),
@@ -638,42 +660,122 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
   }
 
   /// 개인리그 주차별 대진표 화면으로 이동
-  void _navigateToLeague(BuildContext context, int weekIndex) {
+  /// [viewOnly] false면 실제 진행, true면 조회만
+  void _navigateToLeague(BuildContext context, int weekIndex, {bool viewOnly = false}) {
+    final vo = viewOnly ? '?viewOnly=true' : '';
     // weekIndex → 개인리그 스테이지 매핑
     // 0: PC방, 1: 듀얼 1R, 2: 듀얼 2R, 3: 듀얼 3R
     // 4: 조지명, 5: 32강 1R, 6: 32강 2R, 7: 16강 1R, 8: 16강 2R, 9: 8강 1R, 10: 8강 2R
     switch (weekIndex) {
       case 0:
-        context.push('/individual-league/pcbang?viewOnly=true');
+        context.push('/individual-league/pcbang$vo');
         break;
       case 1:
-        context.push('/individual-league/dual/1?viewOnly=true');
+        context.push('/individual-league/dual/1$vo');
         break;
       case 2:
-        context.push('/individual-league/dual/2?viewOnly=true');
+        context.push('/individual-league/dual/2$vo');
         break;
       case 3:
-        context.push('/individual-league/dual/3?viewOnly=true');
+        context.push('/individual-league/dual/3$vo');
         break;
       case 4:
-        context.push('/individual-league/group-draw?viewOnly=true');
+        context.push('/individual-league/group-draw$vo');
         break;
       case 5:
       case 6:
-        context.push('/individual-league/main/32?viewOnly=true');
+        context.push('/individual-league/main/32$vo');
         break;
       case 7:
       case 8:
-        context.push('/individual-league/main/16?viewOnly=true');
+        context.push('/individual-league/main/16$vo');
         break;
       case 9:
       case 10:
-        context.push('/individual-league/main/8?viewOnly=true');
+        context.push('/individual-league/main/8$vo');
         break;
     }
   }
 
+  /// NEXT 버튼 정보 계산
+  ({String label, VoidCallback? onPressed, Color bgColor}) _getNextButtonInfo(BuildContext context) {
+    final gameState = ref.read(gameStateProvider);
+    if (gameState == null) {
+      return (label: 'Next ▶▶', onPressed: null, bgColor: Colors.grey);
+    }
+
+    final season = gameState.saveData.currentSeason;
+    final playerTeamId = gameState.saveData.playerTeamId;
+
+    // 시즌 완료
+    if (season.isWeekProgressComplete) {
+      return (label: '정규시즌 완료', onPressed: null, bgColor: Colors.grey);
+    }
+
+    final currentWeek = season.currentWeek;
+    final currentStep = season.currentStep;
+    final schedule = season.proleagueSchedule;
+
+    // 현재 스텝의 슬롯 번호
+    final slot = currentWeek * 2 + (currentStep == 0 ? 1 : 2);
+
+    // 플레이어 팀의 해당 슬롯 매치 찾기
+    ScheduleItem? playerMatch;
+    if (currentStep < 2) {
+      for (final match in schedule) {
+        if (match.roundNumber == slot &&
+            (match.homeTeamId == playerTeamId || match.awayTeamId == playerTeamId)) {
+          playerMatch = match;
+          break;
+        }
+      }
+    }
+
+    final notifier = ref.read(gameStateProvider.notifier);
+
+    if (currentStep == 2) {
+      // step 2: 개인리그
+      return (
+        label: '개인리그 ▶▶',
+        onPressed: () {
+          notifier.advanceWeekProgress();
+          _navigateToLeague(context, currentWeek);
+          notifier.save();
+        },
+        bgColor: Colors.amber,
+      );
+    } else if (playerMatch != null && !playerMatch.isCompleted) {
+      // step 0/1: 매치 있음 → 로스터 선택
+      return (
+        label: 'Next ▶▶',
+        onPressed: () => context.go('/roster-select'),
+        bgColor: Colors.amber,
+      );
+    } else {
+      // step 0/1: no match → 건너뛰기 (다른 팀 경기도 시뮬레이션)
+      return (
+        label: '경기 없음 - 건너뛰기',
+        onPressed: () {
+          notifier.skipRound(slot);
+          notifier.save();
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                currentStep == 1 ? '경기 없음 (주간 보너스 적용)' : '경기 없음',
+              ),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        },
+        bgColor: const Color(0xFF4a4a5e),
+      );
+    }
+  }
+
   Widget _buildBottomButtons(BuildContext context) {
+    final nextInfo = _getNextButtonInfo(context);
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 8.sp),
       decoration: BoxDecoration(
@@ -690,11 +792,9 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
             width: double.infinity,
             height: 44.sp,
             child: ElevatedButton(
-              onPressed: () {
-                context.go('/roster-select');
-              },
+              onPressed: nextInfo.onPressed,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber,
+                backgroundColor: nextInfo.bgColor,
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(4.sp),
@@ -704,14 +804,12 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Next',
+                    nextInfo.label,
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(width: 8.sp),
-                  Icon(Icons.double_arrow, size: 20.sp),
                 ],
               ),
             ),
@@ -766,6 +864,7 @@ class _ScheduleRowData {
   final bool isLeagueCompleted;
   final bool isCurrentWeek;
   final int weekIndex;
+  final int? currentStep; // 현재 주차일 때 0/1/2, 아니면 null
 
   _ScheduleRowData({
     this.match1,
@@ -774,6 +873,7 @@ class _ScheduleRowData {
     required this.isLeagueCompleted,
     required this.isCurrentWeek,
     required this.weekIndex,
+    this.currentStep,
   });
 }
 

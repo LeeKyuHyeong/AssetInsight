@@ -82,6 +82,10 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     if (saveData == null) return false;
 
     state = GameState(saveData: saveData);
+
+    // 기존 세이브 호환: weekProgress 마이그레이션
+    migrateWeekProgress();
+
     return true;
   }
 
@@ -425,6 +429,84 @@ class GameStateNotifier extends StateNotifier<GameState?> {
 
     // AI 팀 행동 수행
     _performAITeamActions();
+  }
+
+  /// 해당 라운드를 건너뛰기 (플레이어 경기 없을 때)
+  /// 다른 팀 경기를 시뮬레이션한 후 주간 진행도를 올림
+  void skipRound(int roundNumber) {
+    _simulateOtherMatchesInRound(roundNumber);
+    advanceWeekProgress();
+  }
+
+  /// 주간 진행도 증가 (step 0→1→2→다음주 0)
+  /// step1→2 전환 시 applyTwoMatchBonus() 자동 호출
+  void advanceWeekProgress() {
+    if (state == null) return;
+
+    final season = state!.saveData.currentSeason;
+    final newProgress = season.weekProgress + 1;
+
+    // step1→2 전환 (경기2 완료 → 개인리그 진입) 시 주간 보너스 적용
+    if (season.currentStep == 1) {
+      // 먼저 weekProgress 업데이트
+      final updatedSeason = season.copyWith(weekProgress: newProgress);
+      final newSaveData = state!.saveData.updateSeason(updatedSeason);
+      state = state!.copyWith(saveData: newSaveData);
+      // 보너스 적용
+      applyTwoMatchBonus();
+    } else {
+      final updatedSeason = season.copyWith(weekProgress: newProgress);
+      final newSaveData = state!.saveData.updateSeason(updatedSeason);
+      state = state!.copyWith(saveData: newSaveData);
+    }
+  }
+
+  /// 기존 세이브 호환: 완료된 매치 기반으로 weekProgress 자동 계산
+  void migrateWeekProgress() {
+    if (state == null) return;
+
+    final season = state!.saveData.currentSeason;
+    // 이미 weekProgress가 설정되어 있으면 스킵
+    if (season.weekProgress > 0) return;
+
+    final schedule = season.proleagueSchedule;
+    final playerTeamId = state!.saveData.playerTeamId;
+
+    // 플레이어 팀 경기를 슬롯별로 맵핑
+    final matchBySlot = <int, ScheduleItem>{};
+    for (final match in schedule) {
+      if (match.homeTeamId == playerTeamId || match.awayTeamId == playerTeamId) {
+        matchBySlot[match.roundNumber] = match;
+      }
+    }
+
+    // 각 주차의 완료 상태를 순서대로 확인하여 weekProgress 계산
+    int progress = 0;
+    for (int week = 0; week < 11; week++) {
+      final slot1 = week * 2 + 1;
+      final slot2 = week * 2 + 2;
+      final match1 = matchBySlot[slot1];
+      final match2 = matchBySlot[slot2];
+
+      // step 0 (경기1): 매치가 없거나 완료되었으면 진행
+      final step0Done = match1 == null || match1.isCompleted;
+      if (!step0Done) break;
+      progress++;
+
+      // step 1 (경기2): 매치가 없거나 완료되었으면 진행
+      final step1Done = match2 == null || match2.isCompleted;
+      if (!step1Done) break;
+      progress++;
+
+      // step 2 (개인리그): 경기1,2가 모두 완료되었으면 개인리그도 완료로 간주
+      progress++;
+    }
+
+    if (progress > 0) {
+      final updatedSeason = season.copyWith(weekProgress: progress);
+      final newSaveData = state!.saveData.updateSeason(updatedSeason);
+      state = state!.copyWith(saveData: newSaveData);
+    }
   }
 
   /// AI 팀 행동 수행 (2경기마다 호출)
@@ -933,6 +1015,9 @@ class GameStateNotifier extends StateNotifier<GameState?> {
 
     // 같은 라운드의 다른 팀 경기 시뮬레이션
     _simulateOtherMatchesInRound(match.roundNumber);
+
+    // 주간 진행도 증가
+    advanceWeekProgress();
   }
 
   /// 같은 라운드의 다른 팀 경기 시뮬레이션
@@ -1305,6 +1390,7 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       currentMatchIndex: 0,
       matchesSinceLastBonus: 0,
       phaseIndex: SeasonPhase.regularSeason.index,
+      weekProgress: 0,
     );
   }
 
