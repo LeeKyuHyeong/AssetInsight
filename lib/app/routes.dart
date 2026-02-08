@@ -161,7 +161,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/info',
         name: 'info',
-        builder: (context, state) => const InfoScreen(),
+        builder: (context, state) {
+          final teamId = state.uri.queryParameters['teamId'];
+          final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
+          return InfoScreen(initialTeamId: teamId, initialTab: tab);
+        },
       ),
       GoRoute(
         path: '/action',

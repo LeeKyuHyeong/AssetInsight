@@ -40,6 +40,9 @@ class Season {
   @HiveField(10)
   final PlayoffBracket? playoff; // 플레이오프 대진표
 
+  @HiveField(11)
+  final int weekProgress; // 슬롯 기반 진행 (week*3 + step, 0~32, 33=완료)
+
   const Season({
     required this.number,
     this.seasonMapIds = const [],
@@ -52,9 +55,15 @@ class Season {
     this.proleagueRunnerUpId,
     this.phaseIndex = 0,
     this.playoff,
+    this.weekProgress = 0,
   });
 
   SeasonPhase get phase => SeasonPhase.values[phaseIndex];
+
+  /// weekProgress 기반 헬퍼
+  int get currentWeek => weekProgress ~/ 3; // 0~10
+  int get currentStep => weekProgress % 3; // 0=경기1, 1=경기2, 2=개인리그
+  bool get isWeekProgressComplete => weekProgress >= 33;
 
   ScheduleItem? get currentMatch =>
       currentMatchIndex < proleagueSchedule.length
@@ -80,6 +89,7 @@ class Season {
       proleagueRunnerUpId: proleagueRunnerUpId,
       phaseIndex: phaseIndex,
       playoff: playoff,
+      weekProgress: weekProgress,
     );
   }
 
@@ -103,6 +113,7 @@ class Season {
       proleagueRunnerUpId: proleagueRunnerUpId,
       phaseIndex: phaseIndex,
       playoff: playoff,
+      weekProgress: weekProgress,
     );
   }
 
@@ -120,6 +131,7 @@ class Season {
       proleagueRunnerUpId: proleagueRunnerUpId,
       phaseIndex: phaseIndex,
       playoff: playoff,
+      weekProgress: weekProgress,
     );
   }
 
@@ -137,6 +149,7 @@ class Season {
       proleagueRunnerUpId: runnerUpId,
       phaseIndex: SeasonPhase.seasonEnd.index,
       playoff: playoff,
+      weekProgress: weekProgress,
     );
   }
 
@@ -154,6 +167,7 @@ class Season {
       proleagueRunnerUpId: proleagueRunnerUpId,
       phaseIndex: newPhase.index,
       playoff: playoff,
+      weekProgress: weekProgress,
     );
   }
 
@@ -171,6 +185,7 @@ class Season {
       proleagueRunnerUpId: proleagueRunnerUpId,
       phaseIndex: phaseIndex,
       playoff: newPlayoff,
+      weekProgress: weekProgress,
     );
   }
 
@@ -190,6 +205,7 @@ class Season {
     String? proleagueRunnerUpId,
     int? phaseIndex,
     PlayoffBracket? playoff,
+    int? weekProgress,
   }) {
     return Season(
       number: number ?? this.number,
@@ -203,6 +219,7 @@ class Season {
       proleagueRunnerUpId: proleagueRunnerUpId ?? this.proleagueRunnerUpId,
       phaseIndex: phaseIndex ?? this.phaseIndex,
       playoff: playoff ?? this.playoff,
+      weekProgress: weekProgress ?? this.weekProgress,
     );
   }
 }

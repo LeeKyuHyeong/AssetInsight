@@ -2831,6 +2831,38 @@ class BuildOrderData {
     BuildStep(line: 0, text: '{player} 선수 게이트웨이 추가 건설!', stat: 'macro', myArmy: 2, myResource: -20),
   ];
 
+  // ==================== 유닛 키워드 필터링 ====================
+
+  /// 빌드 스텝 텍스트에서 매칭할 유닛 키워드 목록
+  static const _unitKeywords = [
+    '드라군', '리버', '캐리어', '아비터', '다크템플러', '하이템플러', '아칸', '커세어', '코르세어', '셔틀',
+    '시즈', '탱크', '벌처', '골리앗', '베슬', '드랍십', '발키리', '배틀크루저', '마인',
+    '뮤탈', '럴커', '히드라', '울트라', '디파일러', '가디언', '스커지', '디보러', '퀸',
+  ];
+
+  /// 빌드의 스텝 텍스트에서 유닛 키워드를 추출
+  static Set<String> extractUnitTags(BuildOrder build) {
+    final tags = <String>{};
+    for (final step in build.steps) {
+      for (final keyword in _unitKeywords) {
+        if (step.text.contains(keyword)) {
+          tags.add(keyword);
+        }
+      }
+    }
+    return tags;
+  }
+
+  /// 이벤트 텍스트에 유닛 키워드가 포함되어 있으면, 해당 유닛이 availableUnits에 있어야 통과
+  static bool _eventTextMatchesUnits(String text, Set<String> availableUnits) {
+    for (final keyword in _unitKeywords) {
+      if (text.contains(keyword) && !availableUnits.contains(keyword)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// 중후반 이벤트 가져오기 (빌드 스텝이 없을 때 사용)
   /// [race] 종족 (T, Z, P)에 따라 종족 특화 이벤트 추가
   /// [rushDistance] 러시 거리 (짧으면 교전 이벤트 증가)
@@ -2845,6 +2877,7 @@ class BuildOrderData {
     int? resources,
     int? terrainComplexity,
     Random? random,
+    Set<String>? availableUnits,
   }) {
     final rng = random ?? Random();
 
@@ -2919,6 +2952,17 @@ class BuildOrderData {
       candidates.addAll(raceEvents); // 종족 이벤트 추가
       candidates.addAll(raceEvents);
       candidates.addAll(raceEvents); // 후반엔 종족 특화 3배
+    }
+
+    // 유닛 키워드 필터링: 빌드에 없는 유닛 관련 이벤트 제거
+    if (availableUnits != null) {
+      candidates.removeWhere((s) => !_eventTextMatchesUnits(s.text, availableUnits));
+    }
+
+    // 필터링 후 후보가 없으면 범용 이벤트(neutralEvents)에서 선택
+    if (candidates.isEmpty) {
+      candidates.addAll(neutralEvents);
+      candidates.addAll(productionEvents);
     }
 
     // 랜덤 선택
@@ -3010,6 +3054,7 @@ class BuildOrderData {
     int? defenderSense,
     BuildType? attackerBuildType,
     BuildType? defenderBuildType,
+    Set<String>? availableUnits,
   }) {
     final baseEvents = <ClashEvent>[];
 
@@ -3210,6 +3255,11 @@ class BuildOrderData {
     baseEvents.addAll(epicMomentEvents);
     baseEvents.addAll(tensionEvents);
     baseEvents.addAll(amazingPlayEvents);
+
+    // 유닛 키워드 필터링: 빌드에 없는 유닛 관련 이벤트 제거
+    if (availableUnits != null) {
+      baseEvents.removeWhere((e) => !_eventTextMatchesUnits(e.text, availableUnits));
+    }
 
     return baseEvents;
   }

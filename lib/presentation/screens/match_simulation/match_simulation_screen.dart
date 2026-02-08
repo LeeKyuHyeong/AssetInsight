@@ -8,6 +8,7 @@ import '../../../data/providers/game_provider.dart';
 import '../../../data/providers/match_provider.dart';
 import '../../../domain/models/models.dart';
 import '../../../domain/services/match_simulation_service.dart';
+import '../../../core/constants/map_data.dart';
 import '../../widgets/reset_button.dart';
 
 /// 경기 진행 단계
@@ -1484,6 +1485,7 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
 
   Widget _buildAceSelectionScreen(GameState gameState, CurrentMatchState matchState) {
     final teamPlayers = gameState.playerTeamPlayers;
+    final aceMap = _getCurrentMap();
 
     return Scaffold(
       appBar: AppBar(
@@ -1515,6 +1517,9 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
               ],
             ),
           ),
+
+          // 맵 정보
+          if (aceMap != null) _buildAceMapInfo(aceMap),
 
           // 선수 목록
           Expanded(
@@ -1574,6 +1579,121 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAceMapInfo(GameMap aceMap) {
+    final mapData = getMapByName(aceMap.name);
+    final imageFile = mapData?.imageFile ?? '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBackground,
+        border: Border(
+          bottom: BorderSide(color: Colors.orange.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Row(
+        children: [
+          // 맵 썸네일
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: imageFile.isEmpty
+                  ? const Icon(Icons.map, size: 30, color: AppTheme.textSecondary)
+                  : Image.asset(
+                      'assets/maps/$imageFile',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.map, size: 30, color: AppTheme.textSecondary),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 맵 정보
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  aceMap.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // 러시/자원/복잡
+                Row(
+                  children: [
+                    _aceMapStat('러시', aceMap.rushDistance),
+                    const SizedBox(width: 12),
+                    _aceMapStat('자원', aceMap.resources),
+                    const SizedBox(width: 12),
+                    _aceMapStat('복잡', aceMap.complexity),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // 종족 상성
+                Row(
+                  children: [
+                    _aceMatchupChip('T:Z', aceMap.matchup.tvzTerranWinRate),
+                    const SizedBox(width: 8),
+                    _aceMatchupChip('Z:P', aceMap.matchup.zvpZergWinRate),
+                    const SizedBox(width: 8),
+                    _aceMatchupChip('P:T', aceMap.matchup.pvtProtossWinRate),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _aceMapStat(String label, int value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label ',
+          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+        ),
+        Text(
+          '$value',
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+        ),
+      ],
+    );
+  }
+
+  Widget _aceMatchupChip(String label, int winRate) {
+    final color = winRate > 52
+        ? Colors.greenAccent
+        : winRate < 48
+            ? Colors.redAccent
+            : AppTheme.textSecondary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label ',
+          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+        ),
+        Text(
+          '$winRate%',
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+        ),
+      ],
     );
   }
 }

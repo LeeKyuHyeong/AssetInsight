@@ -58,23 +58,12 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                 // 상단 헤더
                 _buildHeader(context),
 
-                // 메인 컨텐츠
-                Expanded(
-                  child: Row(
-                    children: [
-                      // 좌측: 현재 순위 + 선택된 팀 로고
-                      Expanded(
-                        flex: 1,
-                        child: _buildLeftPanel(playerTeam, sortedTeams),
-                      ),
+                // 상단: 선택된 팀 현재 순위
+                _buildTopRankBox(playerTeam, sortedTeams),
 
-                      // 우측: 순위표
-                      Expanded(
-                        flex: 2,
-                        child: _buildRankingList(sortedTeams),
-                      ),
-                    ],
-                  ),
+                // 하단: 전체 순위표 (전체 가로 사용)
+                Expanded(
+                  child: _buildRankingList(sortedTeams),
                 ),
 
                 // 하단 버튼
@@ -150,41 +139,62 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
     );
   }
 
-  Widget _buildLeftPanel(Team playerTeam, List<Team> sortedTeams) {
-    // 선택된 팀 또는 플레이어 팀
+  Widget _buildTopRankBox(Team playerTeam, List<Team> sortedTeams) {
     final displayTeam = _selectedTeamId != null
         ? sortedTeams.firstWhere((t) => t.id == _selectedTeamId, orElse: () => playerTeam)
         : playerTeam;
 
     final rank = sortedTeams.indexWhere((t) => t.id == displayTeam.id) + 1;
+    final setDiff = displayTeam.seasonRecord.setWins - displayTeam.seasonRecord.setLosses;
 
     return Container(
-      padding: EdgeInsets.all(24.sp),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      margin: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 8.sp),
+      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 10.sp),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(10.sp),
+        border: Border.all(
+          color: _getRankColor(rank).withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
         children: [
-          Text(
-            '현재 순위 >>',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18.sp,
+          // 순위 배지
+          Container(
+            width: 40.sp,
+            height: 40.sp,
+            decoration: BoxDecoration(
+              color: _getRankColor(rank).withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(color: _getRankColor(rank)),
+            ),
+            child: Center(
+              child: Text(
+                '$rank',
+                style: TextStyle(
+                  color: _getRankColor(rank),
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
 
-          SizedBox(height: 32.sp),
+          SizedBox(width: 12.sp),
 
           // 팀 로고
           Container(
-            width: 140.sp,
-            height: 100.sp,
+            width: 48.sp,
+            height: 34.sp,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12.sp),
+              borderRadius: BorderRadius.circular(6.sp),
               boxShadow: [
                 BoxShadow(
-                  color: Color(displayTeam.colorValue).withValues(alpha: 0.5),
-                  blurRadius: 20,
-                  spreadRadius: 2,
+                  color: Color(displayTeam.colorValue).withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  spreadRadius: 1,
                 ),
               ],
             ),
@@ -193,53 +203,46 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                 displayTeam.shortName,
                 style: TextStyle(
                   color: Color(displayTeam.colorValue),
-                  fontSize: 32.sp,
+                  fontSize: 14.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
 
-          SizedBox(height: 20.sp),
+          SizedBox(width: 12.sp),
 
           // 팀명
-          Text(
-            displayTeam.name,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          SizedBox(height: 12.sp),
-
-          // 순위
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 8.sp),
-            decoration: BoxDecoration(
-              color: _getRankColor(rank).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20.sp),
-              border: Border.all(color: _getRankColor(rank)),
-            ),
+          Expanded(
             child: Text(
-              '$rank위',
+              displayTeam.name,
               style: TextStyle(
-                color: _getRankColor(rank),
-                fontSize: 24.sp,
+                color: Colors.white,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.bold,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-
-          SizedBox(height: 16.sp),
 
           // 전적
           Text(
             '${displayTeam.seasonRecord.wins}W ${displayTeam.seasonRecord.losses}L',
             style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14.sp,
+              color: Colors.white,
+              fontSize: 12.sp,
+            ),
+          ),
+
+          SizedBox(width: 12.sp),
+
+          // 세트 득실
+          Text(
+            setDiff >= 0 ? '+$setDiff' : '$setDiff',
+            style: TextStyle(
+              color: setDiff > 0 ? Colors.green : setDiff < 0 ? Colors.red : Colors.grey,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -260,8 +263,8 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
     final playerTeamId = gameState?.playerTeam.id ?? '';
 
     return Container(
-      margin: EdgeInsets.all(16.sp),
-      padding: EdgeInsets.all(16.sp),
+      margin: EdgeInsets.symmetric(horizontal: 12.sp),
+      padding: EdgeInsets.symmetric(horizontal: 8.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12.sp),
@@ -278,12 +281,12 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
             ),
             child: Row(
               children: [
-                SizedBox(width: 50.sp, child: _headerText('순위')),
-                SizedBox(width: 50.sp, child: _headerText('팀')),
-                Expanded(child: _headerText('팀명')),
-                SizedBox(width: 40.sp, child: _headerText('W')),
-                SizedBox(width: 40.sp, child: _headerText('L')),
-                SizedBox(width: 60.sp, child: _headerText('득실')),
+                SizedBox(width: 30.sp, child: _headerText('#')),
+                SizedBox(width: 40.sp, child: _headerText('로고')),
+                Expanded(child: Align(alignment: Alignment.centerLeft, child: _headerText('팀명'))),
+                SizedBox(width: 32.sp, child: _headerText('W')),
+                SizedBox(width: 32.sp, child: _headerText('L')),
+                SizedBox(width: 50.sp, child: _headerText('득실')),
               ],
             ),
           ),
@@ -327,7 +330,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                       children: [
                         // 순위
                         SizedBox(
-                          width: 50.sp,
+                          width: 30.sp,
                           child: Text(
                             '$rank',
                             style: TextStyle(
@@ -340,10 +343,10 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                         ),
                         // 팀 로고
                         SizedBox(
-                          width: 50.sp,
+                          width: 40.sp,
                           child: Container(
-                            width: 36.sp,
-                            height: 28.sp,
+                            width: 34.sp,
+                            height: 24.sp,
                             decoration: BoxDecoration(
                               color: Color(team.colorValue).withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4.sp),
@@ -353,7 +356,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                                 team.shortName,
                                 style: TextStyle(
                                   color: Color(team.colorValue),
-                                  fontSize: 10.sp,
+                                  fontSize: 9.sp,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -362,19 +365,22 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                         ),
                         // 팀명
                         Expanded(
-                          child: Text(
-                            team.name,
-                            style: TextStyle(
-                              color: isMyTeam ? Colors.amber : Colors.white,
-                              fontSize: 12.sp,
-                              fontWeight: isMyTeam ? FontWeight.bold : FontWeight.normal,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: 4.sp),
+                            child: Text(
+                              team.name,
+                              style: TextStyle(
+                                color: isMyTeam ? Colors.amber : Colors.white,
+                                fontSize: 12.sp,
+                                fontWeight: isMyTeam ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         // 승
                         SizedBox(
-                          width: 40.sp,
+                          width: 32.sp,
                           child: Text(
                             '${team.seasonRecord.wins}',
                             style: TextStyle(color: Colors.white, fontSize: 12.sp),
@@ -383,7 +389,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                         ),
                         // 패
                         SizedBox(
-                          width: 40.sp,
+                          width: 32.sp,
                           child: Text(
                             '${team.seasonRecord.losses}',
                             style: TextStyle(color: Colors.white, fontSize: 12.sp),
@@ -392,7 +398,7 @@ class _TeamRankingScreenState extends ConsumerState<TeamRankingScreen> {
                         ),
                         // 세트 득실
                         SizedBox(
-                          width: 60.sp,
+                          width: 50.sp,
                           child: Text(
                             setDiff >= 0 ? '+$setDiff' : '$setDiff',
                             style: TextStyle(

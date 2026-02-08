@@ -19,21 +19,29 @@ class _SeasonMapDrawScreenState extends ConsumerState<SeasonMapDrawScreen> {
   @override
   void initState() {
     super.initState();
-    // 2012 S1 시즌맵풀 로드 (첫번째는 리그 평균용 placeholder)
+    // 2012 S1 시즌맵풀 로드 (첫번째는 리그 평균)
     final mapPool = seasonMapPools['2012_S1'] ?? [];
+    final actualMaps = mapPool.map((name) => getMapByName(name)).whereType<MapData>().take(7).toList();
+
+    // 7개 맵 평균 계산
+    final avgRush = actualMaps.isEmpty ? 0.5 : actualMaps.map((m) => m.rushDistance).reduce((a, b) => a + b) / actualMaps.length;
+    final avgRes = actualMaps.isEmpty ? 0.5 : actualMaps.map((m) => m.resources).reduce((a, b) => a + b) / actualMaps.length;
+    final avgComp = actualMaps.isEmpty ? 0.5 : actualMaps.map((m) => m.complexity).reduce((a, b) => a + b) / actualMaps.length;
+    final avgTvz = actualMaps.isEmpty ? 50 : (actualMaps.map((m) => m.tvz).reduce((a, b) => a + b) / actualMaps.length).round();
+    final avgZvp = actualMaps.isEmpty ? 50 : (actualMaps.map((m) => m.zvp).reduce((a, b) => a + b) / actualMaps.length).round();
+    final avgPvt = actualMaps.isEmpty ? 50 : (actualMaps.map((m) => m.pvt).reduce((a, b) => a + b) / actualMaps.length).round();
+
     _seasonMaps = [
-      // 리그 평균 (placeholder)
-      const MapData(
+      MapData(
         name: '리그 평균',
         imageFile: '',
-        rushDistance: 0.5,
-        resources: 0.5,
-        complexity: 0.5,
-        tvz: 50, zvp: 50, pvt: 50,
-        description: '전체 맵풀 평균',
+        rushDistance: avgRush,
+        resources: avgRes,
+        complexity: avgComp,
+        tvz: avgTvz, zvp: avgZvp, pvt: avgPvt,
+        description: '7개 시즌맵 평균 상성',
       ),
-      // 실제 시즌맵들
-      ...mapPool.map((name) => getMapByName(name)).whereType<MapData>().take(7),
+      ...actualMaps,
     ];
   }
 

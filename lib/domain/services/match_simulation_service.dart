@@ -335,6 +335,11 @@ class MatchSimulationService {
       preferredStyle: awayStyle,
     );
 
+    // 빌드 스텝에서 유닛 키워드 추출 (이벤트 필터링용)
+    final homeUnitTags = homeBuild != null ? BuildOrderData.extractUnitTags(homeBuild) : <String>{};
+    final awayUnitTags = awayBuild != null ? BuildOrderData.extractUnitTags(awayBuild) : <String>{};
+    final combinedUnitTags = homeUnitTags.union(awayUnitTags);
+
     // 세부 빌드 타입 결정
     final matchup = '${homeRace}v$awayRace';
     final homeBuildType = _determineBuildType(homeStats, matchup, homeStyle);
@@ -468,6 +473,7 @@ class MatchSimulationService {
               map: map,
               homeBuildType: homeBuildType,
               awayBuildType: awayBuildType,
+              combinedUnitTags: combinedUnitTags,
             );
             // 미사용 텍스트면 바로 채택
             if ((usedTexts[clashResult.text] ?? 0) == 0 || clashResult.decisive) {
@@ -629,6 +635,7 @@ class MatchSimulationService {
               resources: map.resources,
               terrainComplexity: map.terrainComplexity,
               random: _random,
+              availableUnits: isHomeTurn ? homeUnitTags : awayUnitTags,
             );
             final candidateText = _transformEnding(candidate.text.replaceAll('{player}', player.name));
             // 미사용 텍스트 우선
@@ -835,11 +842,11 @@ class MatchSimulationService {
     ]),
     _InteractionRule(triggerPattern: RegExp(r'질럿|드라군'), triggerRace: 'P', reactorRace: 'Z', reactions: [
       '{reactor} 선수 저글링으로 견제 나갑니다.',
-      '{reactor} 선수 히드라 생산 시작!',
+      '{reactor} 선수 선큰 올려서 방어 준비!',
     ]),
     _InteractionRule(triggerPattern: RegExp(r'캐리어|모선'), triggerRace: 'P', reactorRace: 'Z', reactions: [
       '{reactor} 선수 스커지 서둘러 모읍니다!',
-      '{reactor} 선수 히드라리스크 대량 생산!',
+      '{reactor} 선수 히드라리스크로 대공 준비!',
     ]),
 
     // 저그 → 테란 반응
@@ -1162,6 +1169,7 @@ class MatchSimulationService {
     GameMap? map,
     BuildType? homeBuildType,
     BuildType? awayBuildType,
+    Set<String>? combinedUnitTags,
   }) {
     final clashDuration = lineCount - clashStartLine;
     final isZvZ = homePlayer.race == Race.zerg && awayPlayer.race == Race.zerg;
@@ -1252,6 +1260,7 @@ class MatchSimulationService {
       defenderSense: defenderStats.sense,
       attackerBuildType: isHomeAttacker ? homeBuildType : awayBuildType,
       defenderBuildType: isHomeAttacker ? awayBuildType : homeBuildType,
+      availableUnits: combinedUnitTags,
     );
 
     // 가중치 기반 이벤트 선택

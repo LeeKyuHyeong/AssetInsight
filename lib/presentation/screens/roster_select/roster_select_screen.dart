@@ -532,11 +532,6 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   Widget _buildPlayerDetailCompact(Player player, bool isMyTeam) {
     final condition = player.displayCondition;
     final stats = player.stats;
-    final statLabels = ['센스', '컨트롤', '공격', '견제', '전략', '물량', '수비', '정찰'];
-    final statValues = [
-      stats.sense, stats.control, stats.attack, stats.harass,
-      stats.strategy, stats.macro, stats.defense, stats.scout,
-    ];
 
     return Container(
       padding: const EdgeInsets.all(4),
@@ -595,25 +590,14 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          // 8각형 레이더 차트 (정사각형 크기 보장)
+          // 8각형 레이더 차트 (능력치 숫자 포함)
           SizedBox(
-            width: 110,
-            height: 110,
+            width: 130,
+            height: 130,
             child: CustomPaint(
-              size: const Size(110, 110),
+              size: const Size(130, 130),
               painter: _RadarChartPainter(stats),
             ),
-          ),
-          const SizedBox(height: 2),
-          // 능력치 수치 2행 4열
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: List.generate(4, (i) => _StatLabel(label: statLabels[i], value: statValues[i])),
-          ),
-          const SizedBox(height: 2),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: List.generate(4, (i) => _StatLabel(label: statLabels[i + 4], value: statValues[i + 4])),
           ),
         ],
       ),
@@ -832,30 +816,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   }
 }
 
-/// 능력치 라벨 (이름 + 수치)
-class _StatLabel extends StatelessWidget {
-  final String label;
-  final int value;
-
-  const _StatLabel({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 32,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 7, color: AppTheme.textSecondary)),
-          const SizedBox(width: 2),
-          Text('$value', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-}
-
-/// 8각형 레이더 차트 페인터
+/// 8각형 레이더 차트 페인터 (라벨 + 수치 통합)
 class _RadarChartPainter extends CustomPainter {
   final PlayerStats stats;
 
@@ -864,19 +825,14 @@ class _RadarChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width, size.height) / 2 - 8;
+    final radius = min(size.width, size.height) / 2 - 18;
 
     // 8개 능력치
-    final values = [
-      stats.sense / 1000,
-      stats.control / 1000,
-      stats.attack / 1000,
-      stats.harass / 1000,
-      stats.strategy / 1000,
-      stats.macro / 1000,
-      stats.defense / 1000,
-      stats.scout / 1000,
+    final rawValues = [
+      stats.sense, stats.control, stats.attack, stats.harass,
+      stats.strategy, stats.macro, stats.defense, stats.scout,
     ];
+    final values = rawValues.map((v) => v / 1000).toList();
 
     final labels = ['센스', '컨트롤', '공격', '견제', '전략', '물량', '수비', '정찰'];
 
@@ -930,17 +886,33 @@ class _RadarChartPainter extends CustomPainter {
     canvas.drawPath(dataPath, dataPaint);
     canvas.drawPath(dataPath, borderPaint);
 
-    // 라벨
-    final textStyle = TextStyle(color: AppTheme.textSecondary, fontSize: 7);
+    // 라벨 + 수치
+    final labelStyle = TextStyle(color: AppTheme.textSecondary, fontSize: 7);
+    final valueStyle = TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold);
     for (var i = 0; i < 8; i++) {
       final angle = (i * 45 - 90) * pi / 180;
-      final x = center.dx + (radius + 10) * cos(angle);
-      final y = center.dy + (radius + 10) * sin(angle);
+      final labelR = radius + 14;
+      final x = center.dx + labelR * cos(angle);
+      final y = center.dy + labelR * sin(angle);
 
-      final textSpan = TextSpan(text: labels[i], style: textStyle);
-      final textPainter = TextPainter(text: textSpan, textDirection: TextDirection.ltr);
-      textPainter.layout();
-      textPainter.paint(canvas, Offset(x - textPainter.width / 2, y - textPainter.height / 2));
+      // 라벨 텍스트
+      final labelSpan = TextSpan(text: labels[i], style: labelStyle);
+      final labelPainter = TextPainter(text: labelSpan, textDirection: TextDirection.ltr);
+      labelPainter.layout();
+
+      // 수치 텍스트
+      final valueSpan = TextSpan(text: '${rawValues[i]}', style: valueStyle);
+      final valuePainter = TextPainter(text: valueSpan, textDirection: TextDirection.ltr);
+      valuePainter.layout();
+
+      // 라벨과 수치를 위아래로 배치
+      final totalHeight = labelPainter.height + valuePainter.height;
+      final labelX = x - labelPainter.width / 2;
+      final valueX = x - valuePainter.width / 2;
+      final baseY = y - totalHeight / 2;
+
+      labelPainter.paint(canvas, Offset(labelX, baseY));
+      valuePainter.paint(canvas, Offset(valueX, baseY + labelPainter.height));
     }
   }
 

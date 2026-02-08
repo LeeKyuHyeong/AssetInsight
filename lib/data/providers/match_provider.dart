@@ -147,18 +147,22 @@ class CurrentMatchNotifier extends StateNotifier<CurrentMatchState?> {
     final finalHomeRoster = homeRoster ?? _generateOpponentRoster(homeTeamId);
     final finalAwayRoster = awayRoster ?? _generateOpponentRoster(awayTeamId);
 
-    // AI 스나이핑 생성 (상대팀이 AI인 경우)
+    // AI 스나이핑 생성 (상대팀이 AI인 경우, 조지명식 이후부터)
     List<SnipingAssignment> finalHomeSniping = homeSnipingAssignments ?? const [];
     List<SnipingAssignment> finalAwaySniping = awaySnipingAssignments ?? const [];
 
-    if (isPlayerHome) {
+    final individualLeague = gameState?.currentSeason.individualLeague;
+    final isAfterGroupDraw = individualLeague != null &&
+        individualLeague.mainTournamentPlayers.isNotEmpty;
+
+    if (isPlayerHome && isAfterGroupDraw) {
       // 플레이어가 홈이면 AI는 어웨이
       finalAwaySniping = _generateAISniping(
         aiRoster: finalAwayRoster,
         opponentRoster: finalHomeRoster,
         gameState: gameState,
       );
-    } else {
+    } else if (!isPlayerHome && isAfterGroupDraw) {
       // 플레이어가 어웨이면 AI는 홈
       finalHomeSniping = _generateAISniping(
         aiRoster: finalHomeRoster,
