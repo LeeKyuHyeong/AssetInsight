@@ -21,12 +21,15 @@ class ConsumableItem {
   @HiveField(4)
   final bool isPurchasable; // 구매 가능 여부 (치어풀은 비매품)
 
+  final int purchaseQuantity; // 1회 구매 시 획득 수량
+
   const ConsumableItem({
     required this.id,
     required this.name,
     required this.description,
     required this.price,
     this.isPurchasable = true,
+    this.purchaseQuantity = 1,
   });
 }
 
@@ -44,6 +47,7 @@ class ConsumableItems {
     name: '츄잉껌',
     description: '패배 시 능력치 감소 -66%',
     price: 5,
+    purchaseQuantity: 3,
   );
 
   static const ceremony = ConsumableItem(
@@ -58,6 +62,7 @@ class ConsumableItems {
     name: '스나이핑',
     description: '내 선수에게 사용, 상대 선수 예측 성공 시 승률 +20%',
     price: 5,
+    purchaseQuantity: 2,
   );
 
   static const cheerful = ConsumableItem(

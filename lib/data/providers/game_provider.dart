@@ -241,14 +241,14 @@ class GameStateNotifier extends StateNotifier<GameState?> {
   }
 
   /// 아이템 구매
-  bool buyItem(String itemId, int price) {
+  bool buyItem(String itemId, int price, {int quantity = 1}) {
     if (state == null) return false;
 
     final team = state!.playerTeam;
     if (team.money < price) return false;
 
     final updatedTeam = team.spendMoney(price);
-    final updatedInventory = state!.inventory.addConsumable(itemId);
+    final updatedInventory = state!.inventory.addConsumable(itemId, quantity);
 
     updateTeam(updatedTeam);
     updateInventory(updatedInventory);

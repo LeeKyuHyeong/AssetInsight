@@ -290,7 +290,7 @@ class BattleEventsData {
     BattleEvent(text: '양측 멀티 경쟁이 치열합니다!', myResource: 10, enemyResource: 10),
     BattleEvent(text: '{player}, 상대 앞마당 압박!', stat: 'attack', myArmy: -8, enemyArmy: -10, enemyResource: -20),
     BattleEvent(text: '{player} 선수 상대 앞마당 파괴!', stat: 'attack', myArmy: -5, enemyArmy: -10, enemyResource: -40),
-    BattleEvent(text: '{player}, 아콘 합체!', stat: 'strategy', myArmy: 8),
+    BattleEvent(text: '{player}, 아칸 합체!', stat: 'strategy', myArmy: 8),
   ];
 
   static const pvtLate = [
@@ -306,13 +306,13 @@ class BattleEventsData {
     BattleEvent(text: '{player} 선수 치열한 물량 싸움!', stat: 'control', myArmy: -15, myResource: -20, enemyArmy: -15, enemyResource: -20),
     BattleEvent(text: '{player}, 멀티 동시 견제!', stat: 'harass', myArmy: -5, enemyResource: -40),
     BattleEvent(text: '{player} 선수 자원 우위 가져갑니다!', stat: 'macro', myResource: 30),
-    BattleEvent(text: '{player}, 하이템플러 머지! 아콘 완성!', stat: 'strategy', myArmy: 8),
+    BattleEvent(text: '{player}, 하이템플러 머지! 아칸 완성!', stat: 'strategy', myArmy: 8),
     BattleEvent(text: '{player} 선수 사이오닉 스톰 난무! 바이오닉 초토화!', stat: 'control', enemyArmy: -18),
     BattleEvent(text: '{player}, 스테이시스 필드로 병력 분리!', stat: 'strategy', enemyArmy: -8),
     BattleEvent(text: '{player}, 최종 공세 시작!', stat: 'attack', myArmy: -10, enemyArmy: -20),
     BattleEvent(text: '{player} 선수 테란 본진 진입!', stat: 'attack', myArmy: -5, enemyArmy: -15, enemyResource: -30),
     BattleEvent(text: '{player}, 테란 본진 초토화!', stat: 'attack', myArmy: -3, enemyArmy: -20, enemyResource: -50, decisive: true),
-    BattleEvent(text: '{player} 선수 스톰 아콘으로 완벽한 승리!', decisive: true),
+    BattleEvent(text: '{player} 선수 스톰 아칸으로 완벽한 승리!', decisive: true),
     BattleEvent(text: '양측 고급 유닛 소모가 심합니다!', myResource: -5, enemyResource: -5),
     BattleEvent(text: '{player}, 캐리어 함대로 최종 진격!', stat: 'macro', myArmy: -10, enemyArmy: -30),
     BattleEvent(text: '{player} 선수 테란 멀티 전부 파괴!', decisive: true),
@@ -419,7 +419,7 @@ class BattleEventsData {
     BattleEvent(text: '양측 멀티 경쟁이 치열합니다!', myResource: 10, enemyResource: 10),
     BattleEvent(text: '{player}, 상대 해처리 압박!', stat: 'attack', myArmy: -8, enemyArmy: -10, enemyResource: -20),
     BattleEvent(text: '{player} 선수 상대 앞마당 파괴!', stat: 'attack', myArmy: -5, enemyArmy: -10, enemyResource: -40),
-    BattleEvent(text: '{player}, 아콘 합체!', stat: 'strategy', myArmy: 8),
+    BattleEvent(text: '{player}, 아칸 합체!', stat: 'strategy', myArmy: 8),
   ];
 
   static const pvzLate = [
@@ -436,13 +436,13 @@ class BattleEventsData {
     BattleEvent(text: '{player} 선수 멀티 동시 견제!', stat: 'harass', myArmy: -5, enemyResource: -40),
     BattleEvent(text: '{player}, 자원 우위 가져갑니다!', stat: 'macro', myResource: 30),
     BattleEvent(text: '{player} 선수 스톰으로 히드라 무리 초토화!', stat: 'control', enemyArmy: -18),
-    BattleEvent(text: '{player}, 하이템플러 머지! 아콘 돌진!', stat: 'strategy', myArmy: 8, enemyArmy: -5),
+    BattleEvent(text: '{player}, 하이템플러 머지! 아칸 돌진!', stat: 'strategy', myArmy: 8, enemyArmy: -5),
     BattleEvent(text: '{player} 선수 최종 공세 시작!', stat: 'attack', myArmy: -10, enemyArmy: -20),
     BattleEvent(text: '{player}, 저그 본진 진입!', stat: 'attack', myArmy: -5, enemyArmy: -15, enemyResource: -30),
     BattleEvent(text: '{player} 선수 저그 본진 초토화!', stat: 'attack', myArmy: -3, enemyArmy: -20, enemyResource: -50, decisive: true),
     BattleEvent(text: '{player} 선수 스톰 리콜로 완벽한 승리!', decisive: true),
     BattleEvent(text: '후반 가스 부족! 양측 인터셉터도 줄어듭니다!', myResource: -5, enemyResource: -5),
-    BattleEvent(text: '{player}, 아콘 드라군으로 저그 멀티 전부 파괴!', stat: 'macro', myArmy: -10, enemyArmy: -30),
+    BattleEvent(text: '{player}, 아칸 드라군으로 저그 멀티 전부 파괴!', stat: 'macro', myArmy: -10, enemyArmy: -30),
     BattleEvent(text: '{player} 선수 저그 본진 함락!', decisive: true),
   ];
 
@@ -530,7 +530,7 @@ class BattleEventsData {
     BattleEvent(text: '{player}, 선풀 저글링 압박!', stat: 'attack', myArmy: -5, enemyArmy: -10, enemyResource: -20),
     BattleEvent(text: '양 선수 초반 저글링전 치열합니다!', myArmy: -3, enemyArmy: -3),
     BattleEvent(text: '{player} 선수 초반 올인 성공!', stat: 'attack', myArmy: -5, enemyArmy: -30, enemyResource: -50, decisive: true),
-    BattleEvent(text: '{player} 선수 선큰 건설! 저글링 방어 준비!', stat: 'defense', myResource: -10),
+    BattleEvent(text: '{player} 선수 성큰 건설! 저글링 방어 준비!', stat: 'defense', myResource: -10),
     BattleEvent(text: '{player}, 익스트랙터 트릭으로 저글링 한 마리 더!', stat: 'sense', myArmy: 1),
     BattleEvent(text: '{player} 선수 저글링 서라운드! 상대 일꾼 차단!', stat: 'control', enemyResource: -15),
   ];
@@ -555,8 +555,8 @@ class BattleEventsData {
     BattleEvent(text: '{player}, 뮤탈 히트앤런으로 해처리 견제!', stat: 'harass', enemyResource: -20),
     BattleEvent(text: '{player} 선수 스커지 매복! 뮤탈 기습!', stat: 'sense', myArmy: -3, enemyArmy: -8),
     BattleEvent(text: '{player}, 저글링으로 멀티 해처리 급습!', stat: 'attack', myArmy: -4, enemyResource: -30),
-    BattleEvent(text: '{player} 선수 선큰 라인 구축! 철벽 수비!', stat: 'defense', myResource: -15),
-    BattleEvent(text: '{player}, 가디언으로 선큰 제거!', stat: 'strategy', myArmy: -2, enemyArmy: -5),
+    BattleEvent(text: '{player} 선수 성큰 라인 구축! 철벽 수비!', stat: 'defense', myResource: -15),
+    BattleEvent(text: '{player}, 가디언으로 성큰 제거!', stat: 'strategy', myArmy: -2, enemyArmy: -5),
   ];
 
   static const zvzLate = [
@@ -576,7 +576,7 @@ class BattleEventsData {
     BattleEvent(text: '{player}, 가디언 물량으로 상대 해처리 전부 파괴!', stat: 'macro', myArmy: -10, enemyArmy: -30),
     BattleEvent(text: '{player} 선수 상대 해처리 전부 파괴!', decisive: true),
     BattleEvent(text: '{player}, 디파일러 다크스웜으로 저글링 돌격!', stat: 'strategy', myArmy: -8, enemyArmy: -12),
-    BattleEvent(text: '{player} 선수 가디언 편대로 선큰 라인 파괴!', stat: 'attack', myArmy: -3, enemyArmy: -10),
+    BattleEvent(text: '{player} 선수 가디언 편대로 성큰 라인 파괴!', stat: 'attack', myArmy: -3, enemyArmy: -10),
     BattleEvent(text: '{player}, 디바우러로 뮤탈 제공권 장악!', stat: 'control', myArmy: 5, myResource: -20, enemyArmy: -8),
   ];
 
@@ -613,12 +613,12 @@ class BattleEventsData {
     BattleEvent(text: '{player} 선수 하이템플러 생산!', myArmy: 3, myResource: -15),
     BattleEvent(text: '{player}, 사이오닉 스톰!', stat: 'strategy', enemyArmy: -20),
     BattleEvent(text: '{player} 선수 스톰에 드라군 피해!', stat: 'sense', myArmy: -15),
-    BattleEvent(text: '{player}, 아콘 합체!', stat: 'strategy', myArmy: 8),
+    BattleEvent(text: '{player}, 아칸 합체!', stat: 'strategy', myArmy: 8),
     BattleEvent(text: '{player} 선수 3번째 넥서스 확장!', stat: 'macro', myResource: -40),
     BattleEvent(text: '양측 멀티 경쟁이 치열합니다!', myResource: 10, enemyResource: 10),
     BattleEvent(text: '{player}, 상대 앞마당 압박!', stat: 'attack', myArmy: -8, enemyArmy: -10, enemyResource: -20),
     BattleEvent(text: '{player} 선수 상대 앞마당 파괴!', stat: 'attack', myArmy: -5, enemyArmy: -10, enemyResource: -40),
-    BattleEvent(text: '{player}, 아콘으로 질럿 돌파!', stat: 'attack', myArmy: -3, enemyArmy: -8),
+    BattleEvent(text: '{player}, 아칸으로 질럿 돌파!', stat: 'attack', myArmy: -3, enemyArmy: -8),
     BattleEvent(text: '{player} 선수 셔틀 리버 드랍으로 프로브 사냥!', stat: 'harass', myArmy: -2, enemyResource: -30),
     BattleEvent(text: '{player}, 옵저버로 상대 다크 탐지!', stat: 'scout', enemyArmy: -5),
     BattleEvent(text: '{player} 선수 드라군 사거리 업! 전투력 향상!', stat: 'strategy', myResource: -10),
@@ -640,7 +640,7 @@ class BattleEventsData {
     BattleEvent(text: '{player}, 최종 공세 시작!', stat: 'attack', myArmy: -10, enemyArmy: -20),
     BattleEvent(text: '{player} 선수 상대 본진 진입!', stat: 'attack', myArmy: -5, enemyArmy: -15, enemyResource: -30),
     BattleEvent(text: '{player}, 상대 본진 초토화!', stat: 'attack', myArmy: -3, enemyArmy: -20, enemyResource: -50, decisive: true),
-    BattleEvent(text: '{player} 선수 드라군 아콘으로 완벽한 승리!', decisive: true),
+    BattleEvent(text: '{player} 선수 드라군 아칸으로 완벽한 승리!', decisive: true),
     BattleEvent(text: '양측 넥서스 자원이 고갈되어갑니다!', myResource: -5, enemyResource: -5),
     BattleEvent(text: '{player}, 리콜 투입으로 최종 결전!', stat: 'macro', myArmy: -10, enemyArmy: -30),
     BattleEvent(text: '{player} 선수 상대 넥서스 전부 파괴!', decisive: true),

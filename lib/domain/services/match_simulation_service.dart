@@ -842,7 +842,7 @@ class MatchSimulationService {
     ]),
     _InteractionRule(triggerPattern: RegExp(r'질럿|드라군'), triggerRace: 'P', reactorRace: 'Z', reactions: [
       '{reactor} 선수 저글링으로 견제 나갑니다.',
-      '{reactor} 선수 선큰 올려서 방어 준비!',
+      '{reactor} 선수 성큰 올려서 방어 준비!',
     ]),
     _InteractionRule(triggerPattern: RegExp(r'캐리어|모선'), triggerRace: 'P', reactorRace: 'Z', reactions: [
       '{reactor} 선수 스커지 서둘러 모읍니다!',
@@ -901,7 +901,7 @@ class MatchSimulationService {
     ]),
     _InteractionRule(triggerPattern: RegExp(r'벌처|벌쳐'), triggerRace: 'T', reactorRace: 'Z', reactions: [
       '{reactor} 선수 저글링으로 벌처 대응합니다.',
-      '{reactor} 선수 선큰 세워서 방어하네요.',
+      '{reactor} 선수 성큰 세워서 방어하네요.',
     ]),
     _InteractionRule(triggerPattern: RegExp(r'레이스'), triggerRace: 'T', reactorRace: 'Z', reactions: [
       '{reactor} 선수 스커지 생산합니다.',
@@ -1261,6 +1261,9 @@ class MatchSimulationService {
       attackerBuildType: isHomeAttacker ? homeBuildType : awayBuildType,
       defenderBuildType: isHomeAttacker ? awayBuildType : homeBuildType,
       availableUnits: combinedUnitTags,
+      isEarlyGame: gamePhase == GamePhase.early,
+      attackerArmySize: isHomeAttacker ? currentState.homeArmy : currentState.awayArmy,
+      defenderArmySize: isHomeAttacker ? currentState.awayArmy : currentState.homeArmy,
     );
 
     // 가중치 기반 이벤트 선택
@@ -1342,7 +1345,7 @@ class MatchSimulationService {
         // 빌드 스타일에 따른 초반 우위 (수비형 반격력 고려)
         double buildAdvantage = 0;
         if (homeStyle == BuildStyle.aggressive && awayStyle == BuildStyle.defensive) {
-          buildAdvantage = 40; // 80→40: 수비형 선큰/스파인 방어 고려
+          buildAdvantage = 40; // 80→40: 수비형 성큰/스파인 방어 고려
         } else if (homeStyle == BuildStyle.defensive && awayStyle == BuildStyle.aggressive) {
           buildAdvantage = -40;
         } else if (homeStyle == BuildStyle.cheese && awayStyle == BuildStyle.defensive) {
@@ -1404,8 +1407,8 @@ class MatchSimulationService {
             '${awayPlayer.name} 선수 국지전 승리!',
             '${homePlayer.name}, 드론 견제로 상대 경제 흔들기!',
             '${awayPlayer.name}, 드론 견제로 상대 경제 흔들기!',
-            '${homePlayer.name} 선수, 선큰 올리며 방어 태세!',
-            '${awayPlayer.name} 선수, 선큰 올리며 방어 태세!',
+            '${homePlayer.name} 선수, 성큰 올리며 방어 태세!',
+            '${awayPlayer.name} 선수, 성큰 올리며 방어 태세!',
             '${homePlayer.name}, 오버로드로 상대 빌드 정찰!',
             '${awayPlayer.name}, 오버로드로 상대 빌드 정찰!',
           ];

@@ -227,7 +227,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ),
         ),
         subtitle: Text(
-          item.isPurchasable ? '${item.price}만원' : '비매품',
+          item.isPurchasable
+              ? (item.purchaseQuantity > 1
+                  ? '${item.price}만원 / ${item.purchaseQuantity}개'
+                  : '${item.price}만원')
+              : '비매품',
           style: TextStyle(
             color: item.isPurchasable ? AppTheme.accentGreen : Colors.orange,
           ),
@@ -251,7 +255,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  '+$cartCount',
+                  '+${cartCount * item.purchaseQuantity}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,
@@ -469,7 +473,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '단가: ${item.price}만원',
+                        item.purchaseQuantity > 1
+                            ? '단가: ${item.price}만원 / ${item.purchaseQuantity}개'
+                            : '단가: ${item.price}만원',
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 12,
@@ -496,7 +502,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: Text(
-                      cartCount > 0 ? '구입 ($cartCount개)' : '수량 선택',
+                      cartCount > 0 ? '구입 (${cartCount * item.purchaseQuantity}개)' : '수량 선택',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -823,10 +829,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
   void _buyConsumables(ConsumableItem item, int count) {
     final totalPrice = item.price * count;
+    final totalItems = count * item.purchaseQuantity;
     bool allSuccess = true;
 
     for (int i = 0; i < count; i++) {
-      final success = ref.read(gameStateProvider.notifier).buyItem(item.id, item.price);
+      final success = ref.read(gameStateProvider.notifier).buyItem(
+        item.id, item.price, quantity: item.purchaseQuantity,
+      );
       if (!success) {
         allSuccess = false;
         break;
@@ -839,7 +848,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${item.name} ${count}개를 구매했습니다! (-$totalPrice만원)'),
+          content: Text('${item.name} ${totalItems}개를 구매했습니다! (-$totalPrice만원)'),
           backgroundColor: AppTheme.accentGreen,
           duration: const Duration(seconds: 2),
         ),
