@@ -21,12 +21,44 @@ class GroupDrawScreen extends ConsumerStatefulWidget {
 class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
   bool _isDrawing = false;
   bool _isCompleted = false;
+  bool _isWaitingForPick = false;
   int _currentDrawIndex = -1;
-  List<List<String?>> _groups = []; // 8개 조, 각 조 4명
-  List<String> _remainingQualifiers = []; // 아직 배정 안된 통과자
+  int _currentGroupIdx = -1;
+  int _currentSlotIdx = -1;
+  List<List<String?>> _groups = [];
+  List<String> _availableQualifiers = [];
+  Completer<String>? _pickCompleter;
+  String? _playerTeamId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfAlreadyCompleted();
+    });
+  }
+
+  void _checkIfAlreadyCompleted() {
+    final gameState = ref.read(gameStateProvider);
+    if (gameState == null) return;
+    _playerTeamId = gameState.saveData.playerTeamId;
+    final bracket = gameState.saveData.currentSeason.individualLeague;
+    if (bracket == null) return;
+
+    if (bracket.mainTournamentGroups.isNotEmpty) {
+      final allFilled = bracket.mainTournamentGroups.every(
+        (g) => g.length >= 4 && g.every((p) => p != null),
+      );
+      if (allFilled) {
+        setState(() => _isCompleted = true);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
+
     final gameState = ref.watch(gameStateProvider);
     if (gameState == null) {
       return const Scaffold(
@@ -37,9 +69,8 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
     final bracket = gameState.saveData.currentSeason.individualLeague;
     final playerMap = {for (var p in gameState.saveData.allPlayers) p.id: p};
 
-    // 초기화
+    // 항상 그룹 초기화 (시드 선수 표시)
     _initializeGroups(bracket);
-    _initializeQualifiers(bracket);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -54,13 +85,10 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 4.sp),
                     child: Column(
                       children: [
-                        // 상단: A~D 조 (가로 배치)
                         _buildGroupRow(0, 4, playerMap),
                         SizedBox(height: 4.sp),
-                        // 중단: E~H 조 (가로 배치)
                         _buildGroupRow(4, 8, playerMap),
                         SizedBox(height: 6.sp),
-                        // 하단: 통과자 박스
                         Expanded(
                           child: _buildQualifiersBox(bracket, playerMap),
                         ),
@@ -82,21 +110,8 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
     if (_groups.isEmpty && bracket != null && bracket.mainTournamentGroups.isNotEmpty) {
       _groups = List.from(bracket.mainTournamentGroups.map((g) => List<String?>.from(g)));
     }
-    // 8개 조 보장
     while (_groups.length < 8) {
       _groups.add([null, null, null, null]);
-    }
-  }
-
-  void _initializeQualifiers(IndividualLeagueBracket? bracket) {
-    if (_remainingQualifiers.isEmpty && bracket != null) {
-      final dualQualifiers = bracket.dualTournamentPlayers;
-      final seededIds = bracket.mainTournamentSeeds.toSet();
-      // 이미 조에 배정된 선수 제외
-      final assignedIds = _groups.expand((g) => g.whereType<String>()).toSet();
-      _remainingQualifiers = dualQualifiers
-          .where((id) => !seededIds.contains(id) && !assignedIds.contains(id))
-          .toList();
     }
   }
 
@@ -129,7 +144,6 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
     );
   }
 
-  /// 조 행 빌드 (startIndex부터 endIndex까지)
   Widget _buildGroupRow(int startIndex, int endIndex, Map<String, Player> playerMap) {
     return Row(
       children: List.generate(endIndex - startIndex, (i) {
@@ -144,20 +158,24 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
     );
   }
 
-  /// 개별 조 카드
   Widget _buildGroupCard(int groupIndex, Map<String, Player> playerMap) {
     final groupPlayers = groupIndex < _groups.length
         ? _groups[groupIndex]
         : <String?>[null, null, null, null];
-    final groupName = String.fromCharCode(65 + groupIndex); // A, B, C...
+    final groupName = String.fromCharCode(65 + groupIndex);
+
+    // 현재 선택 대기중인 조인지 확인
+    final isActiveGroup = _isWaitingForPick && _currentGroupIdx == groupIndex;
 
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(4.sp),
         border: Border.all(
-          color: _getGroupColor(groupIndex).withOpacity(0.5),
-          width: 1,
+          color: isActiveGroup
+              ? AppColors.accent
+              : _getGroupColor(groupIndex).withOpacity(0.5),
+          width: isActiveGroup ? 2 : 1,
         ),
       ),
       padding: EdgeInsets.all(4.sp),
@@ -169,14 +187,18 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
             width: double.infinity,
             padding: EdgeInsets.symmetric(vertical: 2.sp),
             decoration: BoxDecoration(
-              color: _getGroupColor(groupIndex).withOpacity(0.2),
+              color: isActiveGroup
+                  ? AppColors.accent.withOpacity(0.3)
+                  : _getGroupColor(groupIndex).withOpacity(0.2),
               borderRadius: BorderRadius.circular(2.sp),
             ),
             child: Center(
               child: Text(
                 '$groupName조',
                 style: TextStyle(
-                  color: _getGroupColor(groupIndex),
+                  color: isActiveGroup
+                      ? AppColors.accent
+                      : _getGroupColor(groupIndex),
                   fontSize: 10.sp,
                   fontWeight: FontWeight.bold,
                 ),
@@ -189,27 +211,38 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
             final playerId = i < groupPlayers.length ? groupPlayers[i] : null;
             final player = playerId != null ? playerMap[playerId] : null;
             final isSeed = i == 0;
-            return _buildPlayerSlot(player, isSeed);
+            final isMyTeam = player != null && player.teamId == _playerTeamId;
+            // 현재 선택 대기 슬롯인지
+            final isWaitingSlot = isActiveGroup && i == _currentSlotIdx;
+            return _buildPlayerSlot(player, isSeed, isMyTeam: isMyTeam, isWaitingSlot: isWaitingSlot);
           }),
         ],
       ),
     );
   }
 
-  /// 선수 슬롯 (종족) 이름 형식
-  Widget _buildPlayerSlot(Player? player, bool isSeed) {
+  Widget _buildPlayerSlot(Player? player, bool isSeed, {
+    bool isMyTeam = false,
+    bool isWaitingSlot = false,
+  }) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 3.sp, vertical: 2.sp),
       margin: EdgeInsets.only(bottom: 2.sp),
       decoration: BoxDecoration(
-        color: isSeed
-            ? AppColors.primary.withOpacity(0.15)
-            : Colors.grey.withOpacity(0.1),
+        color: isWaitingSlot
+            ? AppColors.accent.withOpacity(0.2)
+            : isSeed
+                ? AppColors.primary.withOpacity(0.15)
+                : Colors.grey.withOpacity(0.1),
         borderRadius: BorderRadius.circular(2.sp),
         border: Border.all(
-          color: isSeed ? AppColors.primary.withOpacity(0.4) : Colors.grey.withOpacity(0.2),
-          width: isSeed ? 1 : 0.5,
+          color: isWaitingSlot
+              ? AppColors.accent
+              : isSeed
+                  ? AppColors.primary.withOpacity(0.4)
+                  : Colors.grey.withOpacity(0.2),
+          width: isWaitingSlot ? 1.5 : isSeed ? 1 : 0.5,
         ),
       ),
       child: player != null
@@ -228,9 +261,9 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
                   child: Text(
                     player.name,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: isMyTeam ? AppColors.accent : Colors.white,
                       fontSize: 8.sp,
-                      fontWeight: isSeed ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: (isSeed || isMyTeam) ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -238,35 +271,93 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
               ],
             )
           : Center(
-              child: Text(
-                'empty',
-                style: TextStyle(
-                  color: Colors.grey.withOpacity(0.4),
-                  fontSize: 7.sp,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
+              child: isWaitingSlot
+                  ? Text(
+                      '선택 대기',
+                      style: TextStyle(
+                        color: AppColors.accent,
+                        fontSize: 7.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : Text(
+                      'empty',
+                      style: TextStyle(
+                        color: Colors.grey.withOpacity(0.4),
+                        fontSize: 7.sp,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
             ),
     );
   }
 
-  /// 통과자 박스 (하단 전체 너비)
+  /// 듀얼토너먼트 결과에서 라운드별 진출자 추출
+  List<String> _getAdvancingPlayersFromResults(IndividualLeagueBracket bracket) {
+    final results = bracket.dualTournamentResults;
+    final advancing = <String>[];
+
+    // 완료된 조별로 승자전 승자 + 최종전 승자 추출
+    for (var gi = 0; gi < 12; gi++) {
+      final groupStart = gi * 5;
+      if (results.length >= groupStart + 5) {
+        advancing.add(results[groupStart + 2].winnerId); // 승자전 승자
+        advancing.add(results[groupStart + 4].winnerId); // 최종전 승자
+      }
+    }
+    return advancing;
+  }
+
+  /// 완료된 듀얼 라운드 수 (0~3)
+  int _getCompletedDualRounds(IndividualLeagueBracket? bracket) {
+    if (bracket == null) return 0;
+    final resultCount = bracket.dualTournamentResults.length;
+    // 라운드 1: 0~19 (4조×5경기), 라운드 2: 20~39, 라운드 3: 40~59
+    if (resultCount >= 60) return 3;
+    if (resultCount >= 40) return 2;
+    if (resultCount >= 20) return 1;
+    return 0;
+  }
+
   Widget _buildQualifiersBox(
     IndividualLeagueBracket? bracket,
     Map<String, Player> playerMap,
   ) {
-    // 듀얼 토너먼트 통과자 전체
-    final allQualifiers = bracket?.dualTournamentPlayers ?? [];
-    final seededIds = (bracket?.mainTournamentSeeds ?? []).toSet();
-
-    // 이미 조에 배정된 선수 ID
+    // 듀얼토너먼트 결과에서 실제 진출자 계산
+    final advancingPlayers = bracket != null
+        ? _getAdvancingPlayersFromResults(bracket)
+        : <String>[];
+    final completedRounds = _getCompletedDualRounds(bracket);
     final assignedIds = _groups.expand((g) => g.whereType<String>()).toSet();
+
+    // 상태 텍스트
+    final String statusText;
+    final Color statusColor;
+    if (_isWaitingForPick) {
+      final groupName = String.fromCharCode(65 + _currentGroupIdx);
+      statusText = '$groupName조 ${_currentSlotIdx + 1}시드 선택';
+      statusColor = AppColors.accent;
+    } else if (_isDrawing) {
+      statusText = '추첨 중... ${_currentDrawIndex + 1}/24';
+      statusColor = AppColors.accent;
+    } else if (completedRounds < 3) {
+      statusText = '#$completedRounds/3 완료 (${advancingPlayers.length}/24명)';
+      statusColor = Colors.grey;
+    } else {
+      statusText = '${advancingPlayers.length}명 진출';
+      statusColor = AppColors.accent;
+    }
 
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(6.sp),
-        border: Border.all(color: AppColors.accent.withOpacity(0.3)),
+        border: Border.all(
+          color: _isWaitingForPick
+              ? AppColors.accent
+              : AppColors.accent.withOpacity(0.3),
+          width: _isWaitingForPick ? 2 : 1,
+        ),
       ),
       padding: EdgeInsets.all(8.sp),
       child: Column(
@@ -278,7 +369,7 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
               Icon(Icons.people, color: AppColors.accent, size: 14.sp),
               SizedBox(width: 6.sp),
               Text(
-                '듀얼토너먼트 통과자',
+                _isWaitingForPick ? '선수를 선택하세요' : '듀얼토너먼트 통과자',
                 style: TextStyle(
                   color: AppColors.accent,
                   fontSize: 12.sp,
@@ -286,23 +377,27 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
                 ),
               ),
               const Spacer(),
-              if (_isDrawing)
+              if (statusText.isNotEmpty)
                 Row(
                   children: [
-                    SizedBox(
-                      width: 12.sp,
-                      height: 12.sp,
-                      child: CircularProgressIndicator(
-                        color: AppColors.accent,
-                        strokeWidth: 2,
+                    if (_isDrawing && !_isWaitingForPick)
+                      Padding(
+                        padding: EdgeInsets.only(right: 6.sp),
+                        child: SizedBox(
+                          width: 12.sp,
+                          height: 12.sp,
+                          child: CircularProgressIndicator(
+                            color: AppColors.accent,
+                            strokeWidth: 2,
+                          ),
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 6.sp),
                     Text(
-                      '추첨 중... ${_currentDrawIndex + 1}/24',
+                      statusText,
                       style: TextStyle(
-                        color: AppColors.accent,
+                        color: statusColor,
                         fontSize: 10.sp,
+                        fontWeight: _isWaitingForPick ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -310,9 +405,9 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
             ],
           ),
           SizedBox(height: 6.sp),
-          // 통과자 목록 (Wrap으로 가로 배치)
+          // 통과자 목록
           Expanded(
-            child: allQualifiers.isEmpty
+            child: advancingPlayers.isEmpty
                 ? Center(
                     child: Text(
                       '듀얼토너먼트 미진행',
@@ -323,14 +418,10 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
                     child: Wrap(
                       spacing: 6.sp,
                       runSpacing: 4.sp,
-                      children: allQualifiers
-                          .where((id) => !seededIds.contains(id))
-                          .map((playerId) {
+                      children: advancingPlayers.map((playerId) {
                         final player = playerMap[playerId];
                         if (player == null) return const SizedBox.shrink();
-
                         final isAssigned = assignedIds.contains(playerId);
-
                         return _buildQualifierChip(player, isAssigned);
                       }).toList(),
                     ),
@@ -341,51 +432,67 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
     );
   }
 
-  /// 통과자 칩
   Widget _buildQualifierChip(Player player, bool isAssigned) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 3.sp),
-      decoration: BoxDecoration(
-        color: isAssigned
-            ? Colors.grey.withOpacity(0.2)
-            : AppColors.accent.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(4.sp),
-        border: Border.all(
+    // 선택 가능 여부
+    final bool isTappable = _isWaitingForPick && !isAssigned;
+
+    return GestureDetector(
+      onTap: isTappable ? () => _onQualifierPicked(player.id) : null,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 3.sp),
+        decoration: BoxDecoration(
           color: isAssigned
-              ? Colors.grey.withOpacity(0.3)
-              : AppColors.accent.withOpacity(0.4),
+              ? Colors.grey.withOpacity(0.2)
+              : isTappable
+                  ? AppColors.accent.withOpacity(0.3)
+                  : AppColors.accent.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(4.sp),
+          border: Border.all(
+            color: isAssigned
+                ? Colors.grey.withOpacity(0.3)
+                : isTappable
+                    ? AppColors.accent
+                    : AppColors.accent.withOpacity(0.4),
+            width: isTappable ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '(${player.race.code})',
+              style: TextStyle(
+                color: isAssigned
+                    ? Colors.grey
+                    : _getRaceColor(player.race),
+                fontSize: 9.sp,
+                fontWeight: FontWeight.bold,
+                decoration: isAssigned ? TextDecoration.lineThrough : null,
+              ),
+            ),
+            SizedBox(width: 2.sp),
+            Text(
+              player.name,
+              style: TextStyle(
+                color: isAssigned ? Colors.grey : Colors.white,
+                fontSize: 9.sp,
+                decoration: isAssigned ? TextDecoration.lineThrough : null,
+              ),
+            ),
+            if (isAssigned) ...[
+              SizedBox(width: 4.sp),
+              Icon(Icons.check, size: 10.sp, color: AppColors.accent),
+            ],
+          ],
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '(${player.race.code})',
-            style: TextStyle(
-              color: isAssigned
-                  ? Colors.grey
-                  : _getRaceColor(player.race),
-              fontSize: 9.sp,
-              fontWeight: FontWeight.bold,
-              decoration: isAssigned ? TextDecoration.lineThrough : null,
-            ),
-          ),
-          SizedBox(width: 2.sp),
-          Text(
-            player.name,
-            style: TextStyle(
-              color: isAssigned ? Colors.grey : Colors.white,
-              fontSize: 9.sp,
-              decoration: isAssigned ? TextDecoration.lineThrough : null,
-            ),
-          ),
-          if (isAssigned) ...[
-            SizedBox(width: 4.sp),
-            Icon(Icons.check, size: 10.sp, color: AppColors.accent),
-          ],
-        ],
-      ),
     );
+  }
+
+  void _onQualifierPicked(String playerId) {
+    if (_isWaitingForPick && _pickCompleter != null && !_pickCompleter!.isCompleted) {
+      _pickCompleter!.complete(playerId);
+    }
   }
 
   Widget _buildBottomButtons(
@@ -393,19 +500,23 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
     IndividualLeagueBracket? bracket,
     Map<String, Player> playerMap,
   ) {
+    final bool canStart = !widget.viewOnly && !_isDrawing && !_isWaitingForPick;
+
     return Container(
       padding: EdgeInsets.all(10.sp),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                context.pop();
-              } else {
-                context.go('/main');
-              }
-            },
+            onPressed: (_isDrawing || _isWaitingForPick)
+                ? null
+                : () {
+                    if (Navigator.canPop(context)) {
+                      context.pop();
+                    } else {
+                      context.go('/main');
+                    }
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.cardBackground,
               padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 10.sp),
@@ -422,33 +533,35 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
             ),
           ),
           SizedBox(width: 16.sp),
-          ElevatedButton(
-            onPressed: _isDrawing
-                ? null
-                : () => _isCompleted
-                    ? _goToNextStage(context)
-                    : _startDraw(bracket),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isDrawing ? Colors.grey : AppColors.primary,
-              padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 10.sp),
+          if (canStart)
+            ElevatedButton(
+              onPressed: _isCompleted
+                  ? () => _goToNextStage(context)
+                  : () => _startDraw(bracket, playerMap),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 10.sp),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    _isCompleted ? 'Next' : 'Start',
+                    style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                  ),
+                  SizedBox(width: 6.sp),
+                  Icon(Icons.arrow_forward, color: Colors.white, size: 14.sp),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Text(
-                  _isCompleted ? 'Next' : 'Start',
-                  style: TextStyle(color: Colors.white, fontSize: 12.sp),
-                ),
-                SizedBox(width: 6.sp),
-                Icon(Icons.arrow_forward, color: Colors.white, size: 14.sp),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Future<void> _startDraw(IndividualLeagueBracket? bracket) async {
+  Future<void> _startDraw(
+    IndividualLeagueBracket? bracket,
+    Map<String, Player> playerMap,
+  ) async {
     if (bracket == null || bracket.mainTournamentGroups.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('조 데이터가 없습니다')),
@@ -456,25 +569,26 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
       return;
     }
 
-    // 기존 조 복사 (시드만 있는 상태)
+    // 듀얼토너먼트 완료 확인 (12개 조 × 5경기 = 60)
+    if (bracket.dualTournamentResults.length < 60) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('듀얼토너먼트가 완료되지 않았습니다')),
+      );
+      return;
+    }
+
     final existingGroups = bracket.mainTournamentGroups;
-
-    // 듀얼 토너먼트 통과자 (나머지 슬롯 채울 선수)
-    final dualQualifiers = List<String>.from(bracket.dualTournamentPlayers);
-
-    // 시드 선수 ID 목록 (이미 조에 배정된 선수)
+    // 듀얼토너먼트 결과에서 실제 진출자 추출
+    final dualQualifiers = _getAdvancingPlayersFromResults(bracket);
     final seededIds = existingGroups
         .map((g) => g.isNotEmpty && g[0] != null ? g[0]! : '')
         .where((id) => id.isNotEmpty)
         .toSet();
 
-    // 듀얼 통과자 중 시드 아닌 선수만 추출
-    final availableQualifiers = dualQualifiers
+    _availableQualifiers = dualQualifiers
         .where((id) => !seededIds.contains(id))
-        .toList();
-
-    // 랜덤 섞기
-    availableQualifiers.shuffle();
+        .toList()
+      ..shuffle();
 
     setState(() {
       _isDrawing = true;
@@ -482,26 +596,69 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
       _groups = existingGroups.map((g) => List<String?>.from(g)).toList();
     });
 
-    // 8개 조 × 3명 = 24명을 채워야 함
-    var qualifierIndex = 0;
     var drawIndex = 0;
 
     for (var groupIdx = 0; groupIdx < 8; groupIdx++) {
-      // 각 조의 1~3번 슬롯 채우기 (0번은 이미 시드)
       for (var slotIdx = 1; slotIdx < 4; slotIdx++) {
-        await Future.delayed(const Duration(milliseconds: 200));
         if (!mounted) return;
 
-        setState(() {
-          _currentDrawIndex = drawIndex;
-          if (qualifierIndex < availableQualifiers.length) {
-            _groups[groupIdx][slotIdx] = availableQualifiers[qualifierIndex];
-            qualifierIndex++;
+        // 이 조에 내 팀 선수가 이미 있는지 확인
+        bool hasMyTeamPlayer = false;
+        for (var i = 0; i < slotIdx; i++) {
+          final pid = _groups[groupIdx][i];
+          if (pid != null) {
+            final player = playerMap[pid];
+            if (player != null && player.teamId == _playerTeamId) {
+              hasMyTeamPlayer = true;
+              break;
+            }
           }
-        });
+        }
+
+        String? pickedId;
+
+        if (hasMyTeamPlayer && _availableQualifiers.isNotEmpty) {
+          // 내 팀 선수가 있는 조: 유저가 선택
+          _pickCompleter = Completer<String>();
+          setState(() {
+            _isWaitingForPick = true;
+            _currentGroupIdx = groupIdx;
+            _currentSlotIdx = slotIdx;
+            _currentDrawIndex = drawIndex;
+          });
+
+          pickedId = await _pickCompleter!.future;
+
+          setState(() {
+            _isWaitingForPick = false;
+          });
+        } else if (_availableQualifiers.isNotEmpty) {
+          // AI 랜덤 선택
+          await Future.delayed(const Duration(milliseconds: 200));
+          pickedId = _availableQualifiers[0];
+        }
+
+        if (pickedId != null && mounted) {
+          _availableQualifiers.remove(pickedId);
+          setState(() {
+            _groups[groupIdx][slotIdx] = pickedId;
+            _currentDrawIndex = drawIndex;
+          });
+        }
+
         drawIndex++;
       }
     }
+
+    if (!mounted) return;
+
+    // 결과 저장
+    final updatedBracket = bracket.copyWith(
+      mainTournamentGroups: _groups,
+      mainTournamentPlayers: _groups.expand((g) => g.whereType<String>()).toList(),
+    );
+    ref.read(gameStateProvider.notifier).updateIndividualLeague(updatedBracket);
+    ref.read(gameStateProvider.notifier).save();
 
     setState(() {
       _isDrawing = false;
@@ -510,11 +667,11 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
   }
 
   void _goToNextStage(BuildContext context) {
-    context.push('/main-tournament');
+    context.go('/main');
   }
 
   Color _getGroupColor(int index) {
-    final colors = [
+    const colors = [
       Colors.red,
       Colors.blue,
       Colors.green,

@@ -22,6 +22,9 @@ void main() async {
   // Hive 초기화
   await Hive.initFlutter();
 
+  // 설정 박스 열기 (배속 등 기기 설정 영구 저장)
+  await Hive.openBox('settings');
+
   // 선수 사진 전역 저장소 로드
   await PlayerImageRepository.instance.load();
 

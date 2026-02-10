@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/models.dart';
+import '../../domain/services/individual_league_service.dart';
 import '../repositories/save_repository.dart';
 
 /// 저장소 Provider
@@ -644,6 +645,130 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       }
       state = state!.copyWith(saveData: newSaveData);
     }
+  }
+
+  /// 디버그: 듀얼토너먼트까지 빠르게 진행
+  void debugSkipToDualTournament() {
+    if (state == null) return;
+
+    final leagueService = IndividualLeagueService();
+
+    // 1. 프로리그 경기 스킵 (week 0 match1, match2)
+    for (var wp = state!.saveData.currentSeason.weekProgress; wp < 2; wp++) {
+      final season = state!.saveData.currentSeason;
+      if (season.currentStep < 2) {
+        final roundNumber = season.currentWeek * 2 + season.currentStep + 1;
+        skipRound(roundNumber);
+      }
+    }
+
+    // 2. PC방 예선 대진표 생성 & 시뮬레이션
+    final playerMap = {for (var p in state!.saveData.allPlayers) p.id: p};
+    var bracket = state!.saveData.currentSeason.individualLeague;
+
+    if (bracket == null || bracket.pcBangGroups.isEmpty) {
+      bracket = leagueService.createIndividualLeagueBracket(
+        allPlayers: state!.saveData.allPlayers,
+        playerTeamId: state!.saveData.playerTeamId,
+        seasonNumber: state!.saveData.currentSeason.number,
+      );
+    }
+
+    if (bracket.pcBangResults.isEmpty) {
+      bracket = leagueService.simulateAllPcBangGroups(
+        bracket: bracket,
+        playerMap: playerMap,
+      );
+    }
+
+    updateIndividualLeague(bracket);
+
+    // 3. weekProgress를 5로 설정 (week 1, step 2 = 듀얼 1R)
+    final updatedSeason = state!.saveData.currentSeason.copyWith(weekProgress: 5);
+    final newSaveData = state!.saveData.updateSeason(updatedSeason);
+    state = state!.copyWith(saveData: newSaveData);
+
+    save();
+  }
+
+  /// 디버그: 8강 완료 + 플레이오프 진입 상태로 스킵
+  void debugSkipToPlayoff() {
+    if (state == null) return;
+
+    final rand = Random();
+    final leagueService = IndividualLeagueService();
+    final isWinnersSeason = state!.saveData.currentSeason.isWinnersLeagueSeason;
+
+    // 1. 모든 프로리그 경기 강제 완료 (플레이어 팀 포함)
+    final scheduleLength = state!.saveData.currentSeason.proleagueSchedule.length;
+    for (int i = 0; i < scheduleLength; i++) {
+      final match = state!.saveData.currentSeason.proleagueSchedule[i];
+      if (match.isCompleted) continue;
+
+      final homePlayers = List<Player>.from(
+        state!.saveData.getTeamPlayers(match.homeTeamId),
+      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
+
+      final awayPlayers = List<Player>.from(
+        state!.saveData.getTeamPlayers(match.awayTeamId),
+      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
+
+      if (homePlayers.isEmpty || awayPlayers.isEmpty) continue;
+
+      if (isWinnersSeason) {
+        _simulateWinnersLeagueMatch(i, match, homePlayers, awayPlayers, rand);
+      } else {
+        _simulateNormalMatch(i, match, homePlayers, awayPlayers, rand);
+      }
+    }
+
+    // 2. PC방 예선 생성 & 시뮬레이션
+    final playerMap = {for (var p in state!.saveData.allPlayers) p.id: p};
+    var bracketN = state!.saveData.currentSeason.individualLeague;
+
+    if (bracketN == null || bracketN.pcBangGroups.isEmpty) {
+      bracketN = leagueService.createIndividualLeagueBracket(
+        allPlayers: state!.saveData.allPlayers,
+        playerTeamId: state!.saveData.playerTeamId,
+        seasonNumber: state!.saveData.currentSeason.number,
+      );
+    }
+
+    var bracket = bracketN;
+    if (bracket.pcBangResults.isEmpty) {
+      bracket = leagueService.simulateAllPcBangGroups(
+        bracket: bracket,
+        playerMap: playerMap,
+      );
+    }
+
+    // 3. 듀얼토너먼트 (3라운드 전부)
+    for (var round = 1; round <= 3; round++) {
+      bracket = leagueService.simulateDualTournamentRound(
+        bracket: bracket,
+        playerMap: playerMap,
+        round: round,
+      );
+    }
+
+    // 4. 본선 시뮬레이션 (8강~결승 전부)
+    bracket = leagueService.simulateMainTournament(
+      bracket: bracket,
+      playerMap: playerMap,
+      showLogFromQuarterFinal: false,
+    );
+
+    updateIndividualLeague(bracket);
+
+    // 5. weekProgress = 33 (모든 주차 완료)
+    final updatedSeason = state!.saveData.currentSeason.copyWith(weekProgress: 33);
+    final newSaveData = state!.saveData.updateSeason(updatedSeason);
+    state = state!.copyWith(saveData: newSaveData);
+
+    // 6. 플레이오프 시작 (순위 기반 대진표 생성 + phase → playoff34)
+    startPlayoff();
+
+    save();
   }
 
   /// 개인리그 대진표 업데이트

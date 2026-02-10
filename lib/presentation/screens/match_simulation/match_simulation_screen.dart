@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../data/providers/game_provider.dart';
@@ -42,8 +43,11 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
   final List<BattleLogEntry> battleLogEntries = [];
   final ScrollController _logScrollController = ScrollController();
 
-  // 배속
-  int speed = 1;
+  // 배속 (Hive에서 저장된 값 로드, 유효한 값만 허용)
+  late int speed = () {
+    final saved = Hive.box('settings').get('matchSpeed', defaultValue: 1) as int;
+    return const [1, 4, 8].contains(saved) ? saved : 1;
+  }();
   bool isRunning = false;
   bool gameEnded = false;
 
@@ -286,6 +290,8 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     setState(() {
       speed = newSpeed;
     });
+    // 기기에 배속 설정 영구 저장
+    Hive.box('settings').put('matchSpeed', newSpeed);
   }
 
   /// 선수별 전적 업데이트

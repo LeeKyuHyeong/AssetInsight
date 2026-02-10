@@ -41,6 +41,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   String _snipingState = 'idle';
   int? _snipingTargetSetIndex;
 
+  // 컨디션 최상/최악 이벤트가 이미 적용되었는지 여부
+  bool _conditionRolled = false;
+
   /// 매치용 맵 7개 선정 (시즌맵 순서 유지)
   List<GameMap> _getMatchMaps(List<String> seasonMapIds) {
     if (_matchMaps.isNotEmpty) return _matchMaps;
@@ -110,6 +113,14 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     final opponentPlayers = gameState.saveData.getTeamPlayers(opponentId);
     final seasonMapIds = gameState.saveData.currentSeason.seasonMapIds;
     final matchMaps = _getMatchMaps(seasonMapIds);
+
+    // 로스터 화면 진입 시 전체 팀 선수 대상으로 컨디션 이벤트 롤 (1회만)
+    if (!_conditionRolled) {
+      _conditionRolled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _rollConditionsOnEntry(teamPlayers);
+      });
+    }
 
     final selectedCount = selectedPlayers.where((p) => p != null).length;
     final canSubmit = selectedCount >= 6;
@@ -825,29 +836,15 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
       return null;
     }).toList();
 
-    // 컨디션 최상/최악 이벤트 (각 5% 확률)
-    final conditionEvents = _rollConditionEvents(teamPlayers);
-
-    if (conditionEvents.isNotEmpty) {
-      // 이벤트 발생 시 다이얼로그 표시 후 경기 시작
-      _showConditionEventDialog(conditionEvents, () {
-        _startMatch(isHome, playerTeam, opponentTeam, nextMatch, roster);
-      });
-    } else {
-      _startMatch(isHome, playerTeam, opponentTeam, nextMatch, roster);
-    }
+    _startMatch(isHome, playerTeam, opponentTeam, nextMatch, roster);
   }
 
-  /// 컨디션 최상/최악 이벤트 판정 (로스터 선수 대상, 각 5%)
-  List<({String name, bool isBest, int before, int after})> _rollConditionEvents(
-      List<Player> teamPlayers) {
+  /// 로스터 화면 진입 시 전체 팀 선수 대상 컨디션 최상/최악 이벤트 (각 2%)
+  void _rollConditionsOnEntry(List<Player> teamPlayers) {
     final random = Random();
     final gameNotifier = ref.read(gameStateProvider.notifier);
-    final events = <({String name, bool isBest, int before, int after})>[];
 
-    for (final index in selectedPlayers) {
-      if (index == null || index >= teamPlayers.length) continue;
-      final player = teamPlayers[index];
+    for (final player in teamPlayers) {
       final roll = random.nextDouble();
 
       if (roll < 0.02) {
@@ -855,101 +852,16 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         final newCondition = min(player.condition + 20, 120);
         gameNotifier.backupCondition(player.id, player.condition);
         gameNotifier.updatePlayer(player.copyWith(condition: newCondition));
-        events.add((
-          name: player.name,
-          isBest: true,
-          before: player.condition,
-          after: newCondition,
-        ));
       } else if (roll < 0.04) {
         // 최악: -20, 최저 80
         final newCondition = max(player.condition - 20, 80);
         gameNotifier.backupCondition(player.id, player.condition);
         gameNotifier.updatePlayer(player.copyWith(condition: newCondition));
-        events.add((
-          name: player.name,
-          isBest: false,
-          before: player.condition,
-          after: newCondition,
-        ));
       }
     }
 
-    return events;
-  }
-
-  /// 컨디션 이벤트 다이얼로그
-  void _showConditionEventDialog(
-    List<({String name, bool isBest, int before, int after})> events,
-    VoidCallback onDismiss,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBackground,
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome, color: Colors.amber),
-            SizedBox(width: 8),
-            Text('컨디션 변동!'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: events.map((e) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Icon(
-                    e.isBest ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: e.isBest ? Colors.amber : Colors.redAccent,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    e.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${e.before}%',
-                    style: const TextStyle(color: AppTheme.textSecondary),
-                  ),
-                  const Text(' → '),
-                  Text(
-                    '${e.after}%',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: e.isBest ? Colors.amber : Colors.redAccent,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    e.isBest ? '최상!' : '최악...',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: e.isBest ? Colors.amber : Colors.redAccent,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onDismiss();
-            },
-            child: const Text('확인', style: TextStyle(color: AppTheme.accentGreen)),
-          ),
-        ],
-      ),
-    );
+    // UI 갱신 (setState 호출하여 변경된 컨디션 반영)
+    if (mounted) setState(() {});
   }
 
   void _startMatch(bool isHome, Team playerTeam, Team opponentTeam,
@@ -1034,6 +946,20 @@ class _PlayerGridItem extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            // 컨디션 표시
+            Text(
+              '${player.displayCondition}',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                color: player.displayCondition > 100
+                    ? Colors.amber
+                    : player.displayCondition < 100
+                        ? Colors.redAccent
+                        : AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 2),
             // 세트 표시
             if (isAssigned && assignedSet != null)
               Container(

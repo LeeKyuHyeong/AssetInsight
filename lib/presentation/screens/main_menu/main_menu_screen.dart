@@ -850,6 +850,35 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                 label: '행동',
                 onPressed: () => context.push('/action'),
               ),
+
+              // 디버그: 듀얼토너먼트 스킵
+              _BottomButton(
+                icon: Icons.fast_forward,
+                label: 'DEBUG',
+                onPressed: () {
+                  final notifier = ref.read(gameStateProvider.notifier);
+                  notifier.debugSkipToDualTournament();
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('듀얼토너먼트까지 스킵 완료! 개인리그 버튼을 눌러주세요'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+
+              // 디버그: 플레이오프 스킵
+              _BottomButton(
+                icon: Icons.emoji_events,
+                label: 'PO',
+                onPressed: () {
+                  final notifier = ref.read(gameStateProvider.notifier);
+                  notifier.debugSkipToPlayoff();
+                  setState(() {});
+                  context.push('/playoff');
+                },
+              ),
             ],
           ),
         ],

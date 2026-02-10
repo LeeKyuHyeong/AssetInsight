@@ -821,6 +821,121 @@ class IndividualLeagueService {
     );
   }
 
+  /// 듀얼토너먼트 라운드별 시뮬레이션 (4개 조씩, 조별 듀얼토너먼트)
+  /// round: 1, 2, 3
+  /// 각 조: 1경기(1시드vsPC방) → 2경기(3시드vsPC방) → 승자전 → 패자전 → 최종전
+  /// 조당 2명 진출 (승자전 승자 + 최종전 승자)
+  IndividualLeagueBracket simulateDualTournamentRound({
+    required IndividualLeagueBracket bracket,
+    required Map<String, Player> playerMap,
+    required int round,
+  }) {
+    final maps = GameMaps.all;
+    final existingResults = List<IndividualMatchResult>.from(bracket.dualTournamentResults);
+    final startGroupIndex = (round - 1) * 4;
+    final endGroupIndex = round * 4;
+
+    for (var groupIndex = startGroupIndex; groupIndex < endGroupIndex; groupIndex++) {
+      if (groupIndex >= bracket.dualTournamentGroups.length) break;
+
+      final group = bracket.dualTournamentGroups[groupIndex];
+      final p0 = group.length > 0 ? group[0] : null; // 1시드
+      final p1 = group.length > 1 ? group[1] : null; // 3시드
+      final p2 = group.length > 2 ? group[2] : null; // PC방 승자1
+      final p3 = group.length > 3 ? group[3] : null; // PC방 승자2
+
+      if (p0 == null || p1 == null || p2 == null || p3 == null) continue;
+
+      // 1경기: 1시드 vs PC방1
+      final match1 = _simulateIndividualMatch(
+        player1Id: p0,
+        player2Id: p2,
+        playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)],
+        stage: IndividualLeagueStage.dualTournament,
+      );
+      existingResults.add(match1);
+
+      // 2경기: 3시드 vs PC방2
+      final match2 = _simulateIndividualMatch(
+        player1Id: p1,
+        player2Id: p3,
+        playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)],
+        stage: IndividualLeagueStage.dualTournament,
+      );
+      existingResults.add(match2);
+
+      // 승자전: 1경기 승자 vs 2경기 승자
+      final winnersMatch = _simulateIndividualMatch(
+        player1Id: match1.winnerId,
+        player2Id: match2.winnerId,
+        playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)],
+        stage: IndividualLeagueStage.dualTournament,
+      );
+      existingResults.add(winnersMatch);
+
+      // 패자전: 1경기 패자 vs 2경기 패자
+      final losersMatch = _simulateIndividualMatch(
+        player1Id: match1.loserId,
+        player2Id: match2.loserId,
+        playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)],
+        stage: IndividualLeagueStage.dualTournament,
+      );
+      existingResults.add(losersMatch);
+
+      // 최종전: 승자전 패자 vs 패자전 승자
+      final finalMatch = _simulateIndividualMatch(
+        player1Id: winnersMatch.loserId,
+        player2Id: losersMatch.winnerId,
+        playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)],
+        stage: IndividualLeagueStage.dualTournament,
+      );
+      existingResults.add(finalMatch);
+    }
+
+    // 라운드 3 완료 시: 최종 진출자 계산 (각 조 2명 → 24명 → 상위 8명)
+    if (round == 3) {
+      final advancingPlayers = <String>[];
+
+      for (var gi = 0; gi < 12; gi++) {
+        final groupStart = gi * 5;
+        if (existingResults.length >= groupStart + 5) {
+          final winnersMatch = existingResults[groupStart + 2];
+          final finalMatch = existingResults[groupStart + 4];
+          advancingPlayers.add(winnersMatch.winnerId); // 승자전 승자
+          advancingPlayers.add(finalMatch.winnerId);   // 최종전 승자
+        }
+      }
+
+      // 24명 → 상위 8명 선발
+      final sorted = _sortPlayersByGrade(advancingPlayers, playerMap);
+      final dualAdvancing = sorted.take(8).toList();
+
+      final mainTournamentSeededPlayers = bracket.mainTournamentSeeds;
+      final allMainTournamentPlayers = <String>[
+        ...mainTournamentSeededPlayers,
+        ...dualAdvancing.where((id) => !mainTournamentSeededPlayers.contains(id)),
+      ];
+      final sortedMainPlayers = _sortPlayersByGrade(
+        allMainTournamentPlayers.take(8).toList(),
+        playerMap,
+      );
+
+      return bracket.copyWith(
+        dualTournamentResults: existingResults,
+        mainTournamentPlayers: sortedMainPlayers,
+      );
+    }
+
+    return bracket.copyWith(
+      dualTournamentResults: existingResults,
+    );
+  }
+
   /// 선수들을 등급순으로 재정렬하여 시드 배정
   /// 홀수 인덱스(1시드)에 상위 절반, 짝수 인덱스(3시드)에 하위 절반
   List<String> _reorderBySeeds(List<String> playerIds, Map<String, Player> playerMap) {

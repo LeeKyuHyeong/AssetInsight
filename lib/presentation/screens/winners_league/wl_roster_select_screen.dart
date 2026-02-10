@@ -28,6 +28,9 @@ class _WLRosterSelectScreenState extends ConsumerState<WLRosterSelectScreen> {
   List<SnipingAssignment> _snipingAssignments = [];
   bool _isSnipingMode = false;
 
+  // 컨디션 최상/최악 이벤트가 이미 적용되었는지 여부
+  bool _conditionRolled = false;
+
   ScheduleItem? _findNextMatch(List<ScheduleItem> schedule, String playerTeamId) {
     final myIncompleteMatches = schedule.where((s) =>
       !s.isCompleted &&
@@ -72,6 +75,14 @@ class _WLRosterSelectScreenState extends ConsumerState<WLRosterSelectScreen> {
     final seasonMapIds = gameState.saveData.currentSeason.seasonMapIds;
     final firstMapId = seasonMapIds.isNotEmpty ? seasonMapIds[0] : null;
     final firstMap = firstMapId != null ? GameMaps.getById(firstMapId) : null;
+
+    // 로스터 화면 진입 시 전체 팀 선수 대상으로 컨디션 이벤트 롤 (1회만)
+    if (!_conditionRolled) {
+      _conditionRolled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _rollConditionsOnEntry(teamPlayers);
+      });
+    }
 
     final canSubmit = _selectedPlayerIndex != null;
 
@@ -464,11 +475,12 @@ class _WLRosterSelectScreenState extends ConsumerState<WLRosterSelectScreen> {
                       Text('${player.displayCondition}%',
                           style: TextStyle(
                               fontSize: 8.sp,
-                              color: player.displayCondition >= 80
-                                  ? Colors.green
-                                  : (player.displayCondition >= 50
-                                      ? Colors.orange
-                                      : Colors.red))),
+                              fontWeight: FontWeight.bold,
+                              color: player.displayCondition > 100
+                                  ? Colors.amber
+                                  : player.displayCondition < 100
+                                      ? Colors.redAccent
+                                      : AppTheme.textSecondary)),
                       if (isSelected) ...[
                         SizedBox(width: 3.sp),
                         Icon(Icons.check_circle, size: 12.sp, color: AppTheme.accentGreen),
@@ -705,100 +717,31 @@ class _WLRosterSelectScreenState extends ConsumerState<WLRosterSelectScreen> {
     ScheduleItem nextMatch,
     bool isHome,
   ) {
-    // 컨디션 최상/최악 이벤트 (선택된 선수 대상, 각 5%)
-    final conditionEvent = _rollConditionEvent(teamPlayers);
-
-    if (conditionEvent != null) {
-      _showConditionEventDialog(conditionEvent, () {
-        _startMatch(playerTeam, opponentTeam, teamPlayers, nextMatch, isHome);
-      });
-    } else {
-      _startMatch(playerTeam, opponentTeam, teamPlayers, nextMatch, isHome);
-    }
+    _startMatch(playerTeam, opponentTeam, teamPlayers, nextMatch, isHome);
   }
 
-  /// 컨디션 최상/최악 이벤트 판정 (선택된 1명 대상)
-  ({String name, bool isBest, int before, int after})? _rollConditionEvent(
-      List<Player> teamPlayers) {
+  /// 로스터 화면 진입 시 전체 팀 선수 대상 컨디션 최상/최악 이벤트 (각 2%)
+  void _rollConditionsOnEntry(List<Player> teamPlayers) {
     final random = Random();
     final gameNotifier = ref.read(gameStateProvider.notifier);
-    final player = teamPlayers[_selectedPlayerIndex!];
-    final roll = random.nextDouble();
 
-    if (roll < 0.02) {
-      // 최상: +20, 최대 120
-      final newCondition = min(player.condition + 20, 120);
-      gameNotifier.backupCondition(player.id, player.condition);
-      gameNotifier.updatePlayer(player.copyWith(condition: newCondition));
-      return (name: player.name, isBest: true, before: player.condition, after: newCondition);
-    } else if (roll < 0.04) {
-      // 최악: -20, 최저 80
-      final newCondition = max(player.condition - 20, 80);
-      gameNotifier.backupCondition(player.id, player.condition);
-      gameNotifier.updatePlayer(player.copyWith(condition: newCondition));
-      return (name: player.name, isBest: false, before: player.condition, after: newCondition);
+    for (final player in teamPlayers) {
+      final roll = random.nextDouble();
+
+      if (roll < 0.02) {
+        // 최상: +20, 최대 120
+        final newCondition = min(player.condition + 20, 120);
+        gameNotifier.backupCondition(player.id, player.condition);
+        gameNotifier.updatePlayer(player.copyWith(condition: newCondition));
+      } else if (roll < 0.04) {
+        // 최악: -20, 최저 80
+        final newCondition = max(player.condition - 20, 80);
+        gameNotifier.backupCondition(player.id, player.condition);
+        gameNotifier.updatePlayer(player.copyWith(condition: newCondition));
+      }
     }
-    return null;
-  }
 
-  /// 컨디션 이벤트 다이얼로그
-  void _showConditionEventDialog(
-    ({String name, bool isBest, int before, int after}) event,
-    VoidCallback onDismiss,
-  ) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.cardBackground,
-        title: Row(
-          children: [
-            Icon(Icons.auto_awesome, color: Colors.amber, size: 20.sp),
-            SizedBox(width: 8.sp),
-            const Text('컨디션 변동!'),
-          ],
-        ),
-        content: Row(
-          children: [
-            Icon(
-              event.isBest ? Icons.arrow_upward : Icons.arrow_downward,
-              color: event.isBest ? Colors.amber : Colors.redAccent,
-              size: 20.sp,
-            ),
-            SizedBox(width: 8.sp),
-            Text(event.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const Spacer(),
-            Text('${event.before}%', style: const TextStyle(color: AppTheme.textSecondary)),
-            const Text(' → '),
-            Text(
-              '${event.after}%',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: event.isBest ? Colors.amber : Colors.redAccent,
-              ),
-            ),
-            SizedBox(width: 4.sp),
-            Text(
-              event.isBest ? '최상!' : '최악...',
-              style: TextStyle(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.bold,
-                color: event.isBest ? Colors.amber : Colors.redAccent,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onDismiss();
-            },
-            child: const Text('확인', style: TextStyle(color: AppTheme.accentGreen)),
-          ),
-        ],
-      ),
-    );
+    if (mounted) setState(() {});
   }
 
   void _startMatch(

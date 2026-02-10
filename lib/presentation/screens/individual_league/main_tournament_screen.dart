@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../app/theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../domain/models/models.dart';
@@ -24,6 +25,14 @@ class MainTournamentScreen extends ConsumerStatefulWidget {
 class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
   final MatchSimulationService _matchService = MatchSimulationService();
 
+  static MatchSpeed _loadMatchSpeed() {
+    final saved = Hive.box('settings').get('matchSpeed', defaultValue: 1) as int;
+    return MatchSpeed.values.firstWhere(
+      (s) => s.multiplier == saved,
+      orElse: () => MatchSpeed.x1,
+    );
+  }
+
   bool _isSimulating = false;
   bool _isCompleted = false;
   String _currentStage = '';
@@ -38,8 +47,8 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
   // 현재 보고 있는 경기 로그
   List<String> _currentBattleLog = [];
 
-  // 배속 설정
-  MatchSpeed _matchSpeed = MatchSpeed.x1;
+  // 배속 설정 (Hive에서 저장된 값 로드)
+  late MatchSpeed _matchSpeed = _loadMatchSpeed();
 
   // 내 팀 선수 ID 목록 (시뮬레이션 표시 여부 결정용)
   Set<String> _myTeamPlayerIds = {};
@@ -219,7 +228,10 @@ class _MainTournamentScreenState extends ConsumerState<MainTournamentScreen> {
           ...MatchSpeed.values.map((speed) {
             final isSelected = _matchSpeed == speed;
             return GestureDetector(
-              onTap: () => setState(() => _matchSpeed = speed),
+              onTap: () {
+                setState(() => _matchSpeed = speed);
+                Hive.box('settings').put('matchSpeed', speed.multiplier);
+              },
               child: Container(
                 margin: EdgeInsets.symmetric(horizontal: 2.sp),
                 padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 4.sp),
