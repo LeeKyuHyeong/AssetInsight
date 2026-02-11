@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +7,7 @@ import '../../../core/constants/initial_data.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../../domain/models/models.dart';
+import '../../../app/theme.dart';
 import '../../widgets/player_radar_chart.dart';
 
 /// 타이틀 화면 - 팀 선택 및 게임 시작
@@ -111,43 +111,6 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
     );
   }
 
-  Widget _buildRButton() {
-    return Container(
-      width: 40.sp,
-      height: 40.sp,
-      decoration: BoxDecoration(
-        color: Colors.red[800],
-        borderRadius: BorderRadius.circular(8.sp),
-        border: Border.all(color: Colors.red[400]!, width: 2),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8.sp),
-          onTap: () {
-            // 저장하지 않고 타이틀로 돌아가기
-            setState(() {
-              selectedTeamId = null;
-              _teamRoster = [];
-              focusedPlayerIndex = 0;
-              _focusTimer?.cancel();
-            });
-          },
-          child: Center(
-            child: Text(
-              'R',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20.sp,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeader() {
     return Column(
       children: [
@@ -216,7 +179,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                         width: 24.sp,
                         height: 24.sp,
                         decoration: BoxDecoration(
-                          color: teamColor.withOpacity(0.3),
+                          color: teamColor.withValues(alpha: 0.3),
                           shape: BoxShape.circle,
                           border: Border.all(color: teamColor, width: 1),
                         ),
@@ -314,9 +277,9 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
     return Container(
       padding: EdgeInsets.all(12.sp),
       decoration: BoxDecoration(
-        color: teamColor.withOpacity(0.15),
+        color: teamColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8.sp),
-        border: Border.all(color: teamColor.withOpacity(0.5)),
+        border: Border.all(color: teamColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
@@ -325,7 +288,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
             width: 50.sp,
             height: 50.sp,
             decoration: BoxDecoration(
-              color: teamColor.withOpacity(0.3),
+              color: teamColor.withValues(alpha: 0.3),
               shape: BoxShape.circle,
               border: Border.all(color: teamColor, width: 2),
             ),
@@ -378,64 +341,6 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
     );
   }
 
-  Widget _buildTeamLogo(Map<String, dynamic> team, Color teamColor) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // 팀 로고
-        Container(
-          width: 120.sp,
-          height: 120.sp,
-          decoration: BoxDecoration(
-            color: teamColor.withOpacity(0.2),
-            shape: BoxShape.circle,
-            border: Border.all(color: teamColor, width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: teamColor.withOpacity(0.4),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              team['shortName'] as String,
-              style: TextStyle(
-                color: teamColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 32.sp,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: 16.sp),
-
-        // 팀명
-        Text(
-          team['name'] as String,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: 8.sp),
-
-        // 에이스
-        Text(
-          'ACE: ${team['ace']}',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.amber,
-            fontSize: 12.sp,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildRosterList(Color teamColor) {
     return Container(
       decoration: BoxDecoration(
@@ -449,7 +354,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
           Container(
             padding: EdgeInsets.symmetric(vertical: 8.sp, horizontal: 12.sp),
             decoration: BoxDecoration(
-              color: teamColor.withOpacity(0.3),
+              color: teamColor.withValues(alpha: 0.3),
               borderRadius: BorderRadius.vertical(top: Radius.circular(7.sp)),
             ),
             child: Row(
@@ -501,7 +406,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isFocused
-                          ? teamColor.withOpacity(0.3)
+                          ? teamColor.withValues(alpha: 0.3)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(4.sp),
                       border: isFocused
@@ -515,7 +420,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                           width: 24.sp,
                           height: 24.sp,
                           decoration: BoxDecoration(
-                            color: _getRaceColor(player.race).withOpacity(0.3),
+                            color: _getRaceColor(player.race).withValues(alpha: 0.3),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -565,7 +470,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                             vertical: 2.sp,
                           ),
                           decoration: BoxDecoration(
-                            color: _getGradeColor(player.grade).withOpacity(0.2),
+                            color: _getGradeColor(player.grade).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4.sp),
                           ),
                           child: Text(
@@ -612,7 +517,7 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
 
     return PlayerRadarChart(
       stats: player.stats,
-      color: teamColor,
+      color: AppTheme.getGradeColor(player.grade.display),
       grade: player.grade.display,
       level: player.levelValue,
     );

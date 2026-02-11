@@ -401,7 +401,7 @@ class _InfoScreenState extends ConsumerState<InfoScreen> with SingleTickerProvid
             height: 180,
             child: PlayerRadarChart(
               stats: stats,
-              color: AppTheme.getRaceColor(player.race.code),
+              color: AppTheme.getGradeColor(grade.display),
               grade: grade.display,
               level: player.level.value,
             ),
@@ -507,7 +507,7 @@ class _InfoScreenState extends ConsumerState<InfoScreen> with SingleTickerProvid
             ),
           ),
           Text(
-            '${wins}승 ${losses}패',
+            '$wins승 $losses패',
             style: const TextStyle(fontSize: 11),
           ),
           const Spacer(),
@@ -592,7 +592,7 @@ class _InfoScreenState extends ConsumerState<InfoScreen> with SingleTickerProvid
             ),
           ),
           Text(
-            '${wins}승 ${losses}패 ($winRate%)',
+            '$wins승 $losses패 ($winRate%)',
             style: TextStyle(
               fontSize: 10,
               color: wins > losses

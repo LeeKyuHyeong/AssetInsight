@@ -36,7 +36,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   List<GameMap> _matchMaps = [];
 
   // 스나이핑 관련 상태
-  List<SnipingAssignment> _snipingAssignments = [];
+  final List<SnipingAssignment> _snipingAssignments = [];
   // idle: 기본, selectingMyPlayer: 내 선수 선택 중, selectingOpponent: 상대 선수 선택 중
   String _snipingState = 'idle';
   int? _snipingTargetSetIndex;
@@ -266,7 +266,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         // 헤더
         Container(
           padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
-          color: AppTheme.primaryBlue.withOpacity(0.2),
+          color: AppTheme.primaryBlue.withValues(alpha: 0.2),
           child: Row(
             children: [
               const Icon(Icons.person, size: 10, color: AppTheme.primaryBlue),
@@ -330,9 +330,9 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         margin: const EdgeInsets.only(left: 4),
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: color.withOpacity(0.5)),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
         ),
         child: Text(label,
             style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: color)),
@@ -384,7 +384,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
       decoration: BoxDecoration(
         color: AppTheme.cardBackground,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -424,7 +424,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
+                      border: Border.all(color: AppTheme.primaryBlue.withValues(alpha: 0.3)),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
@@ -498,8 +498,8 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         Container(
           padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
           color: isSelectingOpponent
-              ? Colors.orange.withOpacity(0.3)
-              : Colors.red.withOpacity(0.2),
+              ? Colors.orange.withValues(alpha: 0.3)
+              : Colors.red.withValues(alpha: 0.2),
           child: Row(
             children: [
               const Icon(Icons.groups, size: 10, color: Colors.red),
@@ -578,7 +578,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
         color: AppTheme.cardBackground,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: isMyTeam ? AppTheme.primaryBlue.withOpacity(0.5) : Colors.red.withOpacity(0.5),
+          color: isMyTeam ? AppTheme.primaryBlue.withValues(alpha: 0.5) : Colors.red.withValues(alpha: 0.5),
         ),
       ),
       child: Column(
@@ -634,9 +634,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             height: 130,
             child: PlayerRadarChart(
               stats: stats,
-              color: isMyTeam
-                  ? AppTheme.primaryBlue
-                  : Colors.red,
+              color: AppTheme.getGradeColor(player.grade.display),
               grade: player.grade.display,
               level: player.level.value,
             ),
@@ -649,7 +647,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
   /// 중앙 맵 컬럼 (7개 세로 다닥다닥 배치)
   Widget _buildMapColumn(List<GameMap> matchMaps, List<Player> teamPlayers) {
     return Container(
-      color: AppTheme.cardBackground.withOpacity(0.5),
+      color: AppTheme.cardBackground.withValues(alpha: 0.5),
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -912,8 +910,8 @@ class _PlayerGridItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primaryBlue.withOpacity(0.3)
-              : (isAssigned ? AppTheme.accentGreen.withOpacity(0.2) : AppTheme.cardBackground),
+              ? AppTheme.primaryBlue.withValues(alpha: 0.3)
+              : (isAssigned ? AppTheme.accentGreen.withValues(alpha: 0.2) : AppTheme.cardBackground),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isSelected
@@ -996,8 +994,8 @@ class _OpponentGridItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.red.withOpacity(0.3)
-              : (isSnipingTarget ? Colors.orange.withOpacity(0.15) : AppTheme.cardBackground),
+              ? Colors.red.withValues(alpha: 0.3)
+              : (isSnipingTarget ? Colors.orange.withValues(alpha: 0.15) : AppTheme.cardBackground),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isSelected
@@ -1057,10 +1055,10 @@ class _ItemChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: isHighlighted ? color.withOpacity(0.3) : color.withOpacity(0.1),
+        color: isHighlighted ? color.withValues(alpha: 0.3) : color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isHighlighted ? color : color.withOpacity(0.3),
+          color: isHighlighted ? color : color.withValues(alpha: 0.3),
           width: isHighlighted ? 2 : 1,
         ),
       ),
@@ -1102,7 +1100,7 @@ class _StatBar extends StatelessWidget {
           child: Container(
             height: 6,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(3),
             ),
             child: FractionallySizedBox(
@@ -1110,7 +1108,7 @@ class _StatBar extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Container(
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.7),
+                  color: color.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -1172,16 +1170,16 @@ class _MatchupBar extends StatelessWidget {
                 builder: (context, constraints) {
                   return Stack(
                     children: [
-                      Container(color: color2.withOpacity(0.15)),
+                      Container(color: color2.withValues(alpha: 0.15)),
                       Container(
                         width: constraints.maxWidth * rate / 100,
-                        color: color1.withOpacity(rate > 50 ? 0.5 : 0.3),
+                        color: color1.withValues(alpha: rate > 50 ? 0.5 : 0.3),
                       ),
                       Positioned(
                         left: constraints.maxWidth / 2 - 0.5,
                         top: 0,
                         bottom: 0,
-                        child: Container(width: 1, color: Colors.white.withOpacity(0.3)),
+                        child: Container(width: 1, color: Colors.white.withValues(alpha: 0.3)),
                       ),
                     ],
                   );
@@ -1242,17 +1240,17 @@ class _MapRowCompact extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
         decoration: BoxDecoration(
           color: isSnipingSelectable
-              ? Colors.orange.withOpacity(0.2)
+              ? Colors.orange.withValues(alpha: 0.2)
               : isFocused
-                  ? AppTheme.accentGreen.withOpacity(0.2)
-                  : (player != null ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent),
+                  ? AppTheme.accentGreen.withValues(alpha: 0.2)
+                  : (player != null ? AppTheme.primaryBlue.withValues(alpha: 0.1) : Colors.transparent),
           borderRadius: BorderRadius.circular(3),
           border: Border.all(
             color: isSnipingSelectable
                 ? Colors.orange
                 : isFocused
                     ? AppTheme.accentGreen
-                    : (player != null ? AppTheme.primaryBlue : AppTheme.textSecondary.withOpacity(0.3)),
+                    : (player != null ? AppTheme.primaryBlue : AppTheme.textSecondary.withValues(alpha: 0.3)),
             width: isSnipingSelectable ? 1.5 : (isFocused ? 1.5 : 0.5),
           ),
         ),
@@ -1261,7 +1259,7 @@ class _MapRowCompact extends StatelessWidget {
             Container(
               width: 14, height: 14,
               decoration: BoxDecoration(
-                color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withOpacity(0.3),
+                color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(7),
               ),
               child: Center(
@@ -1294,7 +1292,7 @@ class _MapRowCompact extends StatelessWidget {
                     )
                   else
                     Text(isFocused ? '← 선택' : '', style: TextStyle(fontSize: 6,
-                        color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withOpacity(0.5))),
+                        color: isFocused ? AppTheme.accentGreen : AppTheme.textSecondary.withValues(alpha: 0.5))),
                 ],
               ),
             ),
@@ -1321,15 +1319,15 @@ class _AceMapRowCompact extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
       padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
+        color: Colors.orange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: Colors.orange.withOpacity(0.5), width: 0.5),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 0.5),
       ),
       child: Row(
         children: [
           Container(
             width: 14, height: 14,
-            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.3), borderRadius: BorderRadius.circular(7)),
+            decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(7)),
             child: const Center(child: Icon(Icons.star, size: 8, color: Colors.orange)),
           ),
           const SizedBox(width: 2),
@@ -1338,8 +1336,8 @@ class _AceMapRowCompact extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(shortMapName, style: TextStyle(fontSize: 7, color: Colors.orange.withOpacity(0.8)), overflow: TextOverflow.ellipsis),
-                Text('ACE', style: TextStyle(fontSize: 6, color: Colors.orange.withOpacity(0.6))),
+                Text(shortMapName, style: TextStyle(fontSize: 7, color: Colors.orange.withValues(alpha: 0.8)), overflow: TextOverflow.ellipsis),
+                Text('ACE', style: TextStyle(fontSize: 6, color: Colors.orange.withValues(alpha: 0.6))),
               ],
             ),
           ),

@@ -6,6 +6,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../core/constants/initial_data.dart';
 import '../../../domain/models/models.dart';
 import '../../../data/providers/game_provider.dart';
+import '../../../app/theme.dart';
 import '../../widgets/player_radar_chart.dart';
 
 /// 이적 화면 (선수 영입)
@@ -306,7 +307,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1a1a2e),
         border: Border(
-          bottom: BorderSide(color: Colors.amber.withOpacity(0.3), width: 1),
+          bottom: BorderSide(color: Colors.amber.withValues(alpha: 0.3), width: 1),
         ),
       ),
       child: Row(
@@ -318,7 +319,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             width: 70.sp,
             height: 45.sp,
             decoration: BoxDecoration(
-              color: Color(team.colorValue).withOpacity(0.2),
+              color: Color(team.colorValue).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(6.sp),
               border: Border.all(color: Color(team.colorValue), width: 2),
             ),
@@ -505,7 +506,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
         padding: EdgeInsets.symmetric(horizontal: 8.sp, vertical: 5.sp),
         margin: EdgeInsets.only(bottom: 2.sp),
         decoration: BoxDecoration(
-          color: isSelected ? selectColor.withOpacity(0.3) : null,
+          color: isSelected ? selectColor.withValues(alpha: 0.3) : null,
           borderRadius: BorderRadius.circular(4.sp),
           border: isSelected ? Border.all(color: selectColor, width: 1) : null,
         ),
@@ -528,7 +529,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 4.sp, vertical: 1.sp),
                 decoration: BoxDecoration(
-                  color: _getGradeColor(player.grade).withOpacity(0.2),
+                  color: _getGradeColor(player.grade).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(2.sp),
                 ),
                 child: Text(
@@ -552,98 +553,6 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoPanel(Team team, int playerCount, Player? selectedPlayer, bool isRelease) {
-    final requiredMoney = selectedPlayer?.transferFee ?? 0;
-    final releasePrice = selectedPlayer != null ? (selectedPlayer.transferFee * 0.5).round() : 0;
-    final canAfford = team.money >= requiredMoney;
-
-    return Container(
-      padding: EdgeInsets.all(12.sp),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a1a2e),
-        borderRadius: BorderRadius.circular(6.sp),
-        border: Border.all(color: Colors.grey[700]!, width: 1),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '선수 수',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12.sp,
-            ),
-          ),
-          SizedBox(height: 4.sp),
-          Text(
-            '$playerCount / 20',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          SizedBox(height: 20.sp),
-
-          Text(
-            '보유 금액',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12.sp,
-            ),
-          ),
-          SizedBox(height: 4.sp),
-          Text(
-            '${team.money}',
-            style: TextStyle(
-              color: Colors.amber,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            '만원',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 11.sp,
-            ),
-          ),
-
-          SizedBox(height: 20.sp),
-
-          Text(
-            isRelease ? '방출 금액' : '요구 금액',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 12.sp,
-            ),
-          ),
-          SizedBox(height: 4.sp),
-          Text(
-            selectedPlayer != null
-                ? (isRelease ? '+$releasePrice' : '$requiredMoney')
-                : '-',
-            style: TextStyle(
-              color: selectedPlayer != null
-                  ? (isRelease ? Colors.green : (canAfford ? Colors.green : Colors.red))
-                  : Colors.grey,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            '만원',
-            style: TextStyle(
-              color: Colors.grey[400],
-              fontSize: 11.sp,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -706,7 +615,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
           Container(
             padding: EdgeInsets.all(12.sp),
             decoration: BoxDecoration(
-              color: _getRaceColor(player.race).withOpacity(0.1),
+              color: _getRaceColor(player.race).withValues(alpha: 0.1),
               borderRadius: BorderRadius.vertical(top: Radius.circular(5.sp)),
             ),
             child: Row(
@@ -761,7 +670,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                               vertical: 2.sp,
                             ),
                             decoration: BoxDecoration(
-                              color: _getRaceColor(player.race).withOpacity(0.3),
+                              color: _getRaceColor(player.race).withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(4.sp),
                             ),
                             child: Text(
@@ -877,7 +786,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                               ),
                             )
                           : Text(
-                              '차액 부족 (${tradeDiff}만원)',
+                              '차액 부족 ($tradeDiff만원)',
                               style: TextStyle(
                                 color: Colors.red[400],
                                 fontSize: 12.sp,
@@ -928,81 +837,9 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
   Widget _buildRadarChartWithStats(Player player) {
     return PlayerRadarChart(
       stats: player.stats,
-      color: _getRaceColor(player.race),
+      color: AppTheme.getGradeColor(player.grade.display),
       grade: player.grade.display,
       level: player.levelValue,
-    );
-  }
-
-  Widget _buildStatsList(Player player) {
-    final stats = player.stats;
-    final statData = [
-      {'name': '센스', 'value': stats.sense},
-      {'name': '컨트롤', 'value': stats.control},
-      {'name': '공격력', 'value': stats.attack},
-      {'name': '견제', 'value': stats.harass},
-      {'name': '전략', 'value': stats.strategy},
-      {'name': '물량', 'value': stats.macro},
-      {'name': '수비력', 'value': stats.defense},
-      {'name': '정찰', 'value': stats.scout},
-    ];
-
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: statData.map((stat) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 0.5.sp),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 24.sp,
-                child: Text(
-                  stat['name'] as String,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 6.sp,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  height: 3.sp,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(1.sp),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: (stat['value'] as int) / 999.0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.amber,
-                        borderRadius: BorderRadius.circular(1.sp),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 2.sp),
-              SizedBox(
-                width: 18.sp,
-                child: Text(
-                  '${stat['value']}',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 6.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-      ),
     );
   }
 
@@ -1055,7 +892,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
             decoration: BoxDecoration(
               color: const Color(0xFF2a2a3e),
               borderRadius: BorderRadius.circular(4.sp),
-              border: Border.all(color: Colors.amber.withOpacity(0.5), width: 1),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.5), width: 1),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(

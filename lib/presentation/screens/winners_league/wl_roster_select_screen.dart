@@ -570,7 +570,7 @@ class _WLRosterSelectScreenState extends ConsumerState<WLRosterSelectScreen> {
             height: 110.sp,
             child: PlayerRadarChart(
               stats: player.stats,
-              color: AppTheme.primaryBlue,
+              color: AppTheme.getGradeColor(player.grade.display),
               grade: player.grade.display,
               level: player.level.value,
             ),
