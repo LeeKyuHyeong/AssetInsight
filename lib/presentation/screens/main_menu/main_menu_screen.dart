@@ -868,13 +868,25 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                 },
               ),
 
-              // 디버그: 플레이오프 스킵
+              // 디버그: 플레이오프 스킵 (개인리그 전체 완료)
               _BottomButton(
                 icon: Icons.emoji_events,
                 label: 'PO',
                 onPressed: () {
                   final notifier = ref.read(gameStateProvider.notifier);
                   notifier.debugSkipToPlayoff();
+                  setState(() {});
+                  context.push('/playoff');
+                },
+              ),
+
+              // 디버그: 플레이오프 스킵 (8강#2까지만 완료)
+              _BottomButton(
+                icon: Icons.looks_two,
+                label: 'PO8강',
+                onPressed: () {
+                  final notifier = ref.read(gameStateProvider.notifier);
+                  notifier.debugSkipToPlayoffWith8Gang2();
                   setState(() {});
                   context.push('/playoff');
                 },

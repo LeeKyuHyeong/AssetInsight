@@ -911,9 +911,9 @@ class IndividualLeagueService {
         }
       }
 
-      // 24명 → 상위 8명 선발
+      // 24명 전원 본선 진출
       final sorted = _sortPlayersByGrade(advancingPlayers, playerMap);
-      final dualAdvancing = sorted.take(8).toList();
+      final dualAdvancing = sorted.toList();
 
       final mainTournamentSeededPlayers = bracket.mainTournamentSeeds;
       final allMainTournamentPlayers = <String>[
@@ -921,7 +921,7 @@ class IndividualLeagueService {
         ...dualAdvancing.where((id) => !mainTournamentSeededPlayers.contains(id)),
       ];
       final sortedMainPlayers = _sortPlayersByGrade(
-        allMainTournamentPlayers.take(8).toList(),
+        allMainTournamentPlayers.take(32).toList(),
         playerMap,
       );
 
@@ -958,84 +958,291 @@ class IndividualLeagueService {
     return result;
   }
 
-  /// 본선 (32강~결승) 시뮬레이션
-  /// 실제로는 8명이 진출하지만, 명칭상 32강부터 시작
-  /// 8강 진출자(top8Players)를 기록하여 다음 시즌 조지명식 직행 시드로 사용
+  // ======================================================================
+  // 본선 라운드별 시뮬레이션 (32강 → 16강 → 8강 → 4강 → 결승)
+  // ======================================================================
+
+  /// 32강 반쪽 시뮬레이션 (듀얼토너먼트 방식)
+  /// [half]: 1 = 조 0-3 (16명), 2 = 조 4-7 (16명)
+  IndividualLeagueBracket simulateRound32Half({
+    required IndividualLeagueBracket bracket,
+    required Map<String, Player> playerMap,
+    required int half,
+  }) {
+    final maps = GameMaps.all;
+    final existingResults = List<IndividualMatchResult>.from(bracket.mainTournamentResults);
+    final startGroup = (half - 1) * 4;
+    final endGroup = half * 4;
+
+    for (var gi = startGroup; gi < endGroup; gi++) {
+      if (gi >= bracket.mainTournamentGroups.length) break;
+      final group = bracket.mainTournamentGroups[gi];
+
+      final p0 = group.length > 0 ? group[0] : null;
+      final p1 = group.length > 1 ? group[1] : null;
+      final p2 = group.length > 2 ? group[2] : null;
+      final p3 = group.length > 3 ? group[3] : null;
+
+      if (p0 == null || p1 == null || p2 == null || p3 == null) continue;
+
+      // 듀얼토너먼트 방식: 5경기, 2명 진출
+      final match1 = _simulateIndividualMatch(
+        player1Id: p0, player2Id: p2, playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)], stage: IndividualLeagueStage.round32,
+      );
+      existingResults.add(match1);
+
+      final match2 = _simulateIndividualMatch(
+        player1Id: p1, player2Id: p3, playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)], stage: IndividualLeagueStage.round32,
+      );
+      existingResults.add(match2);
+
+      final winnersMatch = _simulateIndividualMatch(
+        player1Id: match1.winnerId, player2Id: match2.winnerId, playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)], stage: IndividualLeagueStage.round32,
+      );
+      existingResults.add(winnersMatch);
+
+      final losersMatch = _simulateIndividualMatch(
+        player1Id: match1.loserId, player2Id: match2.loserId, playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)], stage: IndividualLeagueStage.round32,
+      );
+      existingResults.add(losersMatch);
+
+      final finalMatch = _simulateIndividualMatch(
+        player1Id: winnersMatch.loserId, player2Id: losersMatch.winnerId, playerMap: playerMap,
+        map: maps[_random.nextInt(maps.length)], stage: IndividualLeagueStage.round32,
+      );
+      existingResults.add(finalMatch);
+    }
+
+    return bracket.copyWith(mainTournamentResults: existingResults);
+  }
+
+  /// 32강 진출자 목록 추출 (결과 기반)
+  List<String> getRound32Advancers(IndividualLeagueBracket bracket) {
+    final round32Results = bracket.mainTournamentResults
+        .where((r) => r.stage == IndividualLeagueStage.round32)
+        .toList();
+    final advancers = <String>[];
+
+    // 5경기씩 묶어서 승자전 승자 + 최종전 승자
+    for (var i = 0; i + 4 < round32Results.length; i += 5) {
+      advancers.add(round32Results[i + 2].winnerId); // 승자전 승자
+      advancers.add(round32Results[i + 4].winnerId); // 최종전 승자
+    }
+    return advancers;
+  }
+
+  /// 16강 반쪽 시뮬레이션 (Bo3)
+  /// [half]: 1 = 매치 0-3, 2 = 매치 4-7
+  IndividualLeagueBracket simulateRound16Half({
+    required IndividualLeagueBracket bracket,
+    required Map<String, Player> playerMap,
+    required int half,
+    String? playerTeamId,
+  }) {
+    final existingResults = List<IndividualMatchResult>.from(bracket.mainTournamentResults);
+    final advancers = getRound32Advancers(bracket);
+    if (advancers.length < 16) return bracket;
+
+    final startIdx = (half - 1) * 4;
+    for (var i = startIdx; i < startIdx + 4 && i * 2 + 1 < advancers.length; i++) {
+      final match = _simulateIndividualSeries(
+        player1Id: advancers[i * 2],
+        player2Id: advancers[i * 2 + 1],
+        playerMap: playerMap,
+        stage: IndividualLeagueStage.round16,
+        bestOf: 3,
+        showBattleLog: false,
+      );
+      existingResults.add(match);
+    }
+
+    return bracket.copyWith(mainTournamentResults: existingResults);
+  }
+
+  /// 16강 진출자 목록 추출 (결과 기반)
+  List<String> getRound16Advancers(IndividualLeagueBracket bracket) {
+    return bracket.mainTournamentResults
+        .where((r) => r.stage == IndividualLeagueStage.round16)
+        .map((r) => r.winnerId)
+        .toList();
+  }
+
+  /// 8강 반쪽 시뮬레이션 (Bo5)
+  /// [half]: 1 = 매치 0-1, 2 = 매치 2-3
+  IndividualLeagueBracket simulateQuarterFinalHalf({
+    required IndividualLeagueBracket bracket,
+    required Map<String, Player> playerMap,
+    required int half,
+    String? playerTeamId,
+  }) {
+    final existingResults = List<IndividualMatchResult>.from(bracket.mainTournamentResults);
+    final advancers = getRound16Advancers(bracket);
+    if (advancers.length < 8) return bracket;
+
+    // 8강 진출자 기록 (다음 시즌 조지명식 직행)
+    final top8Players = List<String>.from(advancers.take(8));
+
+    final myTeamPlayerIds = playerTeamId != null
+        ? playerMap.values.where((p) => p.teamId == playerTeamId).map((p) => p.id).toSet()
+        : <String>{};
+
+    final startIdx = (half - 1) * 2;
+    for (var i = startIdx; i < startIdx + 2 && i * 2 + 1 < advancers.length; i++) {
+      final p1 = advancers[i * 2];
+      final p2 = advancers[i * 2 + 1];
+      final isMyTeamMatch = myTeamPlayerIds.contains(p1) || myTeamPlayerIds.contains(p2);
+
+      final match = _simulateIndividualSeries(
+        player1Id: p1,
+        player2Id: p2,
+        playerMap: playerMap,
+        stage: IndividualLeagueStage.quarterFinal,
+        bestOf: 5,
+        showBattleLog: isMyTeamMatch,
+      );
+      existingResults.add(match);
+    }
+
+    return bracket.copyWith(
+      mainTournamentResults: existingResults,
+      top8Players: top8Players,
+    );
+  }
+
+  /// 8강 진출자 목록 추출 (결과 기반)
+  List<String> getQuarterFinalAdvancers(IndividualLeagueBracket bracket) {
+    return bracket.mainTournamentResults
+        .where((r) => r.stage == IndividualLeagueStage.quarterFinal)
+        .map((r) => r.winnerId)
+        .toList();
+  }
+
+  /// 4강 시뮬레이션 (Bo5, 2경기)
+  IndividualLeagueBracket simulateSemiFinal({
+    required IndividualLeagueBracket bracket,
+    required Map<String, Player> playerMap,
+    String? playerTeamId,
+  }) {
+    final existingResults = List<IndividualMatchResult>.from(bracket.mainTournamentResults);
+    final advancers = getQuarterFinalAdvancers(bracket);
+    if (advancers.length < 4) return bracket;
+
+    final myTeamPlayerIds = playerTeamId != null
+        ? playerMap.values.where((p) => p.teamId == playerTeamId).map((p) => p.id).toSet()
+        : <String>{};
+
+    for (var i = 0; i < 2; i++) {
+      final p1 = advancers[i * 2];
+      final p2 = advancers[i * 2 + 1];
+      final isMyTeamMatch = myTeamPlayerIds.contains(p1) || myTeamPlayerIds.contains(p2);
+
+      final match = _simulateIndividualSeries(
+        player1Id: p1,
+        player2Id: p2,
+        playerMap: playerMap,
+        stage: IndividualLeagueStage.semiFinal,
+        bestOf: 5,
+        showBattleLog: isMyTeamMatch,
+      );
+      existingResults.add(match);
+    }
+
+    return bracket.copyWith(mainTournamentResults: existingResults);
+  }
+
+  /// 4강 진출자 목록 추출
+  List<String> getSemiFinalAdvancers(IndividualLeagueBracket bracket) {
+    return bracket.mainTournamentResults
+        .where((r) => r.stage == IndividualLeagueStage.semiFinal)
+        .map((r) => r.winnerId)
+        .toList();
+  }
+
+  /// 결승 시뮬레이션 (Bo7, 1경기)
+  IndividualLeagueBracket simulateFinal({
+    required IndividualLeagueBracket bracket,
+    required Map<String, Player> playerMap,
+    String? playerTeamId,
+  }) {
+    final existingResults = List<IndividualMatchResult>.from(bracket.mainTournamentResults);
+    final finalists = getSemiFinalAdvancers(bracket);
+    if (finalists.length < 2) return bracket;
+
+    final myTeamPlayerIds = playerTeamId != null
+        ? playerMap.values.where((p) => p.teamId == playerTeamId).map((p) => p.id).toSet()
+        : <String>{};
+
+    final p1 = finalists[0];
+    final p2 = finalists[1];
+    final isMyTeamMatch = myTeamPlayerIds.contains(p1) || myTeamPlayerIds.contains(p2);
+
+    final finalMatch = _simulateIndividualSeries(
+      player1Id: p1,
+      player2Id: p2,
+      playerMap: playerMap,
+      stage: IndividualLeagueStage.final_,
+      bestOf: 7,
+      showBattleLog: isMyTeamMatch,
+    );
+    existingResults.add(finalMatch);
+
+    // 8강 진출자를 순위대로 정렬
+    final quarterFinalWinners = getQuarterFinalAdvancers(bracket);
+    final semiFinalWinners = getSemiFinalAdvancers(bracket);
+    final top8 = bracket.top8Players.isNotEmpty
+        ? bracket.top8Players
+        : getRound16Advancers(bracket);
+
+    final rankedTop8 = _rankTop8Players(
+      top8Players: top8,
+      quarterFinalWinners: quarterFinalWinners,
+      semiFinalWinners: semiFinalWinners,
+      championId: finalMatch.winnerId,
+      runnerUpId: finalMatch.loserId,
+    );
+
+    return bracket.copyWith(
+      mainTournamentResults: existingResults,
+      championId: finalMatch.winnerId,
+      runnerUpId: finalMatch.loserId,
+      top8Players: rankedTop8,
+    );
+  }
+
+  // ======================================================================
+  // 전체 본선 시뮬레이션 (디버그/AI용 - 한번에 전부 진행)
+  // ======================================================================
+
+  /// 본선 전체 시뮬레이션 (32강~결승)
   IndividualLeagueBracket simulateMainTournament({
     required IndividualLeagueBracket bracket,
     required Map<String, Player> playerMap,
     bool showLogFromQuarterFinal = true,
+    String? playerTeamId,
   }) {
-    var players = List<String>.from(bracket.mainTournamentPlayers);
-    final maps = GameMaps.all;
-    final results = <IndividualMatchResult>[];
+    // 32강 (8조 듀얼토너먼트)
+    bracket = simulateRound32Half(half: 1, bracket: bracket, playerMap: playerMap);
+    bracket = simulateRound32Half(half: 2, bracket: bracket, playerMap: playerMap);
 
-    // 8강 진출자 기록 (= 조지명식 참가자 = 다음 시즌 직행 시드)
-    final top8Players = List<String>.from(players.take(8));
+    // 16강 (Bo3)
+    bracket = simulateRound16Half(half: 1, bracket: bracket, playerMap: playerMap, playerTeamId: playerTeamId);
+    bracket = simulateRound16Half(half: 2, bracket: bracket, playerMap: playerMap, playerTeamId: playerTeamId);
 
-    // 8강 (Quarter Final): 8명 → 4명
-    final quarterFinalWinners = <String>[];
-    for (var i = 0; i < 4 && i * 2 + 1 < players.length; i++) {
-      final match = _simulateIndividualMatch(
-        player1Id: players[i * 2],
-        player2Id: players[i * 2 + 1],
-        playerMap: playerMap,
-        map: maps[_random.nextInt(maps.length)],
-        stage: IndividualLeagueStage.quarterFinal,
-        showBattleLog: showLogFromQuarterFinal,
-      );
-      results.add(match);
-      quarterFinalWinners.add(match.winnerId);
-    }
+    // 8강 (Bo5)
+    bracket = simulateQuarterFinalHalf(half: 1, bracket: bracket, playerMap: playerMap, playerTeamId: playerTeamId);
+    bracket = simulateQuarterFinalHalf(half: 2, bracket: bracket, playerMap: playerMap, playerTeamId: playerTeamId);
 
-    // 4강 (Semi Final): 4명 → 2명
-    final semiFinalWinners = <String>[];
-    for (var i = 0; i < 2 && i * 2 + 1 < quarterFinalWinners.length; i++) {
-      final match = _simulateIndividualMatch(
-        player1Id: quarterFinalWinners[i * 2],
-        player2Id: quarterFinalWinners[i * 2 + 1],
-        playerMap: playerMap,
-        map: maps[_random.nextInt(maps.length)],
-        stage: IndividualLeagueStage.semiFinal,
-        showBattleLog: showLogFromQuarterFinal,
-      );
-      results.add(match);
-      semiFinalWinners.add(match.winnerId);
-    }
+    // 4강 (Bo5)
+    bracket = simulateSemiFinal(bracket: bracket, playerMap: playerMap, playerTeamId: playerTeamId);
 
-    // 결승 (Final): 2명 → 1명
-    if (semiFinalWinners.length >= 2) {
-      final finalMatch = _simulateIndividualMatch(
-        player1Id: semiFinalWinners[0],
-        player2Id: semiFinalWinners[1],
-        playerMap: playerMap,
-        map: maps[_random.nextInt(maps.length)],
-        stage: IndividualLeagueStage.final_,
-        showBattleLog: showLogFromQuarterFinal,
-      );
-      results.add(finalMatch);
+    // 결승 (Bo7)
+    bracket = simulateFinal(bracket: bracket, playerMap: playerMap, playerTeamId: playerTeamId);
 
-      // 8강 진출자를 순위대로 정렬 (1등=우승자, 2등=준우승자, 3-4등=4강, 5-8등=8강)
-      final rankedTop8 = _rankTop8Players(
-        top8Players: top8Players,
-        quarterFinalWinners: quarterFinalWinners,
-        semiFinalWinners: semiFinalWinners,
-        championId: finalMatch.winnerId,
-        runnerUpId: finalMatch.loserId,
-      );
-
-      return bracket.copyWith(
-        mainTournamentResults: results,
-        championId: finalMatch.winnerId,
-        runnerUpId: finalMatch.loserId,
-        top8Players: rankedTop8,
-      );
-    }
-
-    return bracket.copyWith(
-      mainTournamentResults: results,
-      top8Players: top8Players,
-    );
+    return bracket;
   }
 
   /// 8강 진출자를 순위대로 정렬
@@ -1134,6 +1341,55 @@ class IndividualLeagueService {
       stageIndex: stage.index,
       battleLog: showBattleLog ? setResult.battleLog : [],
       showBattleLog: showBattleLog,
+    );
+  }
+
+  /// 개인 시리즈 시뮬레이션 (Bo3/Bo5/Bo7)
+  IndividualMatchResult _simulateIndividualSeries({
+    required String player1Id,
+    required String player2Id,
+    required Map<String, Player> playerMap,
+    required IndividualLeagueStage stage,
+    required int bestOf,
+    bool showBattleLog = false,
+  }) {
+    final player1 = playerMap[player1Id]!;
+    final player2 = playerMap[player2Id]!;
+    final maps = GameMaps.all;
+    final winsNeeded = (bestOf + 1) ~/ 2;
+
+    int p1Wins = 0;
+    int p2Wins = 0;
+    final sets = <SetResult>[];
+
+    while (p1Wins < winsNeeded && p2Wins < winsNeeded) {
+      final map = maps[_random.nextInt(maps.length)];
+      final setResult = _matchService.simulateMatch(
+        homePlayer: player1,
+        awayPlayer: player2,
+        map: map,
+      );
+      sets.add(setResult);
+      if (setResult.homeWin) {
+        p1Wins++;
+      } else {
+        p2Wins++;
+      }
+    }
+
+    final winnerId = p1Wins > p2Wins ? player1Id : player2Id;
+
+    return IndividualMatchResult(
+      id: '${stage.name}_${player1Id}_$player2Id',
+      player1Id: player1Id,
+      player2Id: player2Id,
+      winnerId: winnerId,
+      mapId: sets.first.mapId,
+      stageIndex: stage.index,
+      battleLog: [],
+      showBattleLog: showBattleLog,
+      sets: sets,
+      bestOf: bestOf,
     );
   }
 

@@ -151,7 +151,7 @@ class ScheduleItem {
   }
 }
 
-/// 개인리그 매치 결과 (단일 경기)
+/// 개인리그 매치 결과 (단판 또는 시리즈)
 @HiveType(typeId: 14)
 class IndividualMatchResult {
   @HiveField(0)
@@ -176,7 +176,13 @@ class IndividualMatchResult {
   final List<String> battleLog;
 
   @HiveField(7)
-  final bool showBattleLog; // 8강 이후만 true
+  final bool showBattleLog; // 8강 이후 + 우리팀 경기만 true
+
+  @HiveField(8)
+  final List<SetResult> sets; // Bo3/Bo5/Bo7 시리즈 각 세트 결과
+
+  @HiveField(9)
+  final int bestOf; // 1=Bo1, 3=Bo3, 5=Bo5, 7=Bo7
 
   const IndividualMatchResult({
     required this.id,
@@ -187,10 +193,21 @@ class IndividualMatchResult {
     required this.stageIndex,
     this.battleLog = const [],
     this.showBattleLog = false,
+    this.sets = const [],
+    this.bestOf = 1,
   });
 
   IndividualLeagueStage get stage => IndividualLeagueStage.values[stageIndex];
   String get loserId => winnerId == player1Id ? player2Id : player1Id;
+
+  /// 시리즈 스코어 (player1 승수)
+  int get player1Wins => sets.where((s) => s.winnerId == player1Id).length;
+
+  /// 시리즈 스코어 (player2 승수)
+  int get player2Wins => sets.where((s) => s.winnerId == player2Id).length;
+
+  /// 시리즈 스코어 문자열 (예: "3:1")
+  String get seriesScore => '$player1Wins:$player2Wins';
 }
 
 /// 개인리그 대진표

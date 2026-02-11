@@ -14,6 +14,8 @@ import '../presentation/screens/individual_league/pcbang_qualifier_screen.dart';
 import '../presentation/screens/individual_league/dual_tournament_screen.dart';
 import '../presentation/screens/individual_league/group_draw_screen.dart';
 import '../presentation/screens/individual_league/main_tournament_screen.dart';
+import '../presentation/screens/individual_league/individual_semifinal_screen.dart';
+import '../presentation/screens/individual_league/individual_final_screen.dart';
 import '../presentation/screens/player_ranking/player_ranking_screen.dart';
 import '../presentation/screens/match_result/match_result_ranking_screen.dart';
 import '../presentation/screens/season_end/season_end_screen.dart';
@@ -101,6 +103,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           final viewOnly = state.uri.queryParameters['viewOnly'] == 'true';
           return GroupDrawScreen(viewOnly: viewOnly);
         },
+      ),
+      GoRoute(
+        path: '/individual-league/main/semifinal',
+        name: 'individualSemiFinal',
+        builder: (context, state) => const IndividualSemiFinalScreen(),
+      ),
+      GoRoute(
+        path: '/individual-league/main/final',
+        name: 'individualFinal',
+        builder: (context, state) => const IndividualFinalScreen(),
       ),
       GoRoute(
         path: '/individual-league/main/:stage',
