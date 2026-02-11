@@ -8,7 +8,124 @@
 
 ### 밸런싱
 - [ ] 전체 시즌 플레이 테스트
-- [ ] Agent-Team 기반 시뮬레이션 보정 시스템 구축 (아래 상세)
+- [x] Agent-Team 기반 시뮬레이션 보정 시스템 분석 완료 (아래 수정안)
+- [x] 수정안 코드 적용 (Step 1~5 완료)
+- [x] 밀리맵 누락분 추가 (79개 → 219개, 나무위키 밀리맵 전체 포함)
+
+---
+
+## Agent-Team 분석 결과: 최종 수정안 (2026-02-11)
+
+> Phase 1(5명 분석) → Phase 2(3명 취합) → Phase 3(교차 분석) 완료
+
+### Step 1: enums.dart — 빌드 상성 수정
+
+#### 빌드 스타일 오분류 3건
+| 빌드 | 현재 | 수정 | 이유 |
+|------|------|------|------|
+| zvt3HatchMutal | aggressive | **balanced** | 매크로 빌드인데 공격형 분류 |
+| zvzSpeedlingAllIn | balanced | **aggressive** | 올인 빌드인데 밸런스 분류 |
+| pvzCorsairReaver | aggressive | **balanced** | 운영형 견제인데 공격형 분류 |
+
+#### _getStyleAdvantage() 상성값 3건
+| 매치업 | 현재 | 수정 | 이유 |
+|--------|------|------|------|
+| Aggressive vs Defensive | +15 | **+10** | 공격형 과유리 완화 |
+| Defensive vs Aggressive | +8 | **+12** | 수비 성공 보상 강화 |
+| Balanced vs Aggressive | +5 | **+8** | 밸런스형 카운터 강화 |
+
+#### _getSpecificAdvantage() 카운터 12~15개 추가
+```
+현재: TvT 0개, PvP 0개, PvT역방향 0개, ZvP역방향 0개
+추가:
+  TvT: proxy→ccFirst(+20), ccFirst→proxy(-25), 1factPush→ccFirst(+15),
+       wraith→2barracks(-10), 2fac→1factPush(+10)
+  PvP: darkAllIn→2gateDragoon(+15), cannonRush→1gateRobo(-20),
+       reaverDrop→zealotRush(+10)
+  PvT: 2gateZealot→tvpDouble(+15), 1gateObs→tvpWraithRush(+10)
+  ZvP: 3hatchHydra→forgeCannon(+12), 2hatchMutal→nexusFirst(+15)
+```
+
+### Step 2: map_data.dart — 맵 상성 수정
+
+#### 19개 맵 상성 순환 깨짐 수정 (tvz+zvp+pvt 3개 모두 >50 불가능)
+대표 수정:
+| 맵 | 현재 (tvz/zvp/pvt) | 수정 | 비고 |
+|----|---------------------|------|------|
+| 패스파인더 | 65/65/60 | 55/60/55 | 극단적 상성 완화 |
+| 네오문글레이브 | 60/64/65 | 60/40/65 | 저그 불리맵 반영 |
+| 데스페라도 | 62/58/65 | 48/45/65 | 토스맵 특성 반영 |
+| 백마고지 | 65/56/65 | 55/40/65 | 토스맵 반영 |
+| 레퀴엠 | 57/58/59 | 57/42/59 | 짧은 맵 특성 반영 |
+| 지오메트리 | 65/65/43 | 65/45/43 | 테란맵 순환 유지 |
+| (나머지 13개) | ... | ... | 상성 순환 원칙 적용 |
+
+#### rushDistance와 상성 불일치 수정
+| 맵 | 문제 | 수정 |
+|----|------|------|
+| 벤젠 (rd=0.85) | tvz=64 테란맵 (넓은 맵인데) | tvz=48 저그유리 |
+| 배틀로얄 (rd=0.4) | tvz=35 저그맵 (좁은 맵인데) | tvz=50 중립 |
+
+#### 밀리맵 누락분 추가 (별도 조사 진행 중)
+
+### Step 3: match_simulation_service.dart — 시뮬레이션 엔진 수정
+
+#### [긴급] 종족 상성 증폭 완화
+```dart
+// 현재: baseWinRate = 50.0 + raceDeviation * 2.0  (±30% 효과)
+// 수정: baseWinRate = 50.0 + raceDeviation * 1.0  (±15% 효과)
+```
+
+#### [높음] _determineBuildType()에 맵 파라미터 추가
+```
+rushDistance <= 0.4: cheese/aggressive 빌드 점수 +200
+rushDistance >= 0.7: defensive/balanced 빌드 점수 +200
+```
+
+#### [중간] macroMapEvents 조건 완화
+```dart
+// 현재: gamePhase == GamePhase.late (후반에만)
+// 수정: gamePhase != GamePhase.early (중반부터)
+```
+
+#### [높음] scout 맵 보너스 추가
+```
+rushDistance >= 0.7 시 scout 보너스 추가 (넓은 맵에서 정찰 중요)
+```
+
+### Step 4: build_orders.dart — 빌드 이벤트 수정
+
+#### [높음] buildTypeEvents 누락 6개 빌드 추가
+tvtCCFirst, tvtVultureHarass, zvz3HatchHydra, zvzSpeedlingAllIn, pvpZealotRush, pvpCorsairReaver
+
+#### [높음] keyStats에 scout 추가 (5~6개 빌드)
+pvt1GateObserver, tvzSKTerran, zvtHatchSpore, pvzCorsairReaver, pvpCorsairReaver
+
+#### [중간] favorsStat 중복 해소 (4개 빌드)
+| 빌드 | 현재 | 수정 |
+|------|------|------|
+| pvzForgeCannon | defense×2 | defense + macro |
+| pvzNexusFirst | macro×2 | macro + defense |
+| pvpCannonRush | attack×2 | attack + sense |
+| pvz2GateZealot | attack×2 | attack + control |
+
+#### [중간] tvzSKTerran 전용 이벤트 추가 (2→3개)
+
+### Step 5: battle_events.dart — scout 이벤트 추가
+
+scout 이벤트 12~15개 추가 (현재 13 → 25~28)
+
+### 예상 효과
+
+| 항목 | Before | After |
+|------|--------|-------|
+| 맵 상성 영향 | ±30% | ±15% |
+| 3종 모두 유리 맵 | 19개 | 0개 |
+| 빌드-맵 연동 | 없음 | rushDistance 기반 |
+| buildTypeEvents 누락 | 6개 | 0개 |
+| 특수 상성 카운터 | 10개 | 22~25개 |
+| scout 활용도 | 하 (keyStats 0) | 중상 (keyStats 5~6) |
+| Agg vs Def 유리도 | +15% | +10% |
 
 ---
 
