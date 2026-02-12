@@ -100,7 +100,6 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
                 _buildBottomButtons(context, bracket, playerMap),
               ],
             ),
-            ResetButton.positioned(),
           ],
         ),
       ),
@@ -118,7 +117,7 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 6.sp),
+      padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 6.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -127,7 +126,7 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.sports_esports, color: AppColors.accent, size: 20.sp),
+          ResetButton.back(),
           const Spacer(),
           Text(
             '조 지 명 식',
@@ -139,7 +138,7 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
             ),
           ),
           const Spacer(),
-          Icon(Icons.sports_esports, color: AppColors.accent, size: 20.sp),
+          const ResetButton(small: true),
         ],
       ),
     );
@@ -269,7 +268,7 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
                   child: Text(
                     player.name,
                     style: TextStyle(
-                      color: isMyTeam ? AppColors.accent : Colors.white,
+                      color: isMyTeam ? Colors.purpleAccent : Colors.white,
                       fontSize: 8.sp,
                       fontWeight: (isSeed || isMyTeam) ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -442,6 +441,7 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
   Widget _buildQualifierChip(Player player, bool isAssigned) {
     // 선택 가능 여부
     final bool isTappable = _isWaitingForPick && !isAssigned;
+    final bool isMyTeam = player.teamId == _playerTeamId;
 
     return GestureDetector(
       onTap: isTappable ? () => _onQualifierPicked(player.id) : null,
@@ -481,8 +481,9 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
             Text(
               player.name,
               style: TextStyle(
-                color: isAssigned ? Colors.grey : Colors.white,
+                color: isAssigned ? Colors.grey : isMyTeam ? Colors.purpleAccent : Colors.white,
                 fontSize: 9.sp,
+                fontWeight: isMyTeam ? FontWeight.bold : FontWeight.normal,
                 decoration: isAssigned ? TextDecoration.lineThrough : null,
               ),
             ),
@@ -514,32 +515,6 @@ class _GroupDrawScreenState extends ConsumerState<GroupDrawScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton(
-            onPressed: (_isDrawing || _isWaitingForPick)
-                ? null
-                : () {
-                    if (Navigator.canPop(context)) {
-                      context.pop();
-                    } else {
-                      context.go('/main');
-                    }
-                  },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.cardBackground,
-              padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 10.sp),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.arrow_back, color: Colors.white, size: 14.sp),
-                SizedBox(width: 6.sp),
-                Text(
-                  'EXIT',
-                  style: TextStyle(color: Colors.white, fontSize: 12.sp),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 16.sp),
           if (canStart)
             ElevatedButton(
               onPressed: _isCompleted

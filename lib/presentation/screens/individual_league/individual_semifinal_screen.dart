@@ -9,6 +9,7 @@ import '../../../domain/models/models.dart';
 import '../../../domain/services/individual_league_service.dart';
 import '../../../domain/services/match_simulation_service.dart';
 import '../../../data/providers/game_provider.dart';
+import '../../widgets/player_thumbnail.dart';
 import '../../widgets/reset_button.dart';
 
 /// 개인리그 4강 화면 (Bo5, 2경기)
@@ -103,7 +104,6 @@ class _IndividualSemiFinalScreenState
                 _buildBottomButtons(context, bracket, playerMap),
               ],
             ),
-            ResetButton.positioned(),
           ],
         ),
       ),
@@ -112,7 +112,7 @@ class _IndividualSemiFinalScreenState
 
   Widget _buildHeader(Team team, bool hasMyTeamPlayer) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 12.sp),
+      padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 12.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -123,36 +123,40 @@ class _IndividualSemiFinalScreenState
         children: [
           Row(
             children: [
+              ResetButton.back(fallbackRoute: '/playoff'),
+              SizedBox(width: 8.sp),
               _buildTeamLogo(team),
-              const Spacer(),
-              Column(
-                children: [
-                  Text(
-                    '개인리그 4강',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  Text(
-                    'Bo5 (5판 3선승)',
-                    style: TextStyle(
-                        color: AppColors.accent, fontSize: 12.sp),
-                  ),
-                  if (_statusMessage.isNotEmpty)
+              SizedBox(width: 8.sp),
+              Expanded(
+                child: Column(
+                  children: [
                     Text(
-                      _statusMessage,
-                      style:
-                          TextStyle(color: Colors.grey, fontSize: 11.sp),
+                      '개인리그 4강',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
                     ),
-                ],
+                    Text(
+                      'Bo5 (5판 3선승)',
+                      style: TextStyle(
+                          color: AppColors.accent, fontSize: 12.sp),
+                    ),
+                    if (_statusMessage.isNotEmpty)
+                      Text(
+                        _statusMessage,
+                        style:
+                            TextStyle(color: Colors.grey, fontSize: 11.sp),
+                      ),
+                  ],
+                ),
               ),
-              const Spacer(),
-              hasMyTeamPlayer
-                  ? _buildSpeedSelector()
-                  : SizedBox(width: 60.sp),
+              if (hasMyTeamPlayer)
+                _buildSpeedSelector(),
+              SizedBox(width: 8.sp),
+              const ResetButton(small: true),
             ],
           ),
           if (!hasMyTeamPlayer) ...[
@@ -360,20 +364,12 @@ class _IndividualSemiFinalScreenState
               child: Icon(Icons.check,
                   size: 14.sp, color: AppColors.accent),
             ),
-          if (isMyTeam && !isWinner)
-            Container(
-              margin: EdgeInsets.only(right: 4.sp),
-              padding: EdgeInsets.symmetric(
-                  horizontal: 3.sp, vertical: 1.sp),
-              decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(2.sp)),
-              child: Text('MY',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 7.sp,
-                      fontWeight: FontWeight.bold)),
-            ),
+          PlayerThumbnail(
+            player: player,
+            size: 18,
+            isMyTeam: isMyTeam,
+          ),
+          SizedBox(width: 4.sp),
           Flexible(
             child: Text(
               '${player.name} (${player.race.code})',
@@ -491,31 +487,6 @@ class _IndividualSemiFinalScreenState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton(
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                context.pop();
-              } else {
-                context.go('/playoff');
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.cardBackground,
-              padding: EdgeInsets.symmetric(
-                  horizontal: 32.sp, vertical: 12.sp),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.arrow_back,
-                    color: Colors.white, size: 16.sp),
-                SizedBox(width: 8.sp),
-                Text('EXIT',
-                    style: TextStyle(
-                        color: Colors.white, fontSize: 14.sp)),
-              ],
-            ),
-          ),
-          SizedBox(width: 24.sp),
           ElevatedButton(
             onPressed: _isSimulating
                 ? null

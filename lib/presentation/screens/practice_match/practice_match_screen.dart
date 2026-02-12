@@ -38,31 +38,29 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                // 상단 헤더
-                _buildHeader(context, playerTeam),
+            // 상단 헤더
+            _buildHeader(context, playerTeam),
 
-                // 세팅 이미지 영역
-                _buildSettingBanner(),
+            // 세팅 이미지 영역
+            _buildSettingBanner(),
 
-                // 메인 컨텐츠
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.sp),
-                    child: Row(
-                      children: [
-                        // 좌측: 내 팀 선수 목록
-                        Expanded(
-                          flex: 2,
-                          child: _buildMyTeamPanel(myPlayers),
-                        ),
+            // 메인 컨텐츠
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(16.sp),
+                child: Row(
+                  children: [
+                    // 좌측: 내 팀 선수 목록
+                    Expanded(
+                      flex: 2,
+                      child: _buildMyTeamPanel(myPlayers),
+                    ),
 
-                        SizedBox(width: 16.sp),
+                    SizedBox(width: 16.sp),
 
-                        // 중앙: VS + 맵 선택
+                    // 중앙: VS + 맵 선택
                     Expanded(
                       flex: 2,
                       child: _buildCenterPanel(gameState),
@@ -83,10 +81,6 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
             // 하단 버튼
             _buildBottomButtons(context),
           ],
-            ),
-            // R 버튼
-            ResetButton.positioned(),
-          ],
         ),
       ),
     );
@@ -103,6 +97,8 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
       ),
       child: Row(
         children: [
+          ResetButton.back(),
+          SizedBox(width: 8.sp),
           // 좌측 팀 로고
           _buildTeamLogo(team),
 
@@ -123,6 +119,8 @@ class _PracticeMatchScreenState extends ConsumerState<PracticeMatchScreen> {
 
           // 우측 팀 로고
           _buildTeamLogo(team),
+          SizedBox(width: 8.sp),
+          const ResetButton(small: true),
         ],
       ),
     );

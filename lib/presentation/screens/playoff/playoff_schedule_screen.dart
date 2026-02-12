@@ -49,43 +49,38 @@ class _PlayoffScheduleScreenState extends ConsumerState<PlayoffScheduleScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                // 상단 헤더
-                _buildHeader(season),
+            // 상단 헤더
+            _buildHeader(season),
 
-                // 메인 컨텐츠
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.all(12.sp),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // 플레이오프 진행 흐름
-                        _buildPlayoffFlow(season),
+            // 메인 컨텐츠
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(12.sp),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 플레이오프 진행 흐름
+                    _buildPlayoffFlow(season),
 
-                        SizedBox(height: 16.sp),
+                    SizedBox(height: 16.sp),
 
-                        // 플레이오프 대진표 (시각적)
-                        if (playoff != null)
-                          _buildTournamentBracket(playoff, gameState),
+                    // 플레이오프 대진표 (시각적)
+                    if (playoff != null)
+                      _buildTournamentBracket(playoff, gameState),
 
-                        SizedBox(height: 16.sp),
+                    SizedBox(height: 16.sp),
 
-                        // 개인리그 진행 상황
-                        _buildIndividualLeagueStatus(season),
-                      ],
-                    ),
-                  ),
+                    // 개인리그 진행 상황
+                    _buildIndividualLeagueStatus(season),
+                  ],
                 ),
-
-                // 하단 버튼
-                _buildBottomButtons(context, season, playerTeam.id),
-              ],
+              ),
             ),
-            ResetButton.positioned(),
+
+            // 하단 버튼
+            _buildBottomButtons(context, season, playerTeam.id),
           ],
         ),
       ),
@@ -104,8 +99,9 @@ class _PlayoffScheduleScreenState extends ConsumerState<PlayoffScheduleScreen> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              ResetButton.back(),
+              const Spacer(),
               Icon(Icons.emoji_events, color: Colors.amber, size: 24.sp),
               SizedBox(width: 12.sp),
               Text(
@@ -116,6 +112,8 @@ class _PlayoffScheduleScreenState extends ConsumerState<PlayoffScheduleScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const Spacer(),
+              const ResetButton(small: true),
             ],
           ),
           if (_isSpectatorMode) ...[

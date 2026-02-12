@@ -39,37 +39,32 @@ class MatchResultRankingScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                // 상단 헤더
-                _buildHeader(),
+            // 상단 헤더
+            _buildHeader(),
 
-                // 메인 컨텐츠
-                Expanded(
-                  child: Row(
-                    children: [
-                      // 좌측: 내 팀 순위 패널
-                      Expanded(
-                        flex: 1,
-                        child: _buildMyTeamPanel(playerTeam, playerRank),
-                      ),
-
-                      // 우측: 전체 팀 순위 리스트
-                      Expanded(
-                        flex: 2,
-                        child: _buildRankingList(sortedTeams, playerTeam.id),
-                      ),
-                    ],
+            // 메인 컨텐츠
+            Expanded(
+              child: Row(
+                children: [
+                  // 좌측: 내 팀 순위 패널
+                  Expanded(
+                    flex: 1,
+                    child: _buildMyTeamPanel(playerTeam, playerRank),
                   ),
-                ),
 
-                // 하단 버튼
-                _buildBottomButton(context),
-              ],
+                  // 우측: 전체 팀 순위 리스트
+                  Expanded(
+                    flex: 2,
+                    child: _buildRankingList(sortedTeams, playerTeam.id),
+                  ),
+                ],
+              ),
             ),
-            ResetButton.positioned(),
+
+            // 하단 버튼
+            _buildBottomButton(context),
           ],
         ),
       ),
@@ -86,8 +81,9 @@ class MatchResultRankingScreen extends ConsumerWidget {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          ResetButton.back(),
+          const Spacer(),
           Icon(Icons.leaderboard, color: Colors.amber, size: 24.sp),
           SizedBox(width: 12.sp),
           Text(
@@ -98,6 +94,8 @@ class MatchResultRankingScreen extends ConsumerWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const Spacer(),
+          const ResetButton(small: true),
         ],
       ),
     );

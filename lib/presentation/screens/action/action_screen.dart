@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../data/providers/game_provider.dart';
 import '../../../domain/models/models.dart';
+import '../../widgets/reset_button.dart';
 
 enum ActionType { rest, training, fanMeeting }
 
@@ -34,8 +35,17 @@ class _ActionScreenState extends ConsumerState<ActionScreen> {
         title: const Text('선수 행동'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              context.pop();
+            } else {
+              context.go('/main');
+            }
+          },
         ),
+        actions: [
+          ResetButton.action(),
+        ],
       ),
       body: Column(
         children: [

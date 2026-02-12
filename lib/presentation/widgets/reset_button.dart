@@ -107,4 +107,39 @@ class ResetButton extends StatelessWidget {
       },
     );
   }
+
+  /// 뒤로가기 버튼 (커스텀 헤더용, R 버튼과 동일한 크기)
+  /// [fallbackRoute] pop 불가 시 이동할 경로 (기본: /main)
+  static Widget back({String? fallbackRoute}) {
+    return Builder(
+      builder: (context) {
+        Responsive.init(context);
+        return Container(
+          width: 32.sp,
+          height: 32.sp,
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(6.sp),
+            border: Border.all(color: Colors.grey[600]!, width: 1.5),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6.sp),
+              onTap: () {
+                if (Navigator.canPop(context)) {
+                  context.pop();
+                } else {
+                  context.go(fallbackRoute ?? '/main');
+                }
+              },
+              child: Center(
+                child: Icon(Icons.arrow_back, color: Colors.white, size: 16.sp),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

@@ -43,7 +43,19 @@ class _EquipmentScreenState extends ConsumerState<EquipmentScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('장비 관리'),
-        leading: ResetButton.leading(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              context.pop();
+            } else {
+              context.go('/main');
+            }
+          },
+        ),
+        actions: [
+          ResetButton.action(),
+        ],
       ),
       body: Column(
             children: [

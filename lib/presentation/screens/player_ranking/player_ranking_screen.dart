@@ -108,8 +108,6 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
                 _buildBottomButtons(context),
               ],
             ),
-            // R 버튼
-            ResetButton.positioned(),
           ],
         ),
       ),
@@ -123,7 +121,7 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 12.sp),
+      padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 12.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -131,8 +129,9 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          ResetButton.back(),
+          const Spacer(),
           Text(
             'MyStarcraft   Season Mode   2012   S1',
             style: TextStyle(
@@ -140,6 +139,8 @@ class _PlayerRankingScreenState extends ConsumerState<PlayerRankingScreen> {
               fontSize: 14.sp,
             ),
           ),
+          const Spacer(),
+          const ResetButton(small: true),
         ],
       ),
     );

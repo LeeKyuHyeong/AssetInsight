@@ -9,6 +9,7 @@ import '../../../domain/models/models.dart';
 import '../../../domain/services/individual_league_service.dart';
 import '../../../domain/services/match_simulation_service.dart';
 import '../../../data/providers/game_provider.dart';
+import '../../widgets/player_thumbnail.dart';
 import '../../widgets/reset_button.dart';
 
 /// 개인리그 결승 화면 (Bo7, 1경기)
@@ -103,7 +104,6 @@ class _IndividualFinalScreenState
                 _buildBottomButtons(context, bracket, playerMap),
               ],
             ),
-            ResetButton.positioned(),
           ],
         ),
       ),
@@ -113,7 +113,7 @@ class _IndividualFinalScreenState
   Widget _buildHeader(Team team, bool hasMyTeamPlayer,
       IndividualLeagueBracket? bracket, Map<String, Player> playerMap) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 12.sp),
+      padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 12.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -124,44 +124,48 @@ class _IndividualFinalScreenState
         children: [
           Row(
             children: [
+              ResetButton.back(fallbackRoute: '/playoff'),
+              SizedBox(width: 8.sp),
               _buildTeamLogo(team),
-              const Spacer(),
-              Column(
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.emoji_events,
-                          color: Colors.amber, size: 24.sp),
-                      SizedBox(width: 8.sp),
-                      Text(
-                        '개인리그 결승',
-                        style: TextStyle(
-                          color: Colors.amber,
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+              SizedBox(width: 8.sp),
+              Expanded(
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.emoji_events,
+                            color: Colors.amber, size: 24.sp),
+                        SizedBox(width: 8.sp),
+                        Text(
+                          '개인리그 결승',
+                          style: TextStyle(
+                            color: Colors.amber,
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    'Bo7 (7판 4선승)',
-                    style: TextStyle(
-                        color: AppColors.accent, fontSize: 12.sp),
-                  ),
-                  if (_statusMessage.isNotEmpty)
-                    Text(
-                      _statusMessage,
-                      style:
-                          TextStyle(color: Colors.grey, fontSize: 11.sp),
+                      ],
                     ),
-                ],
+                    Text(
+                      'Bo7 (7판 4선승)',
+                      style: TextStyle(
+                          color: AppColors.accent, fontSize: 12.sp),
+                    ),
+                    if (_statusMessage.isNotEmpty)
+                      Text(
+                        _statusMessage,
+                        style:
+                            TextStyle(color: Colors.grey, fontSize: 11.sp),
+                      ),
+                  ],
+                ),
               ),
-              const Spacer(),
-              hasMyTeamPlayer
-                  ? _buildSpeedSelector()
-                  : SizedBox(width: 60.sp),
+              if (hasMyTeamPlayer)
+                _buildSpeedSelector(),
+              SizedBox(width: 8.sp),
+              const ResetButton(small: true),
             ],
           ),
           if (!hasMyTeamPlayer) ...[
@@ -476,6 +480,13 @@ class _IndividualFinalScreenState
       ),
       child: Column(
         children: [
+          PlayerThumbnail(
+            player: player,
+            size: 32,
+            isMyTeam: isMyTeam,
+            borderRadius: BorderRadius.circular(6.sp),
+          ),
+          SizedBox(height: 4.sp),
           if (isWinner)
             Icon(Icons.emoji_events,
                 color: Colors.amber, size: 20.sp),
@@ -493,20 +504,6 @@ class _IndividualFinalScreenState
             player.race.code,
             style: TextStyle(color: Colors.grey, fontSize: 10.sp),
           ),
-          if (isMyTeam)
-            Container(
-              margin: EdgeInsets.only(top: 4.sp),
-              padding: EdgeInsets.symmetric(
-                  horizontal: 4.sp, vertical: 1.sp),
-              decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(2.sp)),
-              child: Text('MY',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 7.sp,
-                      fontWeight: FontWeight.bold)),
-            ),
         ],
       ),
     );
@@ -613,31 +610,6 @@ class _IndividualFinalScreenState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton(
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                context.pop();
-              } else {
-                context.go('/playoff');
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.cardBackground,
-              padding: EdgeInsets.symmetric(
-                  horizontal: 32.sp, vertical: 12.sp),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.arrow_back,
-                    color: Colors.white, size: 16.sp),
-                SizedBox(width: 8.sp),
-                Text('EXIT',
-                    style: TextStyle(
-                        color: Colors.white, fontSize: 14.sp)),
-              ],
-            ),
-          ),
-          SizedBox(width: 24.sp),
           ElevatedButton(
             onPressed: _isSimulating
                 ? null

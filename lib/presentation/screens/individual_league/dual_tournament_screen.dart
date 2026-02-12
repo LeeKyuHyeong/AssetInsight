@@ -7,6 +7,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../domain/models/models.dart';
 import '../../../domain/services/individual_league_service.dart';
 import '../../../data/providers/game_provider.dart';
+import '../../widgets/player_thumbnail.dart';
 import '../../widgets/reset_button.dart';
 
 /// 듀얼토너먼트 화면 - 12개 조 (3개 라운드 × 4개 조)
@@ -28,6 +29,7 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
   bool _isCompleted = false;
   String _currentMatchInfo = '';
   int _currentStep = 0; // 0=미시작, 1=1경기, 2=2경기, 3=승자전, 4=패자전, 5=최종전
+  Set<String> _myTeamPlayerIds = {};
 
   @override
   void initState() {
@@ -70,6 +72,8 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
 
     final bracket = gameState.saveData.currentSeason.individualLeague;
     final playerMap = {for (var p in gameState.saveData.allPlayers) p.id: p};
+    final playerTeam = gameState.playerTeam;
+    _myTeamPlayerIds = gameState.saveData.getTeamPlayers(playerTeam.id).map((p) => p.id).toSet();
 
     // 아마추어 선수 추가 (듀얼토너먼트에 진출한 경우)
     if (bracket != null) {
@@ -177,7 +181,6 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
                 _buildBottomButtons(context, bracket, playerMap),
               ],
             ),
-            ResetButton.positioned(),
           ],
         ),
       ),
@@ -186,7 +189,7 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 8.sp),
+      padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 8.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -195,7 +198,7 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
       ),
       child: Row(
         children: [
-          Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
+          ResetButton.back(),
           const Spacer(),
           Text(
             '듀얼 토너먼트',
@@ -207,7 +210,7 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
             ),
           ),
           const Spacer(),
-          Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
+          const ResetButton(small: true),
         ],
       ),
     );
@@ -243,21 +246,38 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 조 이름
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 2.sp),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(4.sp),
-            ),
-            child: Text(
-              '$groupName조',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.bold,
+          // 조 이름 + 썸네일
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6.sp, vertical: 2.sp),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4.sp),
+                ),
+                child: Text(
+                  '$groupName조',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
+              SizedBox(width: 4.sp),
+              ...groupPlayers.where((id) => id != null).take(4).map((id) {
+                final p = playerMap[id];
+                if (p == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: EdgeInsets.only(right: 2.sp),
+                  child: PlayerThumbnail(
+                    player: p,
+                    size: 14,
+                    isMyTeam: _myTeamPlayerIds.contains(p.id),
+                  ),
+                );
+              }),
+            ],
           ),
           SizedBox(height: 4.sp),
           // 대진표
@@ -544,20 +564,38 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
                       ),
           ),
           // 맵 정보
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '맵: ',
+                '맵',
                 style: TextStyle(
                   color: Colors.grey,
-                  fontSize: 10.sp,
+                  fontSize: 9.sp,
+                ),
+              ),
+              SizedBox(height: 2.sp),
+              Text(
+                '네오아웃라이어',
+                style: TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                '네오아웃라이어 / 네오제이드 / 네오체인리액션',
+                '네오제이드',
                 style: TextStyle(
                   color: AppColors.accent,
-                  fontSize: 10.sp,
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '네오체인리액션',
+                style: TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 9.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -580,30 +618,6 @@ class _DualTournamentScreenState extends ConsumerState<DualTournamentScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton(
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                context.pop();
-              } else {
-                context.go('/main');
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.cardBackground,
-              padding: EdgeInsets.symmetric(horizontal: 24.sp, vertical: 10.sp),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.arrow_back, color: Colors.white, size: 16.sp),
-                SizedBox(width: 8.sp),
-                Text(
-                  'EXIT (Bar)',
-                  style: TextStyle(color: Colors.white, fontSize: 12.sp),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 16.sp),
           if (canStart)
             ElevatedButton(
               onPressed: _isCompleted

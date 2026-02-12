@@ -43,140 +43,135 @@ class _DirectorNameScreenState extends ConsumerState<DirectorNameScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                // 상단 헤더
-                _buildHeader(),
+            // 상단 헤더
+            _buildHeader(),
 
-                // 메인 컨텐츠
-                Expanded(
-                  child: Center(
-                    child: Column(
+            // 메인 컨텐츠
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 타이틀
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // 타이틀
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
-                            SizedBox(width: 8.sp),
-                            Text(
-                              '프 로 게 임 단   선 택',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18.sp,
-                                letterSpacing: 4,
-                              ),
-                            ),
-                            SizedBox(width: 8.sp),
-                            Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
-                          ],
-                        ),
-
-                        SizedBox(height: 40.sp),
-
-                        // 팀 로고
-                        Container(
-                          width: 180.sp,
-                          height: 120.sp,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12.sp),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color(playerTeam.colorValue).withOpacity(0.3),
-                                blurRadius: 20,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              playerTeam.shortName,
-                              style: TextStyle(
-                                color: Color(playerTeam.colorValue),
-                                fontSize: 36.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        SizedBox(height: 24.sp),
-
-                        // 팀명
+                        Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
+                        SizedBox(width: 8.sp),
                         Text(
-                          playerTeam.name,
+                          '프 로 게 임 단   선 택',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 20.sp,
+                            fontSize: 18.sp,
+                            letterSpacing: 4,
                           ),
                         ),
+                        SizedBox(width: 8.sp),
+                        Icon(Icons.arrow_drop_down, color: Colors.white, size: 24.sp),
+                      ],
+                    ),
 
-                        SizedBox(height: 48.sp),
+                    SizedBox(height: 40.sp),
 
-                        // 이름 입력란
-                        SizedBox(
-                          width: 200.sp,
-                          child: TextField(
-                            controller: _nameController,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14.sp,
-                            ),
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16.sp,
-                                vertical: 12.sp,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(4.sp),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
+                    // 팀 로고
+                    Container(
+                      width: 180.sp,
+                      height: 120.sp,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.sp),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(playerTeam.colorValue).withOpacity(0.3),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          playerTeam.shortName,
+                          style: TextStyle(
+                            color: Color(playerTeam.colorValue),
+                            fontSize: 36.sp,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ),
+                    ),
 
-                        SizedBox(height: 16.sp),
+                    SizedBox(height: 24.sp),
 
-                        // 안내 텍스트
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '△',
-                              style: TextStyle(color: Colors.white, fontSize: 12.sp),
-                            ),
-                            SizedBox(width: 8.sp),
-                            Text(
-                              '감독 이름 입력란',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.sp,
-                              ),
-                            ),
-                            SizedBox(width: 8.sp),
-                            Text(
-                              '△',
-                              style: TextStyle(color: Colors.white, fontSize: 12.sp),
-                            ),
-                          ],
+                    // 팀명
+                    Text(
+                      playerTeam.name,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20.sp,
+                      ),
+                    ),
+
+                    SizedBox(height: 48.sp),
+
+                    // 이름 입력란
+                    SizedBox(
+                      width: 200.sp,
+                      child: TextField(
+                        controller: _nameController,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 14.sp,
+                        ),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.sp,
+                            vertical: 12.sp,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(4.sp),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 16.sp),
+
+                    // 안내 텍스트
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '△',
+                          style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                        ),
+                        SizedBox(width: 8.sp),
+                        Text(
+                          '감독 이름 입력란',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                        SizedBox(width: 8.sp),
+                        Text(
+                          '△',
+                          style: TextStyle(color: Colors.white, fontSize: 12.sp),
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
-
-                // 하단 버튼
-                _buildBottomButton(context),
-              ],
+              ),
             ),
-            ResetButton.positioned(),
+
+            // 하단 버튼
+            _buildBottomButton(context),
           ],
         ),
       ),
@@ -193,8 +188,9 @@ class _DirectorNameScreenState extends ConsumerState<DirectorNameScreen> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          ResetButton.back(),
+          const Spacer(),
           Icon(Icons.star_border, color: Colors.white, size: 16.sp),
           SizedBox(width: 16.sp),
           Text(
@@ -206,6 +202,8 @@ class _DirectorNameScreenState extends ConsumerState<DirectorNameScreen> {
           ),
           SizedBox(width: 16.sp),
           Icon(Icons.star_border, color: Colors.white, size: 16.sp),
+          const Spacer(),
+          const ResetButton(small: true),
         ],
       ),
     );

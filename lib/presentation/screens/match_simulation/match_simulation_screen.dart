@@ -970,17 +970,15 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('경기 진행'),
-        leading: ResetButton.leading(),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _simulationSubscription?.cancel();
-              ref.read(currentMatchProvider.notifier).resetMatch();
-              context.go('/main');
-            },
-            child: const Text('나가기'),
-          ),
-        ],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            _simulationSubscription?.cancel();
+            ref.read(currentMatchProvider.notifier).resetMatch();
+            context.go('/main');
+          },
+        ),
+        actions: [ResetButton.action()],
       ),
       body: Stack(
         children: [
@@ -1193,17 +1191,15 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('로스터 확인'),
-        leading: ResetButton.leading(),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _simulationSubscription?.cancel();
-              ref.read(currentMatchProvider.notifier).resetMatch();
-              context.go('/main');
-            },
-            child: const Text('나가기'),
-          ),
-        ],
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            _simulationSubscription?.cancel();
+            ref.read(currentMatchProvider.notifier).resetMatch();
+            context.go('/main');
+          },
+        ),
+        actions: [ResetButton.action()],
       ),
       body: SafeArea(
         child: Column(
@@ -1835,18 +1831,16 @@ class _MatchSimulationScreenState extends ConsumerState<MatchSimulationScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('로스터 확인'),
-        leading: ResetButton.leading(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            _simulationSubscription?.cancel();
+            ref.read(currentMatchProvider.notifier).resetMatch();
+            context.go('/main');
+          },
+        ),
         backgroundColor: Colors.amber.withValues(alpha: 0.15),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _simulationSubscription?.cancel();
-              ref.read(currentMatchProvider.notifier).resetMatch();
-              context.go('/main');
-            },
-            child: const Text('나가기'),
-          ),
-        ],
+        actions: [ResetButton.action()],
       ),
       body: SafeArea(
         child: Column(

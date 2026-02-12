@@ -7,6 +7,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../domain/models/models.dart';
 import '../../../domain/services/individual_league_service.dart';
 import '../../../data/providers/game_provider.dart';
+import '../../widgets/reset_button.dart';
 
 /// PC방 예선 토너먼트 화면
 class PcBangQualifierScreen extends ConsumerStatefulWidget {
@@ -149,7 +150,7 @@ class _PcBangQualifierScreenState extends ConsumerState<PcBangQualifierScreen> {
 
   Widget _buildHeader(BuildContext context, Team team) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.sp, vertical: 10.sp),
+      padding: EdgeInsets.symmetric(horizontal: 12.sp, vertical: 10.sp),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         border: Border(
@@ -158,6 +159,8 @@ class _PcBangQualifierScreenState extends ConsumerState<PcBangQualifierScreen> {
       ),
       child: Row(
         children: [
+          ResetButton.back(),
+          SizedBox(width: 8.sp),
           _buildTeamLogo(team),
           SizedBox(width: 12.sp),
           Expanded(
@@ -170,6 +173,7 @@ class _PcBangQualifierScreenState extends ConsumerState<PcBangQualifierScreen> {
               ),
             ),
           ),
+          const ResetButton(small: true),
         ],
       ),
     );
@@ -953,30 +957,6 @@ class _PcBangQualifierScreenState extends ConsumerState<PcBangQualifierScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ElevatedButton(
-                onPressed: () {
-                  if (Navigator.canPop(context)) {
-                    context.pop();
-                  } else {
-                    context.go('/main');
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.cardBackground,
-                  padding: EdgeInsets.symmetric(horizontal: 32.sp, vertical: 12.sp),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.arrow_back, color: Colors.white, size: 16.sp),
-                    SizedBox(width: 8.sp),
-                    Text(
-                      'EXIT',
-                      style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 24.sp),
               ElevatedButton(
                 onPressed: canStart
                     ? () => _isCompleted

@@ -128,7 +128,17 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('로스터 선택'),
-        leading: ResetButton.leading(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              context.pop();
+            } else {
+              context.go('/main');
+            }
+          },
+        ),
+        actions: [ResetButton.action()],
       ),
       body: Column(
         children: [
@@ -628,7 +638,7 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          // 8각형 레이더 차트 (능력치 숫자 포함)
+          // 8각형 레이더 차트 (능력치 숫자 포함 + 컨디션 이중 폴리곤)
           SizedBox(
             width: 130,
             height: 130,
@@ -637,6 +647,8 @@ class _RosterSelectScreenState extends ConsumerState<RosterSelectScreen> {
               color: AppTheme.getGradeColor(player.grade.display),
               grade: player.grade.display,
               level: player.level.value,
+              effectiveStats: player.effectiveStats,
+              conditionPercent: condition,
             ),
           ),
         ],

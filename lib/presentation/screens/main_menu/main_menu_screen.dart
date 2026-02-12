@@ -73,12 +73,6 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
               ],
             ),
 
-            // R 버튼 (우측 상단, 헤더 내부)
-            Positioned(
-              top: 12.sp,
-              right: 12.sp,
-              child: _buildRButton(context),
-            ),
           ],
         ),
       ),
@@ -196,8 +190,8 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
             ),
           ),
 
-          // R 버튼 공간 확보
-          SizedBox(width: 48.sp),
+          // R 버튼
+          _buildRButton(context),
         ],
       ),
     );
@@ -851,44 +845,20 @@ class _MainMenuScreenState extends ConsumerState<MainMenuScreen> {
                 onPressed: () => context.push('/action'),
               ),
 
-              // 디버그: 듀얼토너먼트 스킵
+              // 디버그: 조지명식 직전까지 스킵
               _BottomButton(
                 icon: Icons.fast_forward,
                 label: 'DEBUG',
                 onPressed: () {
                   final notifier = ref.read(gameStateProvider.notifier);
-                  notifier.debugSkipToDualTournament();
+                  notifier.debugSkipToGroupDraw();
                   setState(() {});
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('듀얼토너먼트까지 스킵 완료! 개인리그 버튼을 눌러주세요'),
+                      content: Text('조지명식 직전까지 스킵 완료!'),
                       duration: Duration(seconds: 2),
                     ),
                   );
-                },
-              ),
-
-              // 디버그: 플레이오프 스킵 (개인리그 전체 완료)
-              _BottomButton(
-                icon: Icons.emoji_events,
-                label: 'PO',
-                onPressed: () {
-                  final notifier = ref.read(gameStateProvider.notifier);
-                  notifier.debugSkipToPlayoff();
-                  setState(() {});
-                  context.push('/playoff');
-                },
-              ),
-
-              // 디버그: 플레이오프 스킵 (8강#2까지만 완료)
-              _BottomButton(
-                icon: Icons.looks_two,
-                label: 'PO8강',
-                onPressed: () {
-                  final notifier = ref.read(gameStateProvider.notifier);
-                  notifier.debugSkipToPlayoffWith8Gang2();
-                  setState(() {});
-                  context.push('/playoff');
                 },
               ),
             ],

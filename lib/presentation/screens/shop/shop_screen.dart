@@ -34,13 +34,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('아이템 상점'),
-        leading: ResetButton.leading(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              context.pop();
+            } else {
+              context.go('/main');
+            }
+          },
+        ),
         actions: [
-          TextButton.icon(
-            onPressed: () => context.go('/main'),
-            icon: const Icon(Icons.exit_to_app, color: Colors.white, size: 18),
-            label: const Text('나가기', style: TextStyle(color: Colors.white, fontSize: 12)),
-          ),
+          ResetButton.action(),
         ],
       ),
       body: Column(

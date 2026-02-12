@@ -410,6 +410,7 @@ class MatchSimulationService {
     // 충돌 발생 여부
     bool clashOccurred = false;
     int clashStartLine = -1;
+    LogOwner lastClashOwner = LogOwner.home; // 클래시 교차 표시용
 
     // ZvZ 상수 (루프 밖에서 한번만 계산)
     final isZvZ = homePlayer.race == Race.zerg && awayPlayer.race == Race.zerg;
@@ -517,6 +518,25 @@ class MatchSimulationService {
           }
         }
 
+        // 클래시 텍스트의 주체 선수 결정 (선수 이름 기반 + 교차 표시)
+        LogOwner clashOwner;
+        if (text.isNotEmpty) {
+          final transformedText = _transformEnding(text);
+          final homeNameIdx = transformedText.indexOf(homePlayer.name);
+          final awayNameIdx = transformedText.indexOf(awayPlayer.name);
+          if (homeNameIdx >= 0 && (awayNameIdx < 0 || homeNameIdx < awayNameIdx)) {
+            clashOwner = LogOwner.home;
+          } else if (awayNameIdx >= 0 && (homeNameIdx < 0 || awayNameIdx < homeNameIdx)) {
+            clashOwner = LogOwner.away;
+          } else {
+            // 선수 이름 없는 중립 텍스트 → 이전 owner 반대로 교차
+            clashOwner = lastClashOwner == LogOwner.home ? LogOwner.away : LogOwner.home;
+          }
+          lastClashOwner = clashOwner;
+        } else {
+          clashOwner = LogOwner.clash;
+        }
+
         // 상태 업데이트
         state = state.copyWith(
           homeArmy: (state.homeArmy + homeArmyChange).clamp(0, 200),
@@ -524,7 +544,7 @@ class MatchSimulationService {
           homeResources: (state.homeResources + homeResourceChange).clamp(0, 10000),
           awayResources: (state.awayResources + awayResourceChange).clamp(0, 10000),
           battleLogEntries: text.isNotEmpty
-              ? [...state.battleLogEntries, BattleLogEntry(text: _transformEnding(text), owner: LogOwner.clash)]
+              ? [...state.battleLogEntries, BattleLogEntry(text: _transformEnding(text), owner: clashOwner)]
               : state.battleLogEntries,
         );
 
@@ -590,6 +610,23 @@ class MatchSimulationService {
         if (interaction != null) {
           newEntries.add(BattleLogEntry(text: interaction, owner: LogOwner.away));
         }
+
+        // 빌드 반응 해설 (주요 빌드 선택에 대한 해설자 코멘터리)
+        if (lineCount - lastCommentaryLine >= 3) {
+          final buildCommentary = _getBuildReactionCommentary(
+            buildText: homeStep.text,
+            builderName: homePlayer.name,
+            opponentName: awayPlayer.name,
+            builderRace: homeRace,
+            opponentRace: awayRace,
+            usedTexts: usedTexts,
+          );
+          if (buildCommentary != null) {
+            newEntries.add(BattleLogEntry(text: buildCommentary, owner: LogOwner.system));
+            lastCommentaryLine = lineCount;
+            usedTexts[buildCommentary] = (usedTexts[buildCommentary] ?? 0) + 1;
+          }
+        }
       }
 
       // 어웨이 빌드 스텝
@@ -611,6 +648,23 @@ class MatchSimulationService {
         );
         if (interaction != null) {
           newEntries.add(BattleLogEntry(text: interaction, owner: LogOwner.home));
+        }
+
+        // 빌드 반응 해설 (주요 빌드 선택에 대한 해설자 코멘터리)
+        if (lineCount - lastCommentaryLine >= 3) {
+          final buildCommentary = _getBuildReactionCommentary(
+            buildText: awayStep.text,
+            builderName: awayPlayer.name,
+            opponentName: homePlayer.name,
+            builderRace: awayRace,
+            opponentRace: homeRace,
+            usedTexts: usedTexts,
+          );
+          if (buildCommentary != null) {
+            newEntries.add(BattleLogEntry(text: buildCommentary, owner: LogOwner.system));
+            lastCommentaryLine = lineCount;
+            usedTexts[buildCommentary] = (usedTexts[buildCommentary] ?? 0) + 1;
+          }
         }
       }
 
@@ -1088,6 +1142,181 @@ class MatchSimulationService {
       return pickUnused(texts);
     }
 
+    return null;
+  }
+
+  // ==================== 빌드 반응 해설 시스템 ====================
+
+  /// 빌드 반응 해설 규칙 (빌드 키워드 → 해설자 코멘터리)
+  static final List<_BuildReactionRule> _buildReactionRules = [
+    // 다크템플러 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'다크템플러|다크|DT'),
+      reactions: [
+        '{opponent} 선수가 눈치채고 잘 막아 낼 수 있을까요!',
+        '다크템플러입니다! {opponent} 선수 디텍터 준비는 됐을까요?',
+        '은밀한 다크 투입! 이걸 읽었느냐가 관건입니다!',
+        '다크가 나옵니다! {opponent} 선수 대비가 됐을지 궁금하네요.',
+      ],
+    ),
+    // 럴커 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'럴커'),
+      reactions: [
+        '럴커입니다! {opponent} 선수 디텍터가 있을까요?',
+        '럴커 등장! 이걸로 전세가 뒤집힐 수 있습니다!',
+        '럴커가 나왔는데요, {opponent} 선수 대응이 관건이겠네요!',
+      ],
+    ),
+    // 러쉬/올인 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'러쉬|공격|올인|돌격|질럿.*러쉬|저글링.*러쉬'),
+      reactions: [
+        '공격적인 선택입니다! {opponent} 선수가 버틸 수 있을까요!',
+        '이 타이밍 러쉬를 막아낼 수 있을지가 관건입니다!',
+        '과감한 선택! {opponent} 선수 수비 준비가 됐을까요?',
+      ],
+    ),
+    // 드랍 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'드랍|수송|셔틀'),
+      reactions: [
+        '드랍을 노리고 있습니다! {opponent} 선수가 읽을 수 있을까요?',
+        '기습 드랍 준비! 이걸 읽느냐가 승부의 관건!',
+        '드랍 타이밍인데요, {opponent} 선수 본진 수비가 관건입니다!',
+      ],
+    ),
+    // 캐리어/모선 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'캐리어|모선'),
+      reactions: [
+        '캐리어 전환! {opponent} 선수 대공 준비가 급해졌습니다!',
+        '대함선 테크입니다! 이걸로 후반을 노리는 건가요?',
+        '캐리어가 뜹니다! {opponent} 선수에겐 시간이 촉박해요!',
+      ],
+    ),
+    // 아비터 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'아비터'),
+      reactions: [
+        '아비터입니다! 리콜이 나오면 상황이 뒤집힐 수 있어요!',
+        '아비터 테크! {opponent} 선수 EMP 준비가 급합니다!',
+        '아비터가 나왔네요! 이 한방이 경기를 결정지을 수 있습니다!',
+      ],
+    ),
+    // 하이템플러/스톰 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'하이템플러|사이오닉|스톰'),
+      reactions: [
+        '하이템플러! 사이오닉 스톰 한 방이면 상황이 바뀝니다!',
+        '스톰 테크입니다! {opponent} 선수 병력 분산이 관건이에요!',
+        '하이템플러가 합류했습니다! 이 한 수가 클 수 있어요!',
+      ],
+    ),
+    // 뮤탈리스크 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'뮤탈리스크|뮤탈|스파이어'),
+      reactions: [
+        '뮤탈리스크! 공중 장악에 나섭니다!',
+        '뮤탈이 뜹니다! {opponent} 선수 대공 준비가 됐을까요?',
+        '스파이어 올렸습니다! 뮤탈 견제가 시작되겠네요!',
+      ],
+    ),
+    // 배틀크루저 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'배틀크루저|전투순양함'),
+      reactions: [
+        '배틀크루저입니다! 최종 병기가 나왔네요!',
+        '배틀크루저 전환! {opponent} 선수가 막을 수 있을까요?',
+      ],
+    ),
+    // 시즈탱크 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'시즈.*모드|시즈탱크|탱크.*시즈'),
+      reactions: [
+        '시즈모드! 이 라인을 뚫을 수 있을까요!',
+        '탱크가 자리 잡았습니다! 이 진지를 돌파해야 합니다!',
+      ],
+    ),
+    // 핵/뉴클리어 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'핵|뉴클리어|뉴크'),
+      reactions: [
+        '핵입니다!! 이걸 잡아내야 합니다!',
+        '뉴클리어 준비! 이 한 방이면 끝날 수도 있어요!',
+      ],
+    ),
+    // 리버 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'리버'),
+      reactions: [
+        '리버가 나옵니다! 스캐럽 한 방이 무서운데요!',
+        '리버 투입! {opponent} 선수 일꾼 관리가 관건이에요!',
+      ],
+    ),
+    // 디파일러 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'디파일러|플레이그|다크스웜'),
+      reactions: [
+        '디파일러! 이 마법 한 방이 전세를 뒤집을 수 있습니다!',
+        '디파일러 합류! {opponent} 선수에게 큰 위협이 될 수 있어요!',
+      ],
+    ),
+    // 가디언 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'가디언'),
+      reactions: [
+        '가디언이 뜹니다! 지상 병력으로는 상대가 안 되는데요!',
+        '가디언 전환! {opponent} 선수 대공 준비가 시급합니다!',
+      ],
+    ),
+    // 레이스 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'레이스'),
+      reactions: [
+        '레이스! 클로킹 견제가 시작되겠네요!',
+        '레이스 투입! {opponent} 선수 디텍터가 준비됐을까요?',
+      ],
+    ),
+    // 확장/멀티 관련
+    _BuildReactionRule(
+      pattern: RegExp(r'확장|멀티|앞마당|서드'),
+      reactions: [
+        '확장을 올립니다! 이 타이밍이 안전할까요?',
+        '과감한 확장! {opponent} 선수가 이 틈을 노릴 수 있을텐데요!',
+        '멀티 타이밍인데요, 견제가 들어오면 위험할 수 있습니다!',
+      ],
+    ),
+  ];
+
+  /// 빌드 반응 해설 생성 (25% 확률, 주요 빌드에만 반응)
+  String? _getBuildReactionCommentary({
+    required String buildText,
+    required String builderName,
+    required String opponentName,
+    required String builderRace,
+    required String opponentRace,
+    Map<String, int>? usedTexts,
+  }) {
+    if (_random.nextDouble() > 0.25) return null; // 75% 스킵
+
+    for (final rule in _buildReactionRules) {
+      if (!rule.pattern.hasMatch(buildText)) continue;
+
+      // 후보 텍스트 중 미사용 우선 선택
+      final candidates = rule.reactions
+          .map((r) => r.replaceAll('{builder}', builderName).replaceAll('{opponent}', opponentName))
+          .toList();
+
+      if (usedTexts != null) {
+        final unused = candidates.where((t) => (usedTexts[t] ?? 0) == 0).toList();
+        if (unused.isNotEmpty) return unused[_random.nextInt(unused.length)];
+        // 모두 사용 → 가장 적게 사용된 것
+        candidates.sort((a, b) => (usedTexts[a] ?? 0).compareTo(usedTexts[b] ?? 0));
+        return candidates.first;
+      }
+      return candidates[_random.nextInt(candidates.length)];
+    }
     return null;
   }
 
@@ -1953,6 +2182,17 @@ class _InteractionRule {
     required this.triggerPattern,
     required this.triggerRace,
     required this.reactorRace,
+    required this.reactions,
+  });
+}
+
+/// 빌드 반응 해설 규칙 (빌드 키워드 → 해설자 코멘터리)
+class _BuildReactionRule {
+  final RegExp pattern;
+  final List<String> reactions; // {builder}, {opponent} 플레이스홀더
+
+  const _BuildReactionRule({
+    required this.pattern,
     required this.reactions,
   });
 }

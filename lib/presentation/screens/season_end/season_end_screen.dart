@@ -33,23 +33,18 @@ class _SeasonEndScreenState extends ConsumerState<SeasonEndScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                // 상단 헤더
-                _buildHeader(gameState),
+            // 상단 헤더
+            _buildHeader(gameState),
 
-                // 메인 컨텐츠
-                Expanded(
-                  child: _buildContent(gameState),
-                ),
-
-                // 하단 버튼
-                _buildBottomButton(context),
-              ],
+            // 메인 컨텐츠
+            Expanded(
+              child: _buildContent(gameState),
             ),
-            ResetButton.positioned(),
+
+            // 하단 버튼
+            _buildBottomButton(context),
           ],
         ),
       ),
@@ -69,8 +64,9 @@ class _SeasonEndScreenState extends ConsumerState<SeasonEndScreen> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          ResetButton.back(),
+          const Spacer(),
           Icon(Icons.emoji_events, color: Colors.amber, size: 28.sp),
           SizedBox(width: 12.sp),
           Column(
@@ -92,6 +88,8 @@ class _SeasonEndScreenState extends ConsumerState<SeasonEndScreen> {
               ),
             ],
           ),
+          const Spacer(),
+          const ResetButton(small: true),
         ],
       ),
     );

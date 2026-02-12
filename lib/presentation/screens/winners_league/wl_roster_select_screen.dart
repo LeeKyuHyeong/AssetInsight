@@ -90,8 +90,18 @@ class _WLRosterSelectScreenState extends ConsumerState<WLRosterSelectScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text('Winners League'),
-        leading: ResetButton.leading(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              context.pop();
+            } else {
+              context.go('/main');
+            }
+          },
+        ),
         backgroundColor: Colors.amber.withValues(alpha: 0.15),
+        actions: [ResetButton.action()],
       ),
       body: Column(
         children: [
@@ -573,6 +583,8 @@ class _WLRosterSelectScreenState extends ConsumerState<WLRosterSelectScreen> {
               color: AppTheme.getGradeColor(player.grade.display),
               grade: player.grade.display,
               level: player.level.value,
+              effectiveStats: player.effectiveStats,
+              conditionPercent: player.displayCondition,
             ),
           ),
         ],

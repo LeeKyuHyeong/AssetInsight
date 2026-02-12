@@ -647,83 +647,51 @@ class GameStateNotifier extends StateNotifier<GameState?> {
     }
   }
 
-  /// 디버그: 듀얼토너먼트까지 빠르게 진행
-  void debugSkipToDualTournament() {
+  /// 디버그: 조지명식 직전까지 빠르게 진행
+  /// (PC방 예선 + 듀얼 3라운드 완료, 프로리그 week 0~3 스킵)
+  void debugSkipToGroupDraw() {
     if (state == null) return;
 
     final leagueService = IndividualLeagueService();
+    final isWinnersSeason = state!.saveData.currentSeason.isWinnersLeagueSeason;
+    final rand = Random();
 
-    // 1. 프로리그 경기 스킵 (week 0 match1, match2)
-    for (var wp = state!.saveData.currentSeason.weekProgress; wp < 2; wp++) {
+    // 1. 프로리그 경기 스킵 (week 0~3, 총 8슬롯)
+    for (var wp = state!.saveData.currentSeason.weekProgress; wp < 12; wp++) {
       final season = state!.saveData.currentSeason;
       if (season.currentStep < 2) {
         final roundNumber = season.currentWeek * 2 + season.currentStep + 1;
+        // 플레이어 팀 매치가 있으면 강제 시뮬레이션
+        final schedule = season.proleagueSchedule;
+        ScheduleItem? match;
+        for (final m in schedule) {
+          if (m.roundNumber == roundNumber && !m.isCompleted) {
+            match = m;
+            break;
+          }
+        }
+        if (match != null) {
+          final idx = schedule.indexOf(match);
+          final homePlayers = List<Player>.from(
+            state!.saveData.getTeamPlayers(match.homeTeamId),
+          )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
+          final awayPlayers = List<Player>.from(
+            state!.saveData.getTeamPlayers(match.awayTeamId),
+          )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
+          if (homePlayers.isNotEmpty && awayPlayers.isNotEmpty) {
+            if (isWinnersSeason) {
+              _simulateWinnersLeagueMatch(idx, match, homePlayers, awayPlayers, rand);
+            } else {
+              _simulateNormalMatch(idx, match, homePlayers, awayPlayers, rand);
+            }
+          }
+        }
         skipRound(roundNumber);
       }
     }
 
     // 2. PC방 예선 대진표 생성 & 시뮬레이션
     final playerMap = {for (var p in state!.saveData.allPlayers) p.id: p};
-    var bracket = state!.saveData.currentSeason.individualLeague;
-
-    if (bracket == null || bracket.pcBangGroups.isEmpty) {
-      bracket = leagueService.createIndividualLeagueBracket(
-        allPlayers: state!.saveData.allPlayers,
-        playerTeamId: state!.saveData.playerTeamId,
-        seasonNumber: state!.saveData.currentSeason.number,
-      );
-    }
-
-    if (bracket.pcBangResults.isEmpty) {
-      bracket = leagueService.simulateAllPcBangGroups(
-        bracket: bracket,
-        playerMap: playerMap,
-      );
-    }
-
-    updateIndividualLeague(bracket);
-
-    // 3. weekProgress를 5로 설정 (week 1, step 2 = 듀얼 1R)
-    final updatedSeason = state!.saveData.currentSeason.copyWith(weekProgress: 5);
-    final newSaveData = state!.saveData.updateSeason(updatedSeason);
-    state = state!.copyWith(saveData: newSaveData);
-
-    save();
-  }
-
-  /// 디버그: 8강#2까지만 완료 + 플레이오프 진입 상태로 스킵
-  void debugSkipToPlayoffWith8Gang2() {
-    if (state == null) return;
-
-    final rand = Random();
-    final leagueService = IndividualLeagueService();
-    final isWinnersSeason = state!.saveData.currentSeason.isWinnersLeagueSeason;
-
-    // 1. 모든 프로리그 경기 강제 완료
-    final scheduleLength = state!.saveData.currentSeason.proleagueSchedule.length;
-    for (int i = 0; i < scheduleLength; i++) {
-      final match = state!.saveData.currentSeason.proleagueSchedule[i];
-      if (match.isCompleted) continue;
-
-      final homePlayers = List<Player>.from(
-        state!.saveData.getTeamPlayers(match.homeTeamId),
-      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
-
-      final awayPlayers = List<Player>.from(
-        state!.saveData.getTeamPlayers(match.awayTeamId),
-      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
-
-      if (homePlayers.isEmpty || awayPlayers.isEmpty) continue;
-
-      if (isWinnersSeason) {
-        _simulateWinnersLeagueMatch(i, match, homePlayers, awayPlayers, rand);
-      } else {
-        _simulateNormalMatch(i, match, homePlayers, awayPlayers, rand);
-      }
-    }
-
-    // 2. PC방 예선 생성 & 시뮬레이션
-    final playerMap = {for (var p in state!.saveData.allPlayers) p.id: p};
     var bracketN = state!.saveData.currentSeason.individualLeague;
 
     if (bracketN == null || bracketN.pcBangGroups.isEmpty) {
@@ -751,174 +719,12 @@ class GameStateNotifier extends StateNotifier<GameState?> {
       );
     }
 
-    // 4. 조지명식 (mainTournamentGroups 채우기)
-    // 듀얼 진출자 추출
-    final dualResults = bracket.dualTournamentResults;
-    final dualQualifiers = <String>[];
-    for (var gi = 0; gi < 12; gi++) {
-      final groupStart = gi * 5;
-      if (dualResults.length >= groupStart + 5) {
-        dualQualifiers.add(dualResults[groupStart + 2].winnerId);
-        dualQualifiers.add(dualResults[groupStart + 4].winnerId);
-      }
-    }
-    // 시드 제외
-    final seededIds = bracket.mainTournamentGroups
-        .map((g) => g.isNotEmpty && g[0] != null ? g[0]! : '')
-        .where((id) => id.isNotEmpty)
-        .toSet();
-    final availableQualifiers = dualQualifiers
-        .where((id) => !seededIds.contains(id))
-        .toList()
-      ..shuffle(rand);
-    // 조에 배정
-    final filledGroups = bracket.mainTournamentGroups
-        .map((g) => List<String?>.from(g))
-        .toList();
-    var qIdx = 0;
-    for (var gi = 0; gi < 8 && gi < filledGroups.length; gi++) {
-      for (var si = 1; si < 4; si++) {
-        if (qIdx < availableQualifiers.length) {
-          filledGroups[gi][si] = availableQualifiers[qIdx++];
-        }
-      }
-    }
-    bracket = bracket.copyWith(
-      mainTournamentGroups: filledGroups,
-      mainTournamentPlayers: filledGroups.expand((g) => g.whereType<String>()).toList(),
-    );
-
-    // 5. 본선 32강~8강 전체 시뮬레이션
-    bracket = leagueService.simulateRound32Half(half: 1, bracket: bracket, playerMap: playerMap);
-    bracket = leagueService.simulateRound32Half(half: 2, bracket: bracket, playerMap: playerMap);
-    bracket = leagueService.simulateRound16Half(half: 1, bracket: bracket, playerMap: playerMap);
-    bracket = leagueService.simulateRound16Half(half: 2, bracket: bracket, playerMap: playerMap);
-    bracket = leagueService.simulateQuarterFinalHalf(half: 1, bracket: bracket, playerMap: playerMap);
-    bracket = leagueService.simulateQuarterFinalHalf(half: 2, bracket: bracket, playerMap: playerMap);
-
     updateIndividualLeague(bracket);
 
-    // 6. weekProgress = 33 (모든 주차 완료)
-    final updatedSeason = state!.saveData.currentSeason.copyWith(weekProgress: 33);
+    // 4. weekProgress를 14로 설정 (week 4, step 2 = 조지명식)
+    final updatedSeason = state!.saveData.currentSeason.copyWith(weekProgress: 14);
     final newSaveData = state!.saveData.updateSeason(updatedSeason);
     state = state!.copyWith(saveData: newSaveData);
-
-    // 7. 플레이오프 시작 (순위 기반 대진표 생성 + phase → playoff34)
-    startPlayoff();
-
-    save();
-  }
-
-  /// 디버그: 8강 완료 + 플레이오프 진입 상태로 스킵
-  void debugSkipToPlayoff() {
-    if (state == null) return;
-
-    final rand = Random();
-    final leagueService = IndividualLeagueService();
-    final isWinnersSeason = state!.saveData.currentSeason.isWinnersLeagueSeason;
-
-    // 1. 모든 프로리그 경기 강제 완료 (플레이어 팀 포함)
-    final scheduleLength = state!.saveData.currentSeason.proleagueSchedule.length;
-    for (int i = 0; i < scheduleLength; i++) {
-      final match = state!.saveData.currentSeason.proleagueSchedule[i];
-      if (match.isCompleted) continue;
-
-      final homePlayers = List<Player>.from(
-        state!.saveData.getTeamPlayers(match.homeTeamId),
-      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
-
-      final awayPlayers = List<Player>.from(
-        state!.saveData.getTeamPlayers(match.awayTeamId),
-      )..sort((a, b) => b.stats.total.compareTo(a.stats.total));
-
-      if (homePlayers.isEmpty || awayPlayers.isEmpty) continue;
-
-      if (isWinnersSeason) {
-        _simulateWinnersLeagueMatch(i, match, homePlayers, awayPlayers, rand);
-      } else {
-        _simulateNormalMatch(i, match, homePlayers, awayPlayers, rand);
-      }
-    }
-
-    // 2. PC방 예선 생성 & 시뮬레이션
-    final playerMap = {for (var p in state!.saveData.allPlayers) p.id: p};
-    var bracketN = state!.saveData.currentSeason.individualLeague;
-
-    if (bracketN == null || bracketN.pcBangGroups.isEmpty) {
-      bracketN = leagueService.createIndividualLeagueBracket(
-        allPlayers: state!.saveData.allPlayers,
-        playerTeamId: state!.saveData.playerTeamId,
-        seasonNumber: state!.saveData.currentSeason.number,
-      );
-    }
-
-    var bracket = bracketN;
-    if (bracket.pcBangResults.isEmpty) {
-      bracket = leagueService.simulateAllPcBangGroups(
-        bracket: bracket,
-        playerMap: playerMap,
-      );
-    }
-
-    // 3. 듀얼토너먼트 (3라운드 전부)
-    for (var round = 1; round <= 3; round++) {
-      bracket = leagueService.simulateDualTournamentRound(
-        bracket: bracket,
-        playerMap: playerMap,
-        round: round,
-      );
-    }
-
-    // 4. 조지명식 (mainTournamentGroups 채우기)
-    final dualResults2 = bracket.dualTournamentResults;
-    final dualQualifiers2 = <String>[];
-    for (var gi = 0; gi < 12; gi++) {
-      final groupStart = gi * 5;
-      if (dualResults2.length >= groupStart + 5) {
-        dualQualifiers2.add(dualResults2[groupStart + 2].winnerId);
-        dualQualifiers2.add(dualResults2[groupStart + 4].winnerId);
-      }
-    }
-    final seededIds2 = bracket.mainTournamentGroups
-        .map((g) => g.isNotEmpty && g[0] != null ? g[0]! : '')
-        .where((id) => id.isNotEmpty)
-        .toSet();
-    final availableQualifiers2 = dualQualifiers2
-        .where((id) => !seededIds2.contains(id))
-        .toList()
-      ..shuffle(rand);
-    final filledGroups2 = bracket.mainTournamentGroups
-        .map((g) => List<String?>.from(g))
-        .toList();
-    var qIdx2 = 0;
-    for (var gi = 0; gi < 8 && gi < filledGroups2.length; gi++) {
-      for (var si = 1; si < 4; si++) {
-        if (qIdx2 < availableQualifiers2.length) {
-          filledGroups2[gi][si] = availableQualifiers2[qIdx2++];
-        }
-      }
-    }
-    bracket = bracket.copyWith(
-      mainTournamentGroups: filledGroups2,
-      mainTournamentPlayers: filledGroups2.expand((g) => g.whereType<String>()).toList(),
-    );
-
-    // 5. 본선 시뮬레이션 (32강~결승 전부)
-    bracket = leagueService.simulateMainTournament(
-      bracket: bracket,
-      playerMap: playerMap,
-      showLogFromQuarterFinal: false,
-    );
-
-    updateIndividualLeague(bracket);
-
-    // 6. weekProgress = 33 (모든 주차 완료)
-    final updatedSeason2 = state!.saveData.currentSeason.copyWith(weekProgress: 33);
-    final newSaveData2 = state!.saveData.updateSeason(updatedSeason2);
-    state = state!.copyWith(saveData: newSaveData2);
-
-    // 7. 플레이오프 시작 (순위 기반 대진표 생성 + phase → playoff34)
-    startPlayoff();
 
     save();
   }

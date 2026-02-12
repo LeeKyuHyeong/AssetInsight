@@ -63,13 +63,18 @@ class _InfoScreenState extends ConsumerState<InfoScreen> with SingleTickerProvid
     return Scaffold(
       appBar: AppBar(
         title: const Text('정보'),
-        leading: ResetButton.leading(),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              context.pop();
+            } else {
+              context.go('/main');
+            }
+          },
+        ),
         actions: [
-          TextButton.icon(
-            onPressed: () => context.go('/main'),
-            icon: const Icon(Icons.exit_to_app, color: Colors.white, size: 18),
-            label: const Text('나가기', style: TextStyle(color: Colors.white, fontSize: 12)),
-          ),
+          ResetButton.action(),
         ],
         bottom: TabBar(
           controller: _tabController,
